@@ -1,0 +1,123 @@
+.game-card {
+  background-color: #2a3f5a;
+  border-radius: 8px;
+  overflow: hidden;
+  text-align: left;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  animation: fade-in 0.3s ease-in;
+}
+
+.game-card__image {
+  width: 100%;
+  display: block;
+}
+
+.game-card__image-wrap {
+  position: relative;
+}
+
+.game-card__favorite {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  background-color: rgba(27, 40, 56, 0.75);
+  border: none;
+  border-radius: 999px;
+  width: 2.2rem;
+  height: 2.2rem;
+  font-size: 1.2rem;
+  line-height: 1;
+  color: #c7d5e0;
+  cursor: pointer;
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.game-card__favorite:hover {
+  transform: scale(1.1);
+}
+
+.game-card__favorite--active {
+  color: #ffd700;
+}
+
+.game-card__source {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: #8f98a0;
+}
+
+.game-card__body {
+  padding: 1rem 1.25rem 1.5rem;
+}
+
+.game-card__genres {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0;
+  margin: 0.5rem 0 1rem;
+}
+
+.game-card__genres li {
+  background-color: #66c0f4;
+  color: #1b2838;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+}
+
+.game-card__description {
+  color: #c7d5e0;
+  line-height: 1.4;
+}
+
+.game-card__stats {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0;
+  margin: 0.75rem 0;
+  color: #8f98a0;
+}
+
+.game-card__reviews {
+  margin-top: 1rem;
+  border-top: 1px solid #3d5573;
+  padding-top: 0.75rem;
+}
+
+.game-card__review-score {
+  color: #c7d5e0;
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+}
+
+.game-card__featured-reviews {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.game-card__featured-reviews li {
+  color: #8f98a0;
+  font-style: italic;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

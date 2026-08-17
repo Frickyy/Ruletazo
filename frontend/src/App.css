@@ -1,0 +1,54 @@
+.app-shell {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 2rem 1rem 4rem;
+  text-align: center;
+}
+
+.app-header h1 {
+  margin-bottom: 0.25rem;
+}
+
+.app-header p {
+  margin-top: 0;
+  color: #8f98a0;
+}
+
+.steam-ids-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.app-nav {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+  border-bottom: 1px solid #2a3f5a;
+  padding-bottom: 0.75rem;
+}
+
+.app-nav button {
+  background: none;
+  border: none;
+  color: #8f98a0;
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.app-nav button:hover {
+  background-color: #2a3f5a;
+  color: #c7d5e0;
+}
+
+.app-nav button.active {
+  background-color: #66c0f4;
+  color: #1b2838;
+}

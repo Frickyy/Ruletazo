@@ -1,0 +1,80 @@
+.roulette-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.roulette-page__filters {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.collection-toggle {
+  display: flex;
+  gap: 0.4rem;
+  background-color: #2a3f5a;
+  padding: 0.3rem;
+  border-radius: 8px;
+}
+
+.collection-toggle button {
+  background: none;
+  border: none;
+  color: #8f98a0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.4rem 0.9rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.collection-toggle button.active {
+  background-color: #66c0f4;
+  color: #1b2838;
+}
+
+.genre-select {
+  background-color: #2a3f5a;
+  border: 1px solid #4c6b8a;
+  color: #c7d5e0;
+  font-size: 0.9rem;
+  padding: 0.5rem 0.8rem;
+  border-radius: 6px;
+}
+
+.roulette-button {
+  background-color: #66c0f4;
+  color: #1b2838;
+  border: none;
+  border-radius: 6px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  padding: 0.9rem 2rem;
+  cursor: pointer;
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.roulette-button:hover:not(:disabled) {
+  background-color: #7fd0ff;
+  transform: translateY(-2px);
+}
+
+.roulette-button:disabled {
+  background-color: #4c6b8a;
+  color: #c7d5e0;
+  cursor: not-allowed;
+}
+
+.roulette-page__hint {
+  color: #8f98a0;
+}
+
+.roulette-page__error {
+  color: #ff6b6b;
+}
