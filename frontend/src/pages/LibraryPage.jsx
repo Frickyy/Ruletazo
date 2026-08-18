@@ -68,18 +68,13 @@ function LibraryPage({ steamId, friendSteamId }) {
     }
   }
 
-  // La Store API de Steam no tiene un límite documentado, así que se clasifica de a poco:
-  // se llama repetidas veces hasta terminar, mostrando el progreso en vivo.
+  // Una tanda por clic evita mantener ocupado el backend durante toda la biblioteca.
   async function handleClassifyMore() {
     setIsClassifying(true);
     setError(null);
     try {
-      let remaining = 1;
-      while (remaining > 0) {
-        const result = await classifyLibraryBatch(steamId, CLASSIFY_BATCH_SIZE);
-        remaining = result.remaining;
-        setStatus({ classified: result.total - remaining, total: result.total });
-      }
+      const result = await classifyLibraryBatch(steamId, CLASSIFY_BATCH_SIZE);
+      setStatus({ classified: result.total - result.remaining, total: result.total });
       await Promise.all([loadGenres(), loadLibrary()]);
     } catch (err) {
       setError(err.response?.data?.detail ?? "No se pudo clasificar la biblioteca.");
