@@ -41,6 +41,11 @@ def has_store_metadata(details: CachedGameDetails) -> bool:
     return details.store_metadata_version >= STORE_METADATA_VERSION
 
 
+def has_rich_content(details: CachedGameDetails) -> bool:
+    """A favorite should not be considered enriched while its synopsis is still empty."""
+    return bool(details.short_description or details.review_score_desc or details.featured_reviews)
+
+
 def difficulty_label(details: CachedGameDetails) -> str:
     """Traduce el % promedio de logros desbloqueados a una etiqueta legible."""
     if details.achievement_total == 0 or details.achievement_avg_percent is None:
@@ -55,7 +60,7 @@ def difficulty_label(details: CachedGameDetails) -> str:
 async def get_or_fetch_details(db: Session, appid: int, name: str) -> CachedGameDetails:
     """Devuelve los detalles cacheados de `appid` si están frescos; si no, los vuelve a pedir."""
     cached = get_cached_details(db, appid)
-    if cached is not None and is_fresh(cached) and has_store_metadata(cached):
+    if cached is not None and is_fresh(cached) and has_store_metadata(cached) and has_rich_content(cached):
         return cached
 
     logger.info("Enriqueciendo detalles de '%s' (appid %s)", name, appid)
@@ -69,15 +74,17 @@ async def get_or_fetch_details(db: Session, appid: int, name: str) -> CachedGame
         cached = CachedGameDetails(appid=appid)
         db.add(cached)
 
-    cached.genres = store_details["genres"]
-    cached.short_description = store_details["short_description"]
-    cached.price_cents = store_details["price_cents"]
-    cached.release_date = store_details["release_date"]
+    if store_details.get("store_available"):
+        cached.genres = store_details["genres"] or cached.genres
+        cached.short_description = store_details["short_description"] or cached.short_description
+        cached.price_cents = store_details["price_cents"]
+        cached.release_date = store_details["release_date"]
     cached.store_metadata_version = STORE_METADATA_VERSION if store_details.get("store_available") else 0
-    cached.review_score_desc = reviews["score_desc"]
-    cached.review_total = reviews["total_reviews"]
-    cached.review_positive = reviews["total_positive"]
-    cached.featured_reviews = reviews["featured_reviews"]
+    if reviews["score_desc"] or reviews["total_reviews"] or reviews["featured_reviews"]:
+        cached.review_score_desc = reviews["score_desc"]
+        cached.review_total = reviews["total_reviews"]
+        cached.review_positive = reviews["total_positive"]
+        cached.featured_reviews = reviews["featured_reviews"]
     cached.hltb_main_hours = hltb["main_hours"]
     cached.hltb_completionist_hours = hltb["completionist_hours"]
     cached.achievement_total = achievements["total"]

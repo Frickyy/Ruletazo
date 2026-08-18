@@ -39,7 +39,9 @@ function GameCard({ game, onToggleFavorite }) {
           </ul>
         )}
 
-        {game.short_description && <p className="game-card__description">{game.short_description}</p>}
+        <p className="game-card__description">
+          {game.short_description || "Sinopsis no disponible para este juego en Steam Store."}
+        </p>
 
         <ul className="game-card__stats">
           <li>
@@ -66,10 +68,11 @@ function GameCard({ game, onToggleFavorite }) {
           </li>
         </ul>
 
-        {game.review_score_desc && (
+        {(game.review_score_desc || game.review_total > 0 || game.featured_reviews.length > 0) && (
           <div className="game-card__reviews">
             <p className="game-card__review-score">
-              📝 {game.review_score_desc} · {game.review_total.toLocaleString("es-AR")} reseñas
+              📝 {game.review_score_desc || "Reseñas de usuarios"}
+              {game.review_total > 0 && ` · ${game.review_total.toLocaleString("es-AR")} reseñas`}
             </p>
             {game.featured_reviews.length > 0 && (
               <ul className="game-card__featured-reviews">

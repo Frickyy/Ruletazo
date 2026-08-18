@@ -56,7 +56,11 @@ class SteamStoreClient:
     """Cliente async para la Store API pública de Steam (appdetails, appreviews)."""
 
     def __init__(self, timeout: float = 10.0) -> None:
-        self._client = httpx.AsyncClient(base_url=STORE_API_BASE_URL, timeout=timeout)
+        self._client = httpx.AsyncClient(
+            base_url=STORE_API_BASE_URL,
+            timeout=timeout,
+            headers={"User-Agent": "Steamzinho/1.0"},
+        )
 
     async def __aenter__(self) -> "SteamStoreClient":
         return self
