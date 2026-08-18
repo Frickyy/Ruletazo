@@ -190,14 +190,12 @@ async def _ensure_store_metadata(db: Session, games: list[Game]) -> None:
     if not pending:
         return
 
-    semaphore = asyncio.Semaphore(16)
-
     async with SteamStoreClient() as client:
-        async def fetch(game: Game) -> tuple[Game, dict]:
-            async with semaphore:
-                return game, await client.get_app_details(game.appid)
-
-        results = await asyncio.gather(*(fetch(game) for game in pending))
+        results = []
+        for offset in range(0, len(pending), 50):
+            batch = pending[offset : offset + 50]
+            details_by_appid = await client.get_app_details_batch([game.appid for game in batch])
+            results.extend((game, details_by_appid.get(game.appid, {})) for game in batch)
     for game, store_details in results:
         details = details_map.get(game.appid)
         if details is None:

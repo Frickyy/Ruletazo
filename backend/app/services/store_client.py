@@ -66,37 +66,47 @@ class SteamStoreClient:
 
     async def get_app_details(self, appid: int, language: str = "english") -> dict:
         """Devuelve metadatos de Store. Vacío si Steam no tiene ficha para el appid."""
+        details = await self.get_app_details_batch([appid], language)
+        return details.get(appid, _empty_app_details())
+
+    async def get_app_details_batch(self, appids: list[int], language: str = "english") -> dict[int, dict]:
+        """Fetch up to 50 app details in one Store API request."""
+        if not appids:
+            return {}
         try:
             response = await self._client.get(
                 "/api/appdetails",
-                params={"appids": appid, "l": language, "cc": "us"},
+                params={"appids": ",".join(str(appid) for appid in appids), "l": language, "cc": "us"},
             )
             response.raise_for_status()
         except httpx.HTTPError:
-            return {"genres": [], "short_description": "", "price_cents": None, "release_date": "", "store_available": False}
+            return {appid: _empty_app_details() for appid in appids}
 
-        entry = response.json().get(str(appid), {})
-        if not entry.get("success"):
-            return {"genres": [], "short_description": "", "price_cents": None, "release_date": "", "store_available": False}
+        result = {}
+        for appid in appids:
+            entry = response.json().get(str(appid), {})
+            if not entry.get("success"):
+                result[appid] = _empty_app_details()
+                continue
 
-        data = entry.get("data", {})
-        genres = normalize_genres([genre["description"] for genre in data.get("genres", [])])
-        price_overview = data.get("price_overview") or {}
-        app_type = data.get("type", "")
-        release_date = data.get("release_date", {}).get("date", "")
-        release_date = _normalize_release_date(release_date)
-        return {
-            "genres": genres,
-            "short_description": data.get("short_description", ""),
-            "price_cents": (
-                price_overview.get("final")
-                if not data.get("is_free") and app_type == "game"
-                else 0 if data.get("is_free") and app_type == "game" else None
-            ),
-            "app_type": app_type,
-            "release_date": release_date,
-            "store_available": True,
-        }
+            data = entry.get("data", {})
+            genres = normalize_genres([genre["description"] for genre in data.get("genres", [])])
+            price_overview = data.get("price_overview") or {}
+            app_type = data.get("type", "")
+            release_date = _normalize_release_date(data.get("release_date", {}).get("date", ""))
+            result[appid] = {
+                "genres": genres,
+                "short_description": data.get("short_description", ""),
+                "price_cents": (
+                    price_overview.get("final")
+                    if not data.get("is_free") and app_type == "game"
+                    else 0 if data.get("is_free") and app_type == "game" else None
+                ),
+                "app_type": app_type,
+                "release_date": release_date,
+                "store_available": True,
+            }
+        return result
 
     async def get_reviews(self, appid: int, language: str = "spanish", num_reviews: int = 3) -> dict:
         """Devuelve el resumen de reseñas de Steam + hasta `num_reviews` reseñas de texto destacadas."""
@@ -135,3 +145,7 @@ def _normalize_release_date(value: str) -> str:
         except ValueError:
             continue
     return ""
+
+
+def _empty_app_details() -> dict:
+    return {"genres": [], "short_description": "", "price_cents": None, "release_date": "", "store_available": False}
