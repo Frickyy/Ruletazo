@@ -18,7 +18,7 @@ from app.services.store_client import SteamStoreClient
 
 logger = logging.getLogger(__name__)
 
-STORE_METADATA_VERSION = 2
+STORE_METADATA_VERSION = 3
 
 # Store API / reseñas / logros cambian poco: se reutilizan varios días antes de
 # volver a golpear las 3 APIs externas para el mismo juego.
@@ -73,7 +73,7 @@ async def get_or_fetch_details(db: Session, appid: int, name: str) -> CachedGame
     cached.short_description = store_details["short_description"]
     cached.price_cents = store_details["price_cents"]
     cached.release_date = store_details["release_date"]
-    cached.store_metadata_version = STORE_METADATA_VERSION
+    cached.store_metadata_version = STORE_METADATA_VERSION if store_details.get("store_available") else 0
     cached.review_score_desc = reviews["score_desc"]
     cached.review_total = reviews["total_reviews"]
     cached.review_positive = reviews["total_positive"]
@@ -104,17 +104,11 @@ async def get_or_fetch_store_metadata(db: Session, appid: int) -> CachedGameDeta
     cached.short_description = store_details["short_description"] or cached.short_description
     cached.price_cents = store_details["price_cents"]
     cached.release_date = store_details["release_date"]
-    cached.store_metadata_version = STORE_METADATA_VERSION
+    cached.store_metadata_version = STORE_METADATA_VERSION if store_details.get("store_available") else 0
     cached.fetched_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(cached)
     return cached
-
-
-async def fetch_store_metadata(appid: int) -> dict:
-    """Fetch Store fields without touching the database, for bounded batch refreshes."""
-    async with SteamStoreClient() as client:
-        return await client.get_app_details(appid)
 
 
 async def _fetch_store_data(appid: int) -> list[dict]:

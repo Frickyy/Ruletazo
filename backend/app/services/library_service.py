@@ -10,6 +10,7 @@ from app.models.game import CachedGameDetails, CachedLibraryEntry
 from app.schemas.game import Game
 from app.services import favorites_service, game_details_service
 from app.services.steam_client import SteamClient
+from app.services.store_client import SteamStoreClient, normalize_genres
 
 logger = logging.getLogger(__name__)
 
@@ -189,29 +190,32 @@ async def _ensure_store_metadata(db: Session, games: list[Game]) -> None:
     if not pending:
         return
 
-    semaphore = asyncio.Semaphore(8)
+    semaphore = asyncio.Semaphore(16)
 
-    async def fetch(game: Game) -> tuple[Game, dict]:
-        async with semaphore:
-            return game, await game_details_service.fetch_store_metadata(game.appid)
+    async with SteamStoreClient() as client:
+        async def fetch(game: Game) -> tuple[Game, dict]:
+            async with semaphore:
+                return game, await client.get_app_details(game.appid)
 
-    results = await asyncio.gather(*(fetch(game) for game in pending))
+        results = await asyncio.gather(*(fetch(game) for game in pending))
     for game, store_details in results:
         details = details_map.get(game.appid)
         if details is None:
             details = CachedGameDetails(appid=game.appid)
             db.add(details)
-        details.genres = store_details["genres"] or details.genres
+        details.genres = normalize_genres(store_details["genres"]) or details.genres
         details.short_description = store_details["short_description"] or details.short_description
         details.price_cents = store_details["price_cents"]
         details.release_date = store_details["release_date"]
-        details.store_metadata_version = game_details_service.STORE_METADATA_VERSION
+        details.store_metadata_version = (
+            game_details_service.STORE_METADATA_VERSION if store_details.get("store_available") else 0
+        )
         details.fetched_at = datetime.now(timezone.utc)
     db.commit()
 
 
 def _apply_cached_details(game: Game, details: CachedGameDetails) -> None:
-    game.genres = details.genres
+    game.genres = normalize_genres(details.genres)
     game.short_description = details.short_description
     game.price_cents = details.price_cents
     game.release_date = details.release_date

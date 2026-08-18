@@ -58,5 +58,5 @@ def test_old_cache_row_is_missing_store_metadata():
 
 
 def test_current_cache_row_has_store_metadata_even_when_free_or_undated():
-    details = _make_details(store_metadata_version=1, price_cents=0, release_date="")
+    details = _make_details(store_metadata_version=3, price_cents=0, release_date="")
     assert game_details_service.has_store_metadata(details) is True

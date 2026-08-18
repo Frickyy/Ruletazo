@@ -21,6 +21,36 @@ _REVIEW_SCORE_TRANSLATIONS = {
     "No user reviews": "Sin reseñas de usuarios",
 }
 
+_GENRE_TRANSLATIONS = {
+    "Action": "Acción",
+    "Adventure": "Aventura",
+    "Racing": "Carreras",
+    "Sports": "Deportes",
+    "Design & Illustration": "Diseño e ilustración",
+    "Strategy": "Estrategia",
+    "Massively Multiplayer": "Multijugador masivo",
+    "RPG": "Rol",
+    "Simulation": "Simuladores",
+    "Violent": "Violencia",
+    "Early Access": "Acceso anticipado",
+    "Free To Play": "Free to Play",
+    "Animation & Modeling": "Animación y modelado",
+    "Audio Production": "Producción de audio",
+    "Game Development": "Desarrollo de juegos",
+    "Education": "Educación",
+    "Photo Editing": "Edición de fotos",
+    "Utilities": "Utilidades",
+    "Nudity": "Desnudos",
+    "Sexual Content": "Contenido sexual",
+    "Gore": "Sangrientos",
+}
+
+
+def normalize_genres(genres: list[str]) -> list[str]:
+    """Translate known Store labels and remove duplicates caused by mixed-language cache rows."""
+    normalized = {_GENRE_TRANSLATIONS.get(genre, genre) for genre in genres if genre}
+    return sorted(normalized, key=str.casefold)
+
 
 class SteamStoreClient:
     """Cliente async para la Store API pública de Steam (appdetails, appreviews)."""
@@ -43,14 +73,14 @@ class SteamStoreClient:
             )
             response.raise_for_status()
         except httpx.HTTPError:
-            return {"genres": [], "short_description": "", "price_cents": None, "release_date": ""}
+            return {"genres": [], "short_description": "", "price_cents": None, "release_date": "", "store_available": False}
 
         entry = response.json().get(str(appid), {})
         if not entry.get("success"):
-            return {"genres": [], "short_description": "", "price_cents": None, "release_date": ""}
+            return {"genres": [], "short_description": "", "price_cents": None, "release_date": "", "store_available": False}
 
         data = entry.get("data", {})
-        genres = [genre["description"] for genre in data.get("genres", [])]
+        genres = normalize_genres([genre["description"] for genre in data.get("genres", [])])
         price_overview = data.get("price_overview") or {}
         app_type = data.get("type", "")
         release_date = data.get("release_date", {}).get("date", "")
@@ -65,6 +95,7 @@ class SteamStoreClient:
             ),
             "app_type": app_type,
             "release_date": release_date,
+            "store_available": True,
         }
 
     async def get_reviews(self, appid: int, language: str = "spanish", num_reviews: int = 3) -> dict:
@@ -98,7 +129,7 @@ class SteamStoreClient:
 
 def _normalize_release_date(value: str) -> str:
     """Converts Steam's English display date into ISO for reliable sorting."""
-    for date_format in ("%d %b, %Y", "%b %Y", "%Y"):
+    for date_format in ("%b %d, %Y", "%d %b, %Y", "%b %Y", "%Y"):
         try:
             return datetime.strptime(value.strip(), date_format).date().isoformat()
         except ValueError:

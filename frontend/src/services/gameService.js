@@ -20,7 +20,8 @@ export async function fetchRandomGame(options = {}) {
 
 /** Biblioteca completa (cacheada), con los mismos filtros que la ruleta. */
 export async function fetchLibrary(options = {}) {
-  const { data } = await api.get("/games/library", { params: buildParams(options) });
+  const timeout = options.sortBy === "price" || options.sortBy === "release_date" ? 120000 : undefined;
+  const { data } = await api.get("/games/library", { params: buildParams(options), timeout });
   return data;
 }
 
