@@ -60,7 +60,7 @@ def difficulty_label(details: CachedGameDetails) -> str:
 async def get_or_fetch_details(db: Session, appid: int, name: str) -> CachedGameDetails:
     """Devuelve los detalles cacheados de `appid` si están frescos; si no, los vuelve a pedir."""
     cached = get_cached_details(db, appid)
-    if cached is not None and is_fresh(cached) and has_store_metadata(cached) and has_rich_content(cached):
+    if cached is not None and is_fresh(cached) and has_store_metadata(cached):
         return cached
 
     logger.info("Enriqueciendo detalles de '%s' (appid %s)", name, appid)
@@ -79,7 +79,7 @@ async def get_or_fetch_details(db: Session, appid: int, name: str) -> CachedGame
         cached.short_description = store_details["short_description"] or cached.short_description
         cached.price_cents = store_details["price_cents"]
         cached.release_date = store_details["release_date"]
-    cached.store_metadata_version = STORE_METADATA_VERSION if store_details.get("store_available") else 0
+    cached.store_metadata_version = STORE_METADATA_VERSION
     if reviews["score_desc"] or reviews["total_reviews"] or reviews["featured_reviews"]:
         cached.review_score_desc = reviews["score_desc"]
         cached.review_total = reviews["total_reviews"]

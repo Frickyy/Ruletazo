@@ -135,7 +135,6 @@ async def get_classification_status(db: Session, identifier: str) -> dict:
         if appid in details_map
         and game_details_service.is_fresh(details_map[appid])
         and game_details_service.has_store_metadata(details_map[appid])
-        and game_details_service.has_rich_content(details_map[appid])
     )
     return {"classified": classified, "total": len(appids)}
 
@@ -157,7 +156,6 @@ async def classify_library_batch(db: Session, identifier: str, limit: int) -> di
         if entry.appid not in details_map
         or not game_details_service.is_fresh(details_map[entry.appid])
         or not game_details_service.has_store_metadata(details_map[entry.appid])
-        or not game_details_service.has_rich_content(details_map[entry.appid])
     ]
     to_process = pending[:limit]
 
@@ -219,9 +217,7 @@ async def _ensure_store_metadata(db: Session, games: list[Game]) -> None:
         details.short_description = store_details["short_description"] or details.short_description
         details.price_cents = store_details["price_cents"]
         details.release_date = store_details["release_date"]
-        details.store_metadata_version = (
-            game_details_service.STORE_METADATA_VERSION if store_details.get("store_available") else 0
-        )
+        details.store_metadata_version = game_details_service.STORE_METADATA_VERSION
         details.fetched_at = datetime.now(timezone.utc)
     db.commit()
 

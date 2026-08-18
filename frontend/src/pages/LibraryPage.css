@@ -40,6 +40,11 @@
   cursor: not-allowed;
 }
 
+.library-page__stop {
+  background-color: #4c6b8a !important;
+  color: #c7d5e0 !important;
+}
+
 .library-page__tools {
   display: flex;
   flex-wrap: wrap;

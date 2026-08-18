@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   addFavorite,
   classifyLibraryBatch,
@@ -25,6 +25,7 @@ function LibraryPage({ steamId, friendSteamId }) {
   const [genres, setGenres] = useState([]);
   const [status, setStatus] = useState(null);
   const [isClassifying, setIsClassifying] = useState(false);
+  const stopClassificationRef = useRef(false);
 
   useEffect(() => {
     if (!steamId) return;
@@ -73,19 +74,32 @@ function LibraryPage({ steamId, friendSteamId }) {
     }
   }
 
-  // Una tanda por clic evita mantener ocupado el backend durante toda la biblioteca.
+  // Las tandas siguen separadas para que la biblioteca no quede bloqueada durante el proceso.
   async function handleClassifyMore() {
     setIsClassifying(true);
+    stopClassificationRef.current = false;
     setError(null);
     try {
-      const result = await classifyLibraryBatch(steamId, CLASSIFY_BATCH_SIZE);
-      setStatus({ classified: result.total - result.remaining, total: result.total });
+      let remaining = status?.total ? status.total - status.classified : 1;
+      let total = status?.total ?? 0;
+
+      while (remaining > 0 && !stopClassificationRef.current) {
+        const result = await classifyLibraryBatch(steamId, CLASSIFY_BATCH_SIZE);
+        remaining = result.remaining;
+        total = result.total;
+        setStatus({ classified: total - remaining, total });
+      }
+
       await Promise.all([loadGenres(), loadLibrary()]);
     } catch (err) {
       setError(err.response?.data?.detail ?? "No se pudo clasificar la biblioteca.");
     } finally {
       setIsClassifying(false);
     }
+  }
+
+  function handleStopClassification() {
+    stopClassificationRef.current = true;
   }
 
   async function handleToggleFavorite(target) {
@@ -190,8 +204,13 @@ function LibraryPage({ steamId, friendSteamId }) {
             Esto pega contra la Store de Steam de a un juego por vez, así que puede tardar.
           </p>
           <button type="button" onClick={handleClassifyMore} disabled={isClassifying}>
-            {isClassifying ? "Clasificando…" : "Clasificar más"}
+            {isClassifying ? "Clasificando automáticamente…" : "Clasificar toda la biblioteca"}
           </button>
+          {isClassifying && (
+            <button type="button" className="library-page__stop" onClick={handleStopClassification}>
+              Detener después de esta tanda
+            </button>
+          )}
         </div>
       )}
 
