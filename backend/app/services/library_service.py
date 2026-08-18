@@ -129,7 +129,14 @@ async def get_classification_status(db: Session, identifier: str) -> dict:
     steam_id = await resolve_steam_id(identifier)
     appids = [entry.appid for entry in _get_cached_entries(db, steam_id)]
     details_map = _get_cached_details_map(db, appids)
-    classified = sum(1 for appid in appids if appid in details_map and game_details_service.is_fresh(details_map[appid]))
+    classified = sum(
+        1
+        for appid in appids
+        if appid in details_map
+        and game_details_service.is_fresh(details_map[appid])
+        and game_details_service.has_store_metadata(details_map[appid])
+        and game_details_service.has_rich_content(details_map[appid])
+    )
     return {"classified": classified, "total": len(appids)}
 
 
@@ -144,7 +151,14 @@ async def classify_library_batch(db: Session, identifier: str, limit: int) -> di
     entries = _get_cached_entries(db, steam_id)
     details_map = _get_cached_details_map(db, [entry.appid for entry in entries])
 
-    pending = [entry for entry in entries if entry.appid not in details_map or not game_details_service.is_fresh(details_map[entry.appid])]
+    pending = [
+        entry
+        for entry in entries
+        if entry.appid not in details_map
+        or not game_details_service.is_fresh(details_map[entry.appid])
+        or not game_details_service.has_store_metadata(details_map[entry.appid])
+        or not game_details_service.has_rich_content(details_map[entry.appid])
+    ]
     to_process = pending[:limit]
 
     for index, entry in enumerate(to_process):
