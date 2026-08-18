@@ -81,9 +81,15 @@ async def get_filtered_library(
 
     reverse = sort_direction == "desc"
     if sort_by == "price":
-        games.sort(key=lambda game: (game.price_cents is None, game.price_cents or 0, game.name.casefold()), reverse=reverse)
+        known = [game for game in games if game.price_cents is not None]
+        unknown = [game for game in games if game.price_cents is None]
+        known.sort(key=lambda game: (game.price_cents, game.name.casefold()), reverse=reverse)
+        games = known + unknown
     elif sort_by == "release_date":
-        games.sort(key=lambda game: (not game.release_date, game.release_date, game.name.casefold()), reverse=reverse)
+        known = [game for game in games if game.release_date]
+        unknown = [game for game in games if not game.release_date]
+        known.sort(key=lambda game: (game.release_date, game.name.casefold()), reverse=reverse)
+        games = known + unknown
     else:
         games.sort(key=lambda game: game.name.casefold(), reverse=reverse)
 
