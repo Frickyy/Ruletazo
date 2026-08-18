@@ -52,6 +52,9 @@ async def get_filtered_library(
     friend_identifier: str | None,
     collection: str,
     genre: str | None,
+    search: str | None = None,
+    sort_by: str = "name",
+    sort_direction: str = "asc",
 ) -> list[Game]:
     """Biblioteca (combinada con la de un familiar si se pasa `friend_identifier`) + favoritos
     y detalles ya cacheados, con el filtro de colección/género aplicado."""
@@ -72,6 +75,17 @@ async def get_filtered_library(
         games = [game for game in games if game.is_favorite]
     if genre:
         games = [game for game in games if genre in game.genres]
+    if search:
+        search_value = search.casefold().strip()
+        games = [game for game in games if search_value in game.name.casefold()]
+
+    reverse = sort_direction == "desc"
+    if sort_by == "price":
+        games.sort(key=lambda game: (game.price_cents is None, game.price_cents or 0, game.name.casefold()), reverse=reverse)
+    elif sort_by == "release_date":
+        games.sort(key=lambda game: (not game.release_date, game.release_date, game.name.casefold()), reverse=reverse)
+    else:
+        games.sort(key=lambda game: game.name.casefold(), reverse=reverse)
 
     return games
 
@@ -82,9 +96,14 @@ async def get_random_from_library(
     friend_identifier: str | None,
     collection: str,
     genre: str | None,
+    search: str | None = None,
+    sort_by: str = "name",
+    sort_direction: str = "asc",
 ) -> Game | None:
     """Elige un juego al azar del pool filtrado y lo enriquece (Store/HLTB/logros) al toque."""
-    games = await get_filtered_library(db, identifier, friend_identifier, collection, genre)
+    games = await get_filtered_library(
+        db, identifier, friend_identifier, collection, genre, search, sort_by, sort_direction
+    )
     if not games:
         return None
 
@@ -153,6 +172,8 @@ def _attach_favorites_and_details(db: Session, games: list[Game], steam_id: str)
 def _apply_cached_details(game: Game, details: CachedGameDetails) -> None:
     game.genres = details.genres
     game.short_description = details.short_description
+    game.price_cents = details.price_cents
+    game.release_date = details.release_date
     game.review_score_desc = details.review_score_desc
     game.review_total = details.review_total
     game.featured_reviews = details.featured_reviews

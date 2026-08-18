@@ -1,6 +1,6 @@
 from collections.abc import Generator
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from app.core.config import get_settings
@@ -24,6 +24,19 @@ def init_db() -> None:
     from app.models import game  # noqa: F401  (registra CachedLibraryEntry en Base.metadata)
 
     Base.metadata.create_all(bind=engine)
+    _upgrade_game_details_table()
+
+
+def _upgrade_game_details_table() -> None:
+    """Adds new nullable metadata columns to existing SQLite databases."""
+    if not settings.database_url.startswith("sqlite"):
+        return
+    columns = {column["name"] for column in inspect(engine).get_columns("cached_game_details")}
+    with engine.begin() as connection:
+        if "price_cents" not in columns:
+            connection.execute(text("ALTER TABLE cached_game_details ADD COLUMN price_cents INTEGER"))
+        if "release_date" not in columns:
+            connection.execute(text("ALTER TABLE cached_game_details ADD COLUMN release_date VARCHAR(32) DEFAULT ''"))
 
 
 def get_db() -> Generator[Session, None, None]:

@@ -64,6 +64,8 @@ async def get_or_fetch_details(db: Session, appid: int, name: str) -> CachedGame
 
     cached.genres = store_details["genres"]
     cached.short_description = store_details["short_description"]
+    cached.price_cents = store_details["price_cents"]
+    cached.release_date = store_details["release_date"]
     cached.review_score_desc = reviews["score_desc"]
     cached.review_total = reviews["total_reviews"]
     cached.review_positive = reviews["total_positive"]

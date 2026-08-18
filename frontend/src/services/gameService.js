@@ -1,11 +1,14 @@
 import api from "./api.js";
 
-function buildParams({ steamId, friendSteamId, collection, genre } = {}) {
+function buildParams({ steamId, friendSteamId, collection, genre, search, sortBy, sortDirection } = {}) {
   const params = {};
   if (steamId) params.steamid = steamId;
   if (friendSteamId) params.friend_steamid = friendSteamId;
   if (collection) params.collection = collection;
   if (genre) params.genre = genre;
+  if (search) params.search = search;
+  if (sortBy) params.sort_by = sortBy;
+  if (sortDirection) params.sort_direction = sortDirection;
   return params;
 }
 

@@ -18,6 +18,9 @@ function LibraryPage({ steamId, friendSteamId }) {
   const [error, setError] = useState(null);
   const [collection, setCollection] = useState("all");
   const [genre, setGenre] = useState("");
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState("name");
+  const [sortDirection, setSortDirection] = useState("asc");
   const [genres, setGenres] = useState([]);
   const [status, setStatus] = useState(null);
   const [isClassifying, setIsClassifying] = useState(false);
@@ -27,14 +30,21 @@ function LibraryPage({ steamId, friendSteamId }) {
     loadLibrary();
     loadGenres();
     loadStatus();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [steamId, friendSteamId, collection, genre]);
+  }, [steamId, friendSteamId, collection, genre, search, sortBy, sortDirection]);
 
   async function loadLibrary() {
     setIsLoading(true);
     setError(null);
     try {
-      setGames(await fetchLibrary({ steamId, friendSteamId, collection, genre: genre || undefined }));
+      setGames(await fetchLibrary({
+        steamId,
+        friendSteamId,
+        collection,
+        genre: genre || undefined,
+        search: search || undefined,
+        sortBy,
+        sortDirection,
+      }));
     } catch (err) {
       setError(err.response?.data?.detail ?? "No se pudo cargar la biblioteca.");
     } finally {
@@ -84,7 +94,12 @@ function LibraryPage({ steamId, friendSteamId }) {
     } else {
       await addFavorite(steamId, target.appid);
     }
-    setGames((prev) => prev.map((g) => (g.appid === target.appid ? { ...g, is_favorite: !g.is_favorite } : g)));
+    setGames((prev) => {
+      if (target.is_favorite && collection === "favorites") {
+        return prev.filter((game) => game.appid !== target.appid);
+      }
+      return prev.map((game) => (game.appid === target.appid ? { ...game, is_favorite: !game.is_favorite } : game));
+    });
   }
 
   if (!steamId) {
@@ -124,6 +139,34 @@ function LibraryPage({ steamId, friendSteamId }) {
         )}
       </div>
 
+      <div className="library-page__tools">
+        <label className="library-page__search">
+          Buscar por nombre
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Ej. Counter-Strike"
+          />
+        </label>
+        <label className="library-page__sort">
+          Ordenar por
+          <select value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
+            <option value="name">Nombre</option>
+            <option value="price">Precio</option>
+            <option value="release_date">Fecha de salida</option>
+          </select>
+        </label>
+        <button
+          type="button"
+          className="library-page__direction"
+          onClick={() => setSortDirection((direction) => (direction === "asc" ? "desc" : "asc"))}
+          title={sortDirection === "asc" ? "Orden ascendente" : "Orden descendente"}
+        >
+          {sortDirection === "asc" ? "A → Z / menor → mayor" : "Z → A / mayor → menor"}
+        </button>
+      </div>
+
       {status && status.total > 0 && status.classified < status.total && (
         <div className="library-page__classify">
           <p>
@@ -150,7 +193,11 @@ function LibraryPage({ steamId, friendSteamId }) {
                 {game.source === "both" && <span className="game-card__source"> 👪👪</span>}
               </p>
               {game.genres.length > 0 && <p className="library-row__genres">{game.genres.join(" · ")}</p>}
-              <p className="library-row__playtime">🕒 {Math.round(game.playtime_forever_minutes / 60)} h</p>
+              <p className="library-row__meta">
+                🕒 {Math.round(game.playtime_forever_minutes / 60)} h
+                {game.price_cents != null && ` · ${formatPrice(game.price_cents)}`}
+                {game.release_date && ` · ${formatReleaseDate(game.release_date)}`}
+              </p>
             </div>
             <button
               type="button"
@@ -170,6 +217,16 @@ function LibraryPage({ steamId, friendSteamId }) {
       )}
     </section>
   );
+}
+
+function formatPrice(priceCents) {
+  if (priceCents === 0) return "Gratis";
+  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "USD" }).format(priceCents / 100);
+}
+
+function formatReleaseDate(value) {
+  const date = new Date(`${value}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString("es-AR");
 }
 
 export default LibraryPage;

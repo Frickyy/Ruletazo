@@ -20,6 +20,8 @@ class Game(BaseModel):
     is_favorite: bool = False
     # De qué biblioteca viene: la propia, la de un familiar combinado, o ambas (mismo appid en las dos).
     source: Literal["you", "friend", "both"] = "you"
+    price_cents: int | None = None
+    release_date: str = ""
     review_score_desc: str = ""
     review_total: int = 0
     featured_reviews: list[str] = Field(default_factory=list)

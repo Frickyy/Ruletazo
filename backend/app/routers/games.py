@@ -15,6 +15,8 @@ router = APIRouter(prefix="/api/games", tags=["games"])
 _T = TypeVar("_T")
 
 _COLLECTION_PATTERN = "^(all|favorites)$"
+_SORT_PATTERN = "^(name|price|release_date)$"
+_DIRECTION_PATTERN = "^(asc|desc)$"
 
 # Biblioteca de ejemplo: se usa si no se pasa `steamid` o si falta STEAM_API_KEY,
 # para que el frontend siempre tenga algo que mostrar en desarrollo.
@@ -73,6 +75,9 @@ async def get_random_game(
     ),
     collection: str = Query(default="all", pattern=_COLLECTION_PATTERN, description="'all' o 'favorites'."),
     genre: str | None = Query(default=None, description="Filtra por género (ej. 'Rol', 'Acción')."),
+    search: str | None = Query(default=None, description="Busca por nombre del juego."),
+    sort_by: str = Query(default="name", pattern=_SORT_PATTERN, description="name, price o release_date."),
+    sort_direction: str = Query(default="asc", pattern=_DIRECTION_PATTERN, description="asc o desc."),
     db: Session = Depends(get_db),
 ) -> Game:
     """Devuelve un juego aleatorio: de la biblioteca real de `steamid` si se indica, o de una de ejemplo."""
@@ -81,7 +86,9 @@ async def get_random_game(
         return random.choice(_MOCK_LIBRARY)
 
     game = await _unwrap_steam_errors(
-        library_service.get_random_from_library(db, steamid, friend_steamid, collection, genre)
+        library_service.get_random_from_library(
+            db, steamid, friend_steamid, collection, genre, search, sort_by, sort_direction
+        )
     )
     if game is None:
         raise HTTPException(status_code=404, detail="No hay juegos que coincidan con ese filtro.")
@@ -94,11 +101,16 @@ async def get_library(
     friend_steamid: str | None = Query(default=None, description="SteamID64/vanity de un familiar para combinar."),
     collection: str = Query(default="all", pattern=_COLLECTION_PATTERN, description="'all' o 'favorites'."),
     genre: str | None = Query(default=None, description="Filtra por género."),
+    search: str | None = Query(default=None, description="Busca por nombre del juego."),
+    sort_by: str = Query(default="name", pattern=_SORT_PATTERN, description="name, price o release_date."),
+    sort_direction: str = Query(default="asc", pattern=_DIRECTION_PATTERN, description="asc o desc."),
     db: Session = Depends(get_db),
 ) -> list[Game]:
     """Devuelve la biblioteca completa de un usuario de Steam (cacheada en SQL), con filtros opcionales."""
     return await _unwrap_steam_errors(
-        library_service.get_filtered_library(db, steamid, friend_steamid, collection, genre)
+        library_service.get_filtered_library(
+            db, steamid, friend_steamid, collection, genre, search, sort_by, sort_direction
+        )
     )
 
 

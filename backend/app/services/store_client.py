@@ -1,5 +1,7 @@
 """Cliente para los endpoints públicos de la Store de Steam (no requieren API key)."""
 
+from datetime import datetime
+
 import httpx
 
 STORE_API_BASE_URL = "https://store.steampowered.com"
@@ -32,21 +34,29 @@ class SteamStoreClient:
     async def __aexit__(self, *exc_info: object) -> None:
         await self._client.aclose()
 
-    async def get_app_details(self, appid: int, language: str = "spanish") -> dict:
-        """Devuelve géneros y sinopsis. Vacío si Steam no tiene ficha para el appid (ej. herramientas, DLC viejo)."""
+    async def get_app_details(self, appid: int, language: str = "english") -> dict:
+        """Devuelve metadatos de Store. Vacío si Steam no tiene ficha para el appid."""
         try:
             response = await self._client.get("/api/appdetails", params={"appids": appid, "l": language})
             response.raise_for_status()
         except httpx.HTTPError:
-            return {"genres": [], "short_description": ""}
+            return {"genres": [], "short_description": "", "price_cents": None, "release_date": ""}
 
         entry = response.json().get(str(appid), {})
         if not entry.get("success"):
-            return {"genres": [], "short_description": ""}
+            return {"genres": [], "short_description": "", "price_cents": None, "release_date": ""}
 
         data = entry.get("data", {})
         genres = [genre["description"] for genre in data.get("genres", [])]
-        return {"genres": genres, "short_description": data.get("short_description", "")}
+        price_overview = data.get("price_overview") or {}
+        release_date = data.get("release_date", {}).get("date", "")
+        release_date = _normalize_release_date(release_date)
+        return {
+            "genres": genres,
+            "short_description": data.get("short_description", ""),
+            "price_cents": price_overview.get("final") if not data.get("is_free") else 0,
+            "release_date": release_date,
+        }
 
     async def get_reviews(self, appid: int, language: str = "spanish", num_reviews: int = 3) -> dict:
         """Devuelve el resumen de reseñas de Steam + hasta `num_reviews` reseñas de texto destacadas."""
@@ -75,3 +85,13 @@ class SteamStoreClient:
             "total_positive": summary.get("total_positive", 0),
             "featured_reviews": featured[:num_reviews],
         }
+
+
+def _normalize_release_date(value: str) -> str:
+    """Converts Steam's English display date into ISO for reliable sorting."""
+    for date_format in ("%d %b, %Y", "%b %Y", "%Y"):
+        try:
+            return datetime.strptime(value.strip(), date_format).date().isoformat()
+        except ValueError:
+            continue
+    return ""
