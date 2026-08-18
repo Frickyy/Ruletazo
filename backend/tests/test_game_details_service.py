@@ -50,3 +50,13 @@ def test_is_fresh_within_ttl():
 def test_is_fresh_expired_ttl():
     details = _make_details(fetched_at=datetime.now(timezone.utc) - timedelta(days=8))
     assert game_details_service.is_fresh(details) is False
+
+
+def test_old_cache_row_is_missing_store_metadata():
+    details = _make_details(store_metadata_version=0)
+    assert game_details_service.has_store_metadata(details) is False
+
+
+def test_current_cache_row_has_store_metadata_even_when_free_or_undated():
+    details = _make_details(store_metadata_version=1, price_cents=0, release_date="")
+    assert game_details_service.has_store_metadata(details) is True

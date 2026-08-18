@@ -89,17 +89,23 @@ function LibraryPage({ steamId, friendSteamId }) {
   }
 
   async function handleToggleFavorite(target) {
-    if (target.is_favorite) {
-      await removeFavorite(steamId, target.appid);
-    } else {
-      await addFavorite(steamId, target.appid);
-    }
-    setGames((prev) => {
-      if (target.is_favorite && collection === "favorites") {
-        return prev.filter((game) => game.appid !== target.appid);
+    try {
+      if (target.is_favorite) {
+        await removeFavorite(steamId, target.appid);
+      } else {
+        await addFavorite(steamId, target.appid);
       }
-      return prev.map((game) => (game.appid === target.appid ? { ...game, is_favorite: !game.is_favorite } : game));
-    });
+      setGames((prev) => {
+        if (target.is_favorite && collection === "favorites") {
+          return prev.filter((game) => game.appid !== target.appid);
+        }
+        return prev.map((game) => (
+          game.appid === target.appid ? { ...game, is_favorite: !target.is_favorite } : game
+        ));
+      });
+    } catch (err) {
+      setError(err.response?.data?.detail ?? "No se pudo actualizar favoritos.");
+    }
   }
 
   if (!steamId) {

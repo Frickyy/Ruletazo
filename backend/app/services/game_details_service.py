@@ -34,6 +34,11 @@ def is_fresh(details: CachedGameDetails) -> bool:
     return datetime.now(timezone.utc) - fetched_at < DETAILS_CACHE_TTL
 
 
+def has_store_metadata(details: CachedGameDetails) -> bool:
+    """Old cache rows lack price/release metadata and must be refreshed from Store API."""
+    return details.store_metadata_version >= 1
+
+
 def difficulty_label(details: CachedGameDetails) -> str:
     """Traduce el % promedio de logros desbloqueados a una etiqueta legible."""
     if details.achievement_total == 0 or details.achievement_avg_percent is None:
@@ -48,7 +53,7 @@ def difficulty_label(details: CachedGameDetails) -> str:
 async def get_or_fetch_details(db: Session, appid: int, name: str) -> CachedGameDetails:
     """Devuelve los detalles cacheados de `appid` si están frescos; si no, los vuelve a pedir."""
     cached = get_cached_details(db, appid)
-    if cached is not None and is_fresh(cached):
+    if cached is not None and is_fresh(cached) and has_store_metadata(cached):
         return cached
 
     logger.info("Enriqueciendo detalles de '%s' (appid %s)", name, appid)
@@ -66,6 +71,7 @@ async def get_or_fetch_details(db: Session, appid: int, name: str) -> CachedGame
     cached.short_description = store_details["short_description"]
     cached.price_cents = store_details["price_cents"]
     cached.release_date = store_details["release_date"]
+    cached.store_metadata_version = 1
     cached.review_score_desc = reviews["score_desc"]
     cached.review_total = reviews["total_reviews"]
     cached.review_positive = reviews["total_positive"]
@@ -78,6 +84,35 @@ async def get_or_fetch_details(db: Session, appid: int, name: str) -> CachedGame
     db.commit()
     db.refresh(cached)
     return cached
+
+
+async def get_or_fetch_store_metadata(db: Session, appid: int) -> CachedGameDetails:
+    """Loads only Store metadata, used to make price/date sorting complete without HLTB calls."""
+    cached = get_cached_details(db, appid)
+    if cached is not None and cached.store_metadata_version >= 1 and is_fresh(cached):
+        return cached
+
+    async with SteamStoreClient() as client:
+        store_details = await client.get_app_details(appid)
+
+    if cached is None:
+        cached = CachedGameDetails(appid=appid)
+        db.add(cached)
+    cached.genres = store_details["genres"] or cached.genres
+    cached.short_description = store_details["short_description"] or cached.short_description
+    cached.price_cents = store_details["price_cents"]
+    cached.release_date = store_details["release_date"]
+    cached.store_metadata_version = 1
+    cached.fetched_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(cached)
+    return cached
+
+
+async def fetch_store_metadata(appid: int) -> dict:
+    """Fetch Store fields without touching the database, for bounded batch refreshes."""
+    async with SteamStoreClient() as client:
+        return await client.get_app_details(appid)
 
 
 async def _fetch_store_data(appid: int) -> list[dict]:

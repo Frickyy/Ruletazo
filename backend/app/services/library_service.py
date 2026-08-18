@@ -79,6 +79,10 @@ async def get_filtered_library(
         search_value = search.casefold().strip()
         games = [game for game in games if search_value in game.name.casefold()]
 
+    if sort_by in {"price", "release_date"}:
+        await _ensure_store_metadata(db, games)
+        _attach_favorites_and_details(db, games, steam_id)
+
     reverse = sort_direction == "desc"
     if sort_by == "price":
         known = [game for game in games if game.price_cents is not None]
@@ -173,6 +177,37 @@ def _attach_favorites_and_details(db: Session, games: list[Game], steam_id: str)
         details = details_map.get(game.appid)
         if details is not None:
             _apply_cached_details(game, details)
+
+
+async def _ensure_store_metadata(db: Session, games: list[Game]) -> None:
+    """Refresh missing Store fields in bounded parallel requests before price/date sorting."""
+    details_map = _get_cached_details_map(db, [game.appid for game in games])
+    pending = [
+        game for game in games
+        if game.appid not in details_map or not game_details_service.has_store_metadata(details_map[game.appid])
+    ]
+    if not pending:
+        return
+
+    semaphore = asyncio.Semaphore(8)
+
+    async def fetch(game: Game) -> tuple[Game, dict]:
+        async with semaphore:
+            return game, await game_details_service.fetch_store_metadata(game.appid)
+
+    results = await asyncio.gather(*(fetch(game) for game in pending))
+    for game, store_details in results:
+        details = details_map.get(game.appid)
+        if details is None:
+            details = CachedGameDetails(appid=game.appid)
+            db.add(details)
+        details.genres = store_details["genres"] or details.genres
+        details.short_description = store_details["short_description"] or details.short_description
+        details.price_cents = store_details["price_cents"]
+        details.release_date = store_details["release_date"]
+        details.store_metadata_version = 1
+        details.fetched_at = datetime.now(timezone.utc)
+    db.commit()
 
 
 def _apply_cached_details(game: Game, details: CachedGameDetails) -> None:
