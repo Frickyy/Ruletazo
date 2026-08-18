@@ -205,7 +205,7 @@ async def _ensure_store_metadata(db: Session, games: list[Game]) -> None:
         details.short_description = store_details["short_description"] or details.short_description
         details.price_cents = store_details["price_cents"]
         details.release_date = store_details["release_date"]
-        details.store_metadata_version = 1
+        details.store_metadata_version = game_details_service.STORE_METADATA_VERSION
         details.fetched_at = datetime.now(timezone.utc)
     db.commit()
 

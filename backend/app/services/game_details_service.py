@@ -18,6 +18,8 @@ from app.services.store_client import SteamStoreClient
 
 logger = logging.getLogger(__name__)
 
+STORE_METADATA_VERSION = 2
+
 # Store API / reseñas / logros cambian poco: se reutilizan varios días antes de
 # volver a golpear las 3 APIs externas para el mismo juego.
 DETAILS_CACHE_TTL = timedelta(days=7)
@@ -36,7 +38,7 @@ def is_fresh(details: CachedGameDetails) -> bool:
 
 def has_store_metadata(details: CachedGameDetails) -> bool:
     """Old cache rows lack price/release metadata and must be refreshed from Store API."""
-    return details.store_metadata_version >= 1
+    return details.store_metadata_version >= STORE_METADATA_VERSION
 
 
 def difficulty_label(details: CachedGameDetails) -> str:
@@ -71,7 +73,7 @@ async def get_or_fetch_details(db: Session, appid: int, name: str) -> CachedGame
     cached.short_description = store_details["short_description"]
     cached.price_cents = store_details["price_cents"]
     cached.release_date = store_details["release_date"]
-    cached.store_metadata_version = 1
+    cached.store_metadata_version = STORE_METADATA_VERSION
     cached.review_score_desc = reviews["score_desc"]
     cached.review_total = reviews["total_reviews"]
     cached.review_positive = reviews["total_positive"]
@@ -89,7 +91,7 @@ async def get_or_fetch_details(db: Session, appid: int, name: str) -> CachedGame
 async def get_or_fetch_store_metadata(db: Session, appid: int) -> CachedGameDetails:
     """Loads only Store metadata, used to make price/date sorting complete without HLTB calls."""
     cached = get_cached_details(db, appid)
-    if cached is not None and cached.store_metadata_version >= 1 and is_fresh(cached):
+    if cached is not None and cached.store_metadata_version >= STORE_METADATA_VERSION and is_fresh(cached):
         return cached
 
     async with SteamStoreClient() as client:
@@ -102,7 +104,7 @@ async def get_or_fetch_store_metadata(db: Session, appid: int) -> CachedGameDeta
     cached.short_description = store_details["short_description"] or cached.short_description
     cached.price_cents = store_details["price_cents"]
     cached.release_date = store_details["release_date"]
-    cached.store_metadata_version = 1
+    cached.store_metadata_version = STORE_METADATA_VERSION
     cached.fetched_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(cached)

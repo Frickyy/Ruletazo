@@ -37,7 +37,10 @@ class SteamStoreClient:
     async def get_app_details(self, appid: int, language: str = "english") -> dict:
         """Devuelve metadatos de Store. Vacío si Steam no tiene ficha para el appid."""
         try:
-            response = await self._client.get("/api/appdetails", params={"appids": appid, "l": language})
+            response = await self._client.get(
+                "/api/appdetails",
+                params={"appids": appid, "l": language, "cc": "us"},
+            )
             response.raise_for_status()
         except httpx.HTTPError:
             return {"genres": [], "short_description": "", "price_cents": None, "release_date": ""}
@@ -49,12 +52,18 @@ class SteamStoreClient:
         data = entry.get("data", {})
         genres = [genre["description"] for genre in data.get("genres", [])]
         price_overview = data.get("price_overview") or {}
+        app_type = data.get("type", "")
         release_date = data.get("release_date", {}).get("date", "")
         release_date = _normalize_release_date(release_date)
         return {
             "genres": genres,
             "short_description": data.get("short_description", ""),
-            "price_cents": price_overview.get("final") if not data.get("is_free") else 0,
+            "price_cents": (
+                price_overview.get("final")
+                if not data.get("is_free") and app_type == "game"
+                else 0 if data.get("is_free") and app_type == "game" else None
+            ),
+            "app_type": app_type,
             "release_date": release_date,
         }
 

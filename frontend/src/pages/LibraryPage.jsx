@@ -18,6 +18,7 @@ function LibraryPage({ steamId, friendSteamId }) {
   const [error, setError] = useState(null);
   const [collection, setCollection] = useState("all");
   const [genre, setGenre] = useState("");
+  const [searchDraft, setSearchDraft] = useState("");
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("name");
   const [sortDirection, setSortDirection] = useState("asc");
@@ -28,9 +29,13 @@ function LibraryPage({ steamId, friendSteamId }) {
   useEffect(() => {
     if (!steamId) return;
     loadLibrary();
+  }, [steamId, friendSteamId, collection, genre, search, sortBy, sortDirection]);
+
+  useEffect(() => {
+    if (!steamId) return;
     loadGenres();
     loadStatus();
-  }, [steamId, friendSteamId, collection, genre, search, sortBy, sortDirection]);
+  }, [steamId, friendSteamId]);
 
   async function loadLibrary() {
     setIsLoading(true);
@@ -141,15 +146,25 @@ function LibraryPage({ steamId, friendSteamId }) {
       </div>
 
       <div className="library-page__tools">
-        <label className="library-page__search">
-          Buscar por nombre
-          <input
-            type="search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Ej. Counter-Strike"
-          />
-        </label>
+        <form
+          className="library-page__search"
+          onSubmit={(event) => {
+            event.preventDefault();
+            setSearch(searchDraft.trim());
+          }}
+        >
+          <label htmlFor="library-search">Buscar por nombre</label>
+          <div className="library-page__search-row">
+            <input
+              id="library-search"
+              type="search"
+              value={searchDraft}
+              onChange={(event) => setSearchDraft(event.target.value)}
+              placeholder="Escribí y presioná Enter"
+            />
+            <button type="submit">Buscar</button>
+          </div>
+        </form>
         <label className="library-page__sort">
           Ordenar por
           <select value={sortBy} onChange={(event) => setSortBy(event.target.value)}>

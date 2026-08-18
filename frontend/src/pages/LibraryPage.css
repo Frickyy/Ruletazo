@@ -72,6 +72,22 @@
   min-width: 220px;
 }
 
+.library-page__search-row {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.library-page__search-row button {
+  min-height: 2.25rem;
+  background-color: #66c0f4;
+  border: none;
+  border-radius: 6px;
+  color: #1b2838;
+  cursor: pointer;
+  font-weight: 700;
+  padding: 0.45rem 0.75rem;
+}
+
 .library-page__search input:focus,
 .library-page__sort select:focus {
   outline: none;

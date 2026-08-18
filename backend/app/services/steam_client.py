@@ -1,5 +1,7 @@
+import asyncio
 import logging
 import re
+import time
 
 import httpx
 
@@ -15,6 +17,9 @@ _STEAM_ID64_RE = re.compile(r"^\d{17}$")
 # Permite pegar la URL completa del perfil (con /id/<vanity> o /profiles/<steamid64>)
 # en vez de tener que extraer el identificador a mano.
 _PROFILE_URL_RE = re.compile(r"steamcommunity\.com/(?:id|profiles)/([^/?#]+)", re.IGNORECASE)
+_RESOLUTION_CACHE_TTL_SECONDS = 3600
+_resolution_cache: dict[str, tuple[str, float]] = {}
+_resolution_lock = asyncio.Lock()
 
 
 class SteamAPIError(Exception):
@@ -61,14 +66,25 @@ class SteamClient:
         if _STEAM_ID64_RE.match(identifier):
             return identifier
 
-        response = await self._get(
-            "/ISteamUser/ResolveVanityURL/v1/",
-            params={"key": self._api_key, "vanityurl": identifier},
-        )
-        data = response.json().get("response", {})
-        if data.get("success") != 1:
-            raise InvalidSteamIDError(f"No se encontró ningún perfil de Steam para '{identifier}'.")
-        return data["steamid"]
+        cache_key = identifier.casefold()
+        cached = _resolution_cache.get(cache_key)
+        if cached and time.monotonic() - cached[1] < _RESOLUTION_CACHE_TTL_SECONDS:
+            return cached[0]
+
+        async with _resolution_lock:
+            cached = _resolution_cache.get(cache_key)
+            if cached and time.monotonic() - cached[1] < _RESOLUTION_CACHE_TTL_SECONDS:
+                return cached[0]
+            response = await self._get(
+                "/ISteamUser/ResolveVanityURL/v1/",
+                params={"key": self._api_key, "vanityurl": identifier},
+            )
+            data = response.json().get("response", {})
+            if data.get("success") != 1:
+                raise InvalidSteamIDError(f"No se encontró ningún perfil de Steam para '{identifier}'.")
+            steam_id = data["steamid"]
+            _resolution_cache[cache_key] = (steam_id, time.monotonic())
+            return steam_id
 
     async def get_owned_games(self, steam_id: str) -> list[dict]:
         """Devuelve la lista cruda de juegos que posee el usuario (appid, name, playtime, etc.)."""
