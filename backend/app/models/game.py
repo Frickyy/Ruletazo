@@ -112,3 +112,18 @@ class UserGameProgress(Base):
     # 0 si el juego no tiene logros.
     total: Mapped[int] = mapped_column(Integer, default=0)
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+class UserProfile(Base):
+    """Preferencias del perfil de un usuario. Sin fila = valores por defecto (perfil privado)."""
+
+    __tablename__ = "user_profiles"
+
+    steam_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    # Privado por defecto: nadie ve tu perfil hasta que lo hacés público.
+    is_public: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Pedir tu progreso de logros a Steam en segundo plano (para "Casi al 100%"). Lo activás vos.
+    track_achievements: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Epoch del último "borrar mis datos": las sesiones emitidas hasta ese momento quedan inválidas.
+    sessions_valid_after: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)

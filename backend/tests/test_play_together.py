@@ -11,7 +11,7 @@ from fastapi import HTTPException
 from app.core.rate_limit import RateLimit
 from app.db import backup
 from app.models.game import CachedLibraryEntry, UserGameProgress
-from app.services import forum_service, library_service, store_browse
+from app.services import forum_service, library_service, profile_service, store_browse
 from app.services.forum_service import Author, ForumError
 
 STEAM_ID64 = "76561198000000000"
@@ -125,6 +125,7 @@ async def test_classify_batch_uses_one_store_request(db_session, monkeypatch):
 
 async def test_enrich_batch_fetches_duration_and_progress(db_session, monkeypatch):
     _add_entries(db_session, (620, "Portal 2", 300))
+    profile_service.update_preferences(db_session, STEAM_ID64, track_achievements=True)
 
     async def fake_items(appids):
         return {620: store_browse.parse_item(PORTAL_ITEM)}
@@ -245,6 +246,7 @@ def test_others_cannot_edit(db_session):
 
 async def test_enrich_skips_games_that_just_failed(db_session, monkeypatch):
     _add_entries(db_session, (620, "Portal 2", 300), (621, "Otro", 300))
+    profile_service.update_preferences(db_session, STEAM_ID64, track_achievements=True)
     library_service._enrich_failures.clear()
 
     async def fake_resolve(identifier):

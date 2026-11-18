@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.models.forum import ForumPost, ForumReport, ForumReview, ForumThread
 
 SCORE_MIN = 1
@@ -35,6 +36,16 @@ class Author:
     steam_id: str
     name: str
     avatar: str = ""
+
+
+def _author_dict(message) -> dict:
+    """Autor de un mensaje, con la insignia de quienes apoyan el proyecto (SUPPORTER_STEAM_IDS)."""
+    return {
+        "steam_id": message.steam_id,
+        "name": message.author_name,
+        "avatar": message.author_avatar,
+        "is_supporter": message.steam_id in get_settings().supporter_steam_id_set,
+    }
 
 
 def _now() -> datetime:
@@ -124,7 +135,7 @@ def _review_dict(review: ForumReview, viewer_steam_id: str | None) -> dict:
         "id": review.id,
         "appid": review.appid,
         "game_name": review.game_name,
-        "author": {"steam_id": review.steam_id, "name": review.author_name, "avatar": review.author_avatar},
+        "author": _author_dict(review),
         "score": review.score,
         "body": review.body,
         "created_at": _iso(review.created_at),
@@ -253,9 +264,19 @@ def delete_post(db: Session, post_id: int, steam_id: str, moderator: bool = Fals
         raise ForumError("Esa respuesta no existe.", status_code=404)
     if post.steam_id != steam_id and not moderator:
         raise ForumError("Solo quien escribió la respuesta o un moderador puede borrarla.", status_code=403)
+    thread = db.get(ForumThread, post.thread_id)
     _delete_reports(db, "post", post.id)
     db.delete(post)
+    db.flush()
+    if thread is not None:
+        refresh_last_activity(db, thread)
     db.commit()
+
+
+def refresh_last_activity(db: Session, thread: ForumThread) -> None:
+    """Recalcula la última actividad de un hilo a partir de las respuestas que quedan."""
+    latest = db.execute(select(func.max(ForumPost.created_at)).where(ForumPost.thread_id == thread.id)).scalar()
+    thread.last_activity_at = latest or thread.created_at
 
 
 def _thread_dict(thread: ForumThread, replies: int) -> dict:
@@ -263,7 +284,7 @@ def _thread_dict(thread: ForumThread, replies: int) -> dict:
         "id": thread.id,
         "appid": thread.appid,
         "game_name": thread.game_name,
-        "author": {"steam_id": thread.steam_id, "name": thread.author_name, "avatar": thread.author_avatar},
+        "author": _author_dict(thread),
         "title": thread.title,
         "body": thread.body,
         "reply_count": replies,
@@ -277,7 +298,7 @@ def _post_dict(post: ForumPost, viewer_steam_id: str | None) -> dict:
     return {
         "id": post.id,
         "thread_id": post.thread_id,
-        "author": {"steam_id": post.steam_id, "name": post.author_name, "avatar": post.author_avatar},
+        "author": _author_dict(post),
         "body": post.body,
         "created_at": _iso(post.created_at),
         "edited_at": _iso(post.edited_at) if post.edited_at else None,
@@ -308,7 +329,7 @@ def recent_activity(db: Session, limit: int = 12) -> list[dict]:
             "kind": "review",
             "appid": review.appid,
             "game_name": review.game_name,
-            "author": {"steam_id": review.steam_id, "name": review.author_name, "avatar": review.author_avatar},
+            "author": _author_dict(review),
             "score": review.score,
             "excerpt": review.body[:180],
             "at": _iso(review.updated_at),
@@ -321,7 +342,7 @@ def recent_activity(db: Session, limit: int = 12) -> list[dict]:
             "game_name": thread.game_name,
             "thread_id": thread.id,
             "title": thread.title,
-            "author": {"steam_id": thread.steam_id, "name": thread.author_name, "avatar": thread.author_avatar},
+            "author": _author_dict(thread),
             "at": _iso(thread.last_activity_at),
         }
         for thread in threads
@@ -410,6 +431,6 @@ def _report_context(db: Session, kind: str, target) -> dict:
         "appid": appid,
         "game_name": game_name,
         "thread_id": thread_id,
-        "author": {"steam_id": target.steam_id, "name": target.author_name, "avatar": target.author_avatar},
+        "author": _author_dict(target),
         "excerpt": prefix + target.body[:280],
     }

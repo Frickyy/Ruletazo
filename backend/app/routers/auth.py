@@ -3,6 +3,7 @@ from urllib.parse import urlencode
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse, Response
+from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.rate_limit import steam_reads
@@ -13,6 +14,8 @@ from app.core.security import (
     current_steam_id,
     is_moderator,
 )
+from app.db.session import get_db
+from app.services import profile_service
 from app.services.steam_client import InvalidSteamIDError, SteamAPIError, SteamClient
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -94,7 +97,7 @@ async def steam_auth_callback(request: Request) -> RedirectResponse:
 
 
 @router.get("/me")
-async def current_session(steam_id: str | None = Depends(current_steam_id)) -> dict:
+async def current_session(steam_id: str | None = Depends(current_steam_id), db: Session = Depends(get_db)) -> dict:
     """Usuario de la sesión actual (perfil público de Steam). 401 si no inició sesión."""
     if steam_id is None:
         raise HTTPException(status_code=401, detail="No hay una sesión iniciada.")
@@ -103,7 +106,14 @@ async def current_session(steam_id: str | None = Depends(current_steam_id)) -> d
             profile = await client.get_profile(steam_id)
     except SteamAPIError:
         profile = {"steam_id": steam_id, "name": "Jugador de Steam", "avatar": ""}
-    return {**profile, "is_moderator": is_moderator(steam_id)}
+    return {
+        **profile,
+        "is_moderator": is_moderator(steam_id),
+        "is_supporter": steam_id in get_settings().supporter_steam_id_set,
+        # Preferencias del perfil (privado por defecto; seguimiento de logros desactivado).
+        "is_public": profile_service.is_public(db, steam_id),
+        "track_achievements": profile_service.tracks_achievements(db, steam_id),
+    }
 
 
 @router.post("/logout", status_code=204)
