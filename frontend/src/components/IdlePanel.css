@@ -1,0 +1,203 @@
+.idle-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+  gap: 1.25rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--line);
+}
+
+.idle-panel__block {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.idle-panel__block--side {
+  padding: 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.idle-panel__heading h2 {
+  font-size: 1.125rem;
+}
+
+.idle-panel__heading .hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.875rem;
+}
+
+/* ---------- Portadas sin estrenar ---------- */
+
+.idle-covers {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.idle-cover {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  aspect-ratio: 460 / 215;
+}
+
+.idle-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 200ms ease, filter 200ms ease;
+}
+
+.idle-cover__name {
+  position: absolute;
+  inset: auto 0 0;
+  padding: 1.4rem 0.6rem 0.45rem;
+  overflow: hidden;
+  background: linear-gradient(transparent, rgb(19 18 17 / 0.92));
+  color: var(--text);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+
+.idle-cover:hover img,
+.idle-cover:focus-visible img {
+  transform: scale(1.04);
+}
+
+.idle-cover:hover .idle-cover__name,
+.idle-cover:focus-visible .idle-cover__name {
+  opacity: 1;
+}
+
+.idle-cover:hover {
+  border-color: var(--accent);
+}
+
+/* ---------- Más jugados ---------- */
+
+.idle-top {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.idle-top li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.35rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.idle-top__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.idle-top__hours {
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.idle-top__bar {
+  grid-column: 1 / -1;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--line);
+}
+
+.idle-top__bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+/* ---------- Demo ---------- */
+
+.idle-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.idle-steps li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.idle-steps__number {
+  color: var(--accent);
+  font-size: 0.8125rem;
+}
+
+.idle-steps strong {
+  font-family: var(--font-display);
+  font-size: 1rem;
+}
+
+.idle-steps p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.idle-cta {
+  justify-content: center;
+}
+
+.idle-cta h2 {
+  font-size: 1.125rem;
+}
+
+.idle-cta .hint {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.idle-cta .button {
+  align-self: flex-start;
+}
+
+@media (max-width: 860px) {
+  .idle-panel,
+  .idle-steps {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .idle-covers {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* En pantallas táctiles no hay hover: el nombre siempre visible. */
+  .idle-cover__name {
+    opacity: 1;
+  }
+}
