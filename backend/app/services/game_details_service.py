@@ -12,14 +12,15 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 
 from app.models.game import CachedGameDetails
-from app.services import hltb_client, throttle
+from app.services import hltb_client, store_browse, throttle
 from app.services.steam_client import SteamClient
 from app.services.store_client import SteamStoreClient
 
 logger = logging.getLogger(__name__)
 
 # 6: sinopsis y fechas en español, y marca de contenido para adultos. 7: URL de la portada.
-STORE_METADATA_VERSION = 7
+# 8: datos de IStoreBrowseService (de a 50 juegos), géneros por etiquetas y categorías de jugadores.
+STORE_METADATA_VERSION = 8
 # Subir este número fuerza a volver a pedir "lo bueno / lo malo" de las reseñas.
 # 2: varias frases por lado, filtradas (review_digest), y los errores de Steam ya no se cachean.
 REVIEWS_VERSION = 2
@@ -117,16 +118,7 @@ async def get_or_fetch_details(db: Session, appid: int, name: str) -> CachedGame
         db.add(cached)
 
     if store_details is not None:
-        if store_details.get("store_available"):
-            cached.genres = store_details["genres"] or cached.genres
-            cached.short_description = store_details["short_description"] or cached.short_description
-            cached.developer = store_details["developer"] or cached.developer
-            cached.price_cents = store_details["price_cents"]
-            cached.release_date = store_details["release_date"]
-            cached.is_adult = store_details["is_adult"]
-            cached.header_image = store_details["header_image"] or cached.header_image
-        if not store_details.get("fetch_failed"):
-            cached.store_metadata_version = STORE_METADATA_VERSION
+        apply_store_details(cached, store_details)
     if reviews is not None and not reviews["failed"]:
         # Si Steam no respondió (rate limit) se conserva lo que había y se reintenta la próxima vez.
         cached.review_score_desc = reviews["score_desc"]
@@ -157,8 +149,24 @@ async def _skip() -> None:
 
 
 async def _fetch_app_details(appid: int) -> dict:
-    async with SteamStoreClient() as client:
-        return await client.get_app_details(appid)
+    return (await store_browse.get_items([appid]))[appid]
+
+
+def apply_store_details(cached: CachedGameDetails, store_details: dict) -> None:
+    """Copia los datos de la tienda a la caché. Una falla de red no toca nada (se reintenta);
+    un juego que la tienda ya no tiene se marca como revisado para no pedirlo de nuevo."""
+    if store_details.get("fetch_failed"):
+        return
+    if store_details.get("store_available"):
+        cached.genres = store_details["genres"] or cached.genres or []
+        cached.short_description = store_details["short_description"] or cached.short_description or ""
+        cached.developer = store_details["developer"] or cached.developer or ""
+        cached.price_cents = store_details["price_cents"]
+        cached.release_date = store_details["release_date"]
+        cached.is_adult = store_details["is_adult"]
+        cached.header_image = store_details["header_image"] or cached.header_image or ""
+        cached.player_categories = store_details.get("player_categories", [])
+    cached.store_metadata_version = STORE_METADATA_VERSION
 
 
 async def _fetch_reviews(appid: int) -> dict:

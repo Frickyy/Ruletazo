@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -8,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.core.config import get_settings
+from app.db.backup import backup_loop
 from app.db.session import init_db
 from app.routers import auth, forum, games
 
@@ -21,8 +23,13 @@ settings.check_production_ready()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    init_db()  # crea las tablas de caché si todavía no existen
+    init_db()  # aplica las migraciones pendientes
+    backup_task = None
+    if settings.backup_dir:
+        backup_task = asyncio.create_task(backup_loop(settings.database_url, settings.backup_dir, settings.backup_keep))
     yield
+    if backup_task is not None:
+        backup_task.cancel()
 
 
 app = FastAPI(

@@ -1,28 +1,29 @@
-import asyncio
 import logging
 import random
+import time
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from app.models.game import CachedGameDetails, CachedLibraryEntry
+from app.models.game import CachedGameDetails, CachedLibraryEntry, GameState, UserGameProgress
 from app.schemas.game import Game
-from app.services import favorites_service, game_details_service, hidden_service
+from app.services import favorites_service, game_details_service, hidden_service, hltb_client, store_browse, throttle
 from app.services.steam_client import SteamAPIError, SteamClient
-from app.services.store_client import SteamStoreClient, looks_adult_by_name, normalize_genres
+from app.services.store_client import looks_adult_by_name, normalize_genres
 
 logger = logging.getLogger(__name__)
 
 # Tiempo que se reutiliza la biblioteca cacheada antes de volver a pedirla a Steam.
 LIBRARY_CACHE_TTL = timedelta(hours=1)
 
+# Juegos que fallaron en la segunda pasada (duración/logros) y cuándo, para no reintentarlos enseguida.
+_enrich_failures: dict[tuple[str, int], float] = {}
+_RETRY_FAILED_AFTER_SECONDS = 60 * 60
+
 # Como mucho se combinan las bibliotecas de estos familiares.
 MAX_FAMILY_MEMBERS = 5
 
-# Cuántos juegos sin clasificar se enriquecen por cada llamada a classify_library_batch.
-# La Store API de Steam no tiene un límite documentado, pero es prudente ir de a poco.
-_CLASSIFY_DELAY_SECONDS = 1.0
 
 STEAM_HEADER_IMAGE_URL = "https://cdn.cloudflare.steamstatic.com/steam/apps/{appid}/header.jpg"
 
@@ -192,6 +193,8 @@ async def get_game_details(
     steam_id = await resolve_steam_id(identifier)
     chosen.is_favorite = appid in favorites_service.get_favorite_appids(db, steam_id)
     chosen.is_hidden = appid in hidden_service.get_hidden_appids(db, steam_id)
+    chosen.state = get_states(db, steam_id).get(appid)
+    _apply_progress(chosen, _get_progress_map(db, steam_id).get(appid))
     details = await game_details_service.get_or_fetch_details(db, chosen.appid, chosen.name)
     apply_cached_details(chosen, details)
     return chosen
@@ -203,15 +206,18 @@ async def get_classification_status(db: Session, identifier: str) -> dict:
     appids = [entry.appid for entry in _get_cached_entries(db, steam_id)]
     details_map = _get_cached_details_map(db, appids)
     classified = sum(1 for appid in appids if _is_classified(details_map.get(appid)))
-    return {"classified": classified, "total": len(appids)}
+    with_duration = sum(
+        1 for appid in appids if details_map.get(appid) is not None and game_details_service.has_hltb_lookup(details_map[appid])
+    )
+    return {"classified": classified, "total": len(appids), "with_duration": with_duration}
 
 
 async def classify_library_batch(db: Session, identifier: str, limit: int) -> dict:
-    """Enriquece hasta `limit` juegos de la biblioteca que todavía no estén clasificados.
+    """Completa los datos de la tienda de hasta `limit` juegos pendientes.
 
-    Steam no documenta un límite de rate para su Store API, así que esto avanza de a poco
-    (con una pequeña pausa entre juegos) y se llama repetidas veces desde el frontend hasta
-    que `remaining` llegue a 0, en vez de intentar clasificar toda la biblioteca de una vez.
+    Usa IStoreBrowseService, que trae 50 juegos por pedido: una biblioteca de mil juegos se
+    clasifica en unos segundos (antes era un pedido por juego, con pausas, durante más de una hora).
+    Se llama repetidas veces desde el frontend hasta que `remaining` llegue a 0.
     """
     steam_id = await resolve_steam_id(identifier)
     entries = _get_cached_entries(db, steam_id)
@@ -219,16 +225,93 @@ async def classify_library_batch(db: Session, identifier: str, limit: int) -> di
 
     pending = [entry for entry in entries if not _is_classified(details_map.get(entry.appid))]
     to_process = pending[:limit]
+    store_data = await store_browse.get_items([entry.appid for entry in to_process])
+    failed = 0
+    for entry in to_process:
+        data = store_data[entry.appid]
+        if data.get("fetch_failed"):
+            failed += 1
+            continue
+        details = details_map.get(entry.appid)
+        if details is None:
+            details = CachedGameDetails(appid=entry.appid, fetched_at=datetime.now(timezone.utc) - game_details_service.DETAILS_CACHE_TTL)
+            db.add(details)
+        game_details_service.apply_store_details(details, data)
+    db.commit()
 
-    for index, entry in enumerate(to_process):
-        await game_details_service.get_or_fetch_details(db, entry.appid, entry.name)
-        if index < len(to_process) - 1:
-            await asyncio.sleep(_CLASSIFY_DELAY_SECONDS)
+    return {
+        "processed": len(to_process) - failed,
+        "remaining": len(pending) - len(to_process) + failed,
+        "total": len(entries),
+        # Si Steam no respondió, el frontend deja de insistir hasta la próxima vez.
+        "failed": failed > 0,
+    }
+
+
+async def enrich_library_batch(db: Session, identifier: str, limit: int) -> dict:
+    """Segunda pasada, más lenta: duración (HowLongToBeat) y tu progreso de logros.
+
+    Va de a un juego porque HLTB no tiene pedidos por lote. La duración es lo que usa el filtro
+    "Cortos / Medianos / Largos" y el progreso, el filtro "Casi al 100%".
+    """
+    steam_id = await resolve_steam_id(identifier)
+    entries = _get_cached_entries(db, steam_id)
+    details_map = _get_cached_details_map(db, [entry.appid for entry in entries])
+    progress_map = _get_progress_map(db, steam_id)
+
+    def needs_hltb(entry) -> bool:
+        details = details_map.get(entry.appid)
+        return details is not None and _is_classified(details) and not game_details_service.has_hltb_lookup(details)
+
+    def needs_progress(entry) -> bool:
+        # Solo los que jugaste: sin horas no hay logros desbloqueados que contar.
+        return entry.playtime_forever_minutes > 0 and entry.appid not in progress_map
+
+    now = time.monotonic()
+    pending = [entry for entry in entries if needs_hltb(entry) or needs_progress(entry)]
+    # Los que fallaron hace poco se saltean un rato: si no, un juego que siempre falla
+    # quedaría primero en la lista y la pasada no avanzaría nunca.
+    retry_later = [entry for entry in pending if now - _enrich_failures.get((steam_id, entry.appid), -1e9) < _RETRY_FAILED_AFTER_SECONDS]
+    ready = [entry for entry in pending if entry not in retry_later]
+    to_process = ready[:limit]
+    failed = 0
+    async with SteamClient() as client:
+        for entry in to_process:
+            if needs_hltb(entry):
+                hltb = await hltb_client.get_completion_times(entry.name)
+                if hltb.get("failed"):
+                    failed += 1
+                    _enrich_failures[(steam_id, entry.appid)] = now
+                else:
+                    details = details_map[entry.appid]
+                    details.hltb_main_hours = hltb["main_hours"]
+                    details.hltb_completionist_hours = hltb["completionist_hours"]
+                    details.hltb_version = game_details_service.HLTB_VERSION
+            if needs_progress(entry):
+                try:
+                    progress = await client.get_achievement_progress(steam_id, entry.appid)
+                except SteamAPIError:
+                    failed += 1
+                    _enrich_failures[(steam_id, entry.appid)] = now
+                else:
+                    db.merge(
+                        UserGameProgress(
+                            steam_id=steam_id,
+                            appid=entry.appid,
+                            unlocked=progress["unlocked"],
+                            total=progress["total"],
+                            fetched_at=datetime.now(timezone.utc),
+                        )
+                    )
+            db.commit()
 
     return {
         "processed": len(to_process),
-        "remaining": len(pending) - len(to_process),
-        "total": len(entries),
+        # Los que se saltean por fallas recientes no cuentan: se reintentan en otra sesión.
+        "remaining": max(len(ready) - len(to_process), 0),
+        "failed": failed > 0,
+        # Si HowLongToBeat nos limitó, no tiene sentido seguir pidiendo ahora.
+        "paused": throttle.is_cooling_down("hltb"),
     }
 
 
@@ -245,18 +328,22 @@ def _merge_union(primary: list[Game], friend: list[Game]) -> list[Game]:
 def _attach_favorites_and_details(db: Session, games: list[Game], steam_id: str) -> None:
     favorite_appids = favorites_service.get_favorite_appids(db, steam_id)
     hidden_appids = hidden_service.get_hidden_appids(db, steam_id)
+    states = get_states(db, steam_id)
+    progress_map = _get_progress_map(db, steam_id)
     details_map = _get_cached_details_map(db, [game.appid for game in games])
 
     for game in games:
         game.is_favorite = game.appid in favorite_appids
         game.is_hidden = game.appid in hidden_appids
+        game.state = states.get(game.appid)
+        _apply_progress(game, progress_map.get(game.appid))
         details = details_map.get(game.appid)
         if details is not None:
             apply_cached_details(game, details)
 
 
 async def _ensure_store_metadata(db: Session, games: list[Game]) -> None:
-    """Refresh missing Store fields in bounded parallel requests before price/date sorting."""
+    """Completa los datos de la tienda que falten antes de ordenar por precio o fecha."""
     details_map = _get_cached_details_map(db, [game.appid for game in games])
     pending = [
         game for game in games
@@ -264,27 +351,13 @@ async def _ensure_store_metadata(db: Session, games: list[Game]) -> None:
     ]
     if not pending:
         return
-
-    async with SteamStoreClient() as client:
-        details_by_appid = await client.get_app_details_batch([game.appid for game in pending])
+    store_data = await store_browse.get_items([game.appid for game in pending])
     for game in pending:
-        store_details = details_by_appid[game.appid]
-        if store_details.get("fetch_failed"):
-            continue  # se reintenta la próxima vez en lugar de guardar datos vacíos como definitivos
         details = details_map.get(game.appid)
         if details is None:
-            details = CachedGameDetails(appid=game.appid)
+            details = CachedGameDetails(appid=game.appid, fetched_at=datetime.now(timezone.utc) - game_details_service.DETAILS_CACHE_TTL)
             db.add(details)
-        if store_details["store_available"]:
-            details.genres = normalize_genres(store_details["genres"]) or details.genres
-            details.short_description = store_details["short_description"] or details.short_description
-            details.developer = store_details["developer"] or details.developer
-            details.price_cents = store_details["price_cents"]
-            details.release_date = store_details["release_date"]
-            details.is_adult = store_details["is_adult"]
-            details.header_image = store_details["header_image"] or details.header_image
-        details.store_metadata_version = game_details_service.STORE_METADATA_VERSION
-        details.fetched_at = datetime.now(timezone.utc)
+        game_details_service.apply_store_details(details, store_data[game.appid])
     db.commit()
 
 
@@ -304,6 +377,11 @@ def apply_cached_details(game: Game, details: CachedGameDetails) -> None:
     game.is_adult = bool(details.is_adult) or looks_adult_by_name(game.name)
     if details.header_image:
         game.header_image = details.header_image
+    modes = store_browse.player_modes(details.player_categories)
+    game.single_player = modes["single_player"]
+    game.coop = modes["coop"]
+    game.multiplayer = modes["multiplayer"]
+    game.local_multiplayer = modes["local_multiplayer"]
 
 
 def _get_cached_details_map(db: Session, appids: list[int]) -> dict[int, CachedGameDetails]:
@@ -355,3 +433,56 @@ def _to_schema(entry: CachedLibraryEntry) -> Game:
         # Hasta que la tienda lo clasifique, se adivina por el nombre (ver apply_cached_details).
         is_adult=looks_adult_by_name(entry.name),
     )
+
+
+# ---------- Estados ("Jugando", "Terminado", "Abandonado") ----------
+
+GAME_STATES = ("playing", "finished", "abandoned")
+
+
+def get_states(db: Session, steam_id: str) -> dict[int, str]:
+    rows = db.execute(select(GameState).where(GameState.steam_id == steam_id)).scalars()
+    return {row.appid: row.state for row in rows}
+
+
+def set_state(db: Session, steam_id: str, appid: int, state: str | None) -> None:
+    """Guarda el estado del juego; None lo borra (vuelve a "sin estado")."""
+    current = db.get(GameState, (steam_id, appid))
+    if state is None:
+        if current is not None:
+            db.delete(current)
+    elif current is None:
+        db.add(GameState(steam_id=steam_id, appid=appid, state=state, updated_at=datetime.now(timezone.utc)))
+    else:
+        current.state = state
+        current.updated_at = datetime.now(timezone.utc)
+    db.commit()
+
+
+def state_summary(db: Session, steam_id: str, year: int | None = None) -> dict:
+    """Cuántos juegos hay en cada estado, y cuántos se terminaron/empezaron en el año."""
+    year = year or datetime.now(timezone.utc).year
+    rows = db.execute(select(GameState).where(GameState.steam_id == steam_id)).scalars().all()
+    counts = {state: 0 for state in GAME_STATES}
+    finished_this_year = 0
+    started_this_year = 0
+    for row in rows:
+        counts[row.state] = counts.get(row.state, 0) + 1
+        updated = row.updated_at if row.updated_at.tzinfo else row.updated_at.replace(tzinfo=timezone.utc)
+        if updated.year == year:
+            if row.state == "finished":
+                finished_this_year += 1
+            elif row.state == "playing":
+                started_this_year += 1
+    return {"counts": counts, "year": year, "finished_this_year": finished_this_year, "started_this_year": started_this_year}
+
+
+def _get_progress_map(db: Session, steam_id: str) -> dict[int, UserGameProgress]:
+    rows = db.execute(select(UserGameProgress).where(UserGameProgress.steam_id == steam_id)).scalars()
+    return {row.appid: row for row in rows}
+
+
+def _apply_progress(game: Game, progress: UserGameProgress | None) -> None:
+    if progress is not None and progress.total > 0:
+        game.achievements_unlocked = progress.unlocked
+        game.achievements_total = progress.total

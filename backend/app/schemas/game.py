@@ -25,6 +25,16 @@ class Game(BaseModel):
     is_adult: bool = False
     # Última vez que se jugó (timestamp Unix). None si nunca.
     last_played: int | None = None
+    # "playing", "finished", "abandoned" o None.
+    state: str | None = None
+    # Modos de juego según la tienda.
+    single_player: bool = False
+    coop: bool = False
+    multiplayer: bool = False
+    local_multiplayer: bool = False
+    # Tus logros en este juego (None si no se sabe todavía o no tiene logros).
+    achievements_unlocked: int | None = None
+    achievements_total: int | None = None
     # De qué biblioteca viene: la propia, la de un familiar combinado, o ambas (mismo appid en las dos).
     source: Literal["you", "friend", "both"] = "you"
     price_cents: int | None = None

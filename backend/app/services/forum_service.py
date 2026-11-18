@@ -206,6 +206,33 @@ def add_post(db: Session, thread_id: int, author: Author, body: str) -> dict:
     return _post_dict(post, author.steam_id)
 
 
+def edit_thread(db: Session, thread_id: int, steam_id: str, title: str, body: str) -> dict:
+    """Solo quien creó el hilo puede editarlo (los moderadores pueden borrarlo, no reescribirlo)."""
+    thread = db.get(ForumThread, thread_id)
+    if thread is None:
+        raise ForumError("Ese hilo no existe.", status_code=404)
+    if thread.steam_id != steam_id:
+        raise ForumError("Solo quien creó el hilo puede editarlo.", status_code=403)
+    thread.title = _clean_text(title, "El título", TITLE_MAX_LENGTH, TITLE_MIN_LENGTH)
+    thread.body = _clean_text(body, "El mensaje", POST_MAX_LENGTH)
+    thread.edited_at = _now()
+    db.commit()
+    return get_thread(db, thread_id, steam_id)
+
+
+def edit_post(db: Session, post_id: int, steam_id: str, body: str) -> dict:
+    post = db.get(ForumPost, post_id)
+    if post is None:
+        raise ForumError("Esa respuesta no existe.", status_code=404)
+    if post.steam_id != steam_id:
+        raise ForumError("Solo quien escribió la respuesta puede editarla.", status_code=403)
+    post.body = _clean_text(body, "La respuesta", POST_MAX_LENGTH)
+    post.edited_at = _now()
+    db.commit()
+    db.refresh(post)
+    return _post_dict(post, steam_id)
+
+
 def delete_thread(db: Session, thread_id: int, steam_id: str, moderator: bool = False) -> None:
     thread = db.get(ForumThread, thread_id)
     if thread is None:
@@ -241,6 +268,7 @@ def _thread_dict(thread: ForumThread, replies: int) -> dict:
         "body": thread.body,
         "reply_count": replies,
         "created_at": _iso(thread.created_at),
+        "edited_at": _iso(thread.edited_at) if thread.edited_at else None,
         "last_activity_at": _iso(thread.last_activity_at),
     }
 
@@ -252,6 +280,7 @@ def _post_dict(post: ForumPost, viewer_steam_id: str | None) -> dict:
         "author": {"steam_id": post.steam_id, "name": post.author_name, "avatar": post.author_avatar},
         "body": post.body,
         "created_at": _iso(post.created_at),
+        "edited_at": _iso(post.edited_at) if post.edited_at else None,
         "is_mine": viewer_steam_id == post.steam_id,
     }
 

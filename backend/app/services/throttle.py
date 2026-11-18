@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 # Segundos mínimos entre dos pedidos al mismo servicio.
 MIN_INTERVAL_SECONDS = {
     "store": 0.25,
+    "storebrowse": 0.5,
     "reviews": 1.5,
     "hltb": 1.0,
 }
