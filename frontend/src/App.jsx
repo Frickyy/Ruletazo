@@ -307,7 +307,7 @@ function App() {
             onLogin={handleSteamLogin}
             trackAchievements={Boolean(profile?.track_achievements)}
             onOpenProfile={() => openProfile(null)}
-            hltbEnabled={config?.hltb_enabled !== false}
+            hltbEnabled={config?.hltb_enabled === true}
             onCreateRoom={isLoggedIn ? handleCreateRoom : undefined}
           />
         )}
@@ -340,7 +340,7 @@ function App() {
             includeFamily={includeFamily}
             onIncludeFamilyChange={setIncludeFamily}
             onManageFamily={() => setActiveView("family")}
-            hltbEnabled={config?.hltb_enabled !== false}
+            hltbEnabled={config?.hltb_enabled === true}
           />
         )}
 

@@ -103,7 +103,7 @@ export function matchesFilters(game, filters = {}, now = Date.now()) {
 
   const range = DURATION_OPTIONS.find((option) => option.id === duration);
   if (range && range.id !== "any") {
-    const hours = game.hltb_main_hours;
+    const hours = game.duration_hours;
     if (hours == null) return false;
     if (range.min != null && hours < range.min) return false;
     if (range.max != null && hours >= range.max) return false;
@@ -152,7 +152,7 @@ const SORT_VALUES = {
   name: (game) => game.name.toLocaleLowerCase("es"),
   playtime: (game) => game.playtime_forever_minutes ?? 0,
   last_played: (game) => game.last_played ?? null,
-  duration: (game) => game.hltb_main_hours ?? null,
+  duration: (game) => game.duration_hours ?? null,
   achievements: (game) => achievementRatio(game),
   price: (game) => game.price_cents ?? null,
   release_date: (game) => game.release_date || null,
@@ -171,7 +171,7 @@ export function smartWeight(game) {
   if (!game) return 1;
   let weight = 1;
   if (!game.playtime_forever_minutes) weight += 1.5;
-  if (game.hltb_main_hours != null && game.hltb_main_hours < 15) weight += 1;
+  if (game.duration_hours != null && game.duration_hours < 15) weight += 1;
   if (/positivas/i.test(game.review_score_desc ?? "") && !/mayormente|mixtas/i.test(game.review_score_desc ?? "")) weight += 1;
   if (game.is_favorite) weight += 1;
   if (game.state === "playing") weight += 1.5;

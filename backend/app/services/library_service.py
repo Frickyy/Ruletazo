@@ -11,6 +11,7 @@ from app.models.game import CachedGameDetails, CachedLibraryEntry, GameState, Us
 from app.schemas.game import Game
 from app.services import (
     favorites_service,
+    duration_service,
     game_details_service,
     hidden_service,
     hltb_client,
@@ -220,6 +221,7 @@ async def get_game_details(
         _apply_progress(chosen, _get_progress_map(db, steam_id).get(appid))
     details = await game_details_service.get_or_fetch_details(db, chosen.appid, chosen.name)
     apply_cached_details(chosen, details)
+    apply_durations(db, [chosen])
     return chosen
 
 
@@ -376,6 +378,16 @@ def _attach_favorites_and_details(db: Session, games: list[Game], steam_id: str,
         details = details_map.get(game.appid)
         if details is not None:
             apply_cached_details(game, details)
+    apply_durations(db, games)
+
+
+def apply_durations(db: Session, games: list[Game]) -> None:
+    found = duration_service.durations(db, [game.appid for game in games])
+    for game in games:
+        duration = found.get(game.appid)
+        game.duration_hours = duration["hours"] if duration else None
+        game.duration_source = duration["source"] if duration else None
+        game.duration_samples = duration["samples"] if duration else 0
 
 
 async def _ensure_store_metadata(db: Session, games: list[Game]) -> None:
@@ -407,8 +419,10 @@ def apply_cached_details(game: Game, details: CachedGameDetails) -> None:
     game.review_total = details.review_total
     game.review_good = game_details_service.split_excerpts(details.review_pros)
     game.review_bad = game_details_service.split_excerpts(details.review_cons)
-    game.hltb_main_hours = details.hltb_main_hours
-    game.hltb_completionist_hours = details.hltb_completionist_hours
+    # Con HowLongToBeat apagado no se muestran ni los datos que hayan quedado guardados.
+    hltb_on = get_settings().hltb_enabled
+    game.hltb_main_hours = details.hltb_main_hours if hltb_on else None
+    game.hltb_completionist_hours = details.hltb_completionist_hours if hltb_on else None
     game.achievement_difficulty = game_details_service.difficulty_label(details)
     game.is_adult = bool(details.is_adult) or looks_adult_by_name(game.name)
     if details.header_image:
@@ -496,6 +510,11 @@ def set_state(db: Session, steam_id: str, appid: int, state: str | None) -> None
     else:
         current.state = state
         current.updated_at = datetime.now(timezone.utc)
+    # Terminado: sus horas de Steam cuentan para la duración que ve la comunidad.
+    if state == "finished":
+        duration_service.record_finish(db, steam_id, appid)
+    else:
+        duration_service.forget_finish(db, steam_id, appid)
     db.commit()
 
 

@@ -24,7 +24,8 @@ class Settings(BaseSettings):
     backup_keep: int = 7
     # Usar HowLongToBeat para la duración. Antes de monetizar conviene tener su permiso (ver README);
     # en "false" se dejan de pedir duraciones y la página oculta el filtro de duración.
-    hltb_enabled: bool = True
+    # Apagado por defecto: los términos de Ziff Davis (dueña de HLTB) prohíben el acceso automatizado.
+    hltb_enabled: bool = False
     # Monetización (todo opcional; vacío = no se muestra):
     # links para apoyar el proyecto, "Nombre|URL" separados por coma (ej. "Cafecito|https://cafecito.app/x").
     support_links: str = ""

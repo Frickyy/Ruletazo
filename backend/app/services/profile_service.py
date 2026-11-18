@@ -17,6 +17,7 @@ from app.models.room import Room
 from app.models.game import (
     CachedGameDetails,
     CachedLibraryEntry,
+    CompletionSample,
     FavoriteGame,
     GameState,
     HiddenGame,
@@ -144,6 +145,7 @@ def delete_user_data(db: Session, steam_id: str) -> dict:
         ("states", GameState),
         ("achievement_progress", UserGameProgress),
         ("library", CachedLibraryEntry),
+        ("completion_samples", CompletionSample),
     ):
         counts[name] = db.execute(delete(model).where(model.steam_id == steam_id)).rowcount
     counts["reports_made"] = db.execute(delete(ForumReport).where(ForumReport.reporter_steam_id == steam_id)).rowcount

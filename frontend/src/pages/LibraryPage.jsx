@@ -54,6 +54,9 @@ function LibraryPage({
   const deferredSearch = useDeferredValue(search);
 
   const genres = useMemo(() => genresOf(games), [games]);
+  // La duración sale de HowLongToBeat (si está activado) o de quienes terminaron el juego en
+  // Ruletazo. Sin ningún dato todavía, el filtro no se muestra para no dejarlo siempre vacío.
+  const durationEnabled = useMemo(() => hltbEnabled || games.some((game) => game.duration_hours != null), [hltbEnabled, games]);
   const hiddenCount = useMemo(() => games.filter((game) => game.is_hidden).length, [games]);
   const filtered = useMemo(() => {
     const filters = { collection, genre, playtimeFilter, duration, hideAdult, mode, state: stateFilter, search: deferredSearch };
@@ -208,7 +211,7 @@ function LibraryPage({
           ))}
         </select>
 
-        {hltbEnabled && (
+        {durationEnabled && (
           <select className="select" value={duration} onChange={(event) => setDuration(event.target.value)} aria-label="Duración">
             {DURATION_OPTIONS.map((option) => (
               <option key={option.id} value={option.id}>
@@ -231,7 +234,7 @@ function LibraryPage({
 
         <div className="library-page__sort">
           <select className="select" value={sortBy} onChange={(event) => setSortBy(event.target.value)} aria-label="Ordenar por">
-            {SORT_OPTIONS.filter((option) => hltbEnabled || option.id !== "duration").map((option) => (
+            {SORT_OPTIONS.filter((option) => durationEnabled || option.id !== "duration").map((option) => (
               <option key={option.id} value={option.id}>
                 {option.label}
               </option>
@@ -280,7 +283,7 @@ function LibraryPage({
                 {game.coop && <span className="tag">Coop</span>}
               </p>
               <p className="library-row__genres">
-                {[game.genres.join(" · "), game.hltb_main_hours != null ? `${Math.round(game.hltb_main_hours)} h de historia` : ""]
+                {[game.genres.join(" · "), game.duration_hours != null ? `${Math.round(game.duration_hours)} h para terminarlo` : ""]
                   .filter(Boolean)
                   .join(" — ")}
               </p>

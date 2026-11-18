@@ -76,6 +76,9 @@ function RoulettePage({
   const [skipped, setSkipped] = useSessionSet("steamRoulette.skippedToday");
 
   const genres = useMemo(() => genresOf(games), [games]);
+  // La duración sale de HowLongToBeat (si está activado) o de quienes terminaron el juego en
+  // Ruletazo. Sin ningún dato todavía, el filtro no se muestra para no dejarlo siempre vacío.
+  const durationEnabled = useMemo(() => hltbEnabled || games.some((game) => game.duration_hours != null), [hltbEnabled, games]);
   // "En común" solo tiene sentido con la familia sumada.
   const commonOnly = inCommon && hasFamily && includeFamily;
   const filters = { collection, genre, playtimeFilter, duration, hideAdult, mode, inCommon: commonOnly, includeFinished };
@@ -417,7 +420,7 @@ function RoulettePage({
             )}
 
             <select
-              className={`select${hltbEnabled ? "" : " roulette__mode--wide"}`}
+              className={`select${durationEnabled ? "" : " roulette__mode--wide"}`}
               value={mode}
               onChange={(event) => setMode(event.target.value)}
               aria-label="Modo de juego"
@@ -430,7 +433,7 @@ function RoulettePage({
               ))}
             </select>
 
-            {hltbEnabled && (
+            {durationEnabled && (
               <select className="select" value={duration} onChange={(event) => setDuration(event.target.value)} aria-label="Duración" disabled={isSpinning}>
                 {DURATION_OPTIONS.map((option) => (
                   <option key={option.id} value={option.id}>
@@ -617,7 +620,7 @@ function useStoredFlag(key, initial) {
 
 function emptyPoolMessage(duration) {
   if (duration !== "any") {
-    return "No hay juegos con esa duración entre los filtros elegidos. La duración sale de HowLongToBeat: los juegos que todavía no tienen datos no entran.";
+    return "No hay juegos con esa duración entre los filtros elegidos. Los juegos que todavía no tienen duración no entran.";
   }
   return "No hay juegos que cumplan esos filtros. Probá con otros.";
 }

@@ -49,8 +49,8 @@ describe("casi al 100%", () => {
 
 describe("ruleta inteligente", () => {
   it("pesa más a los sin estrenar, cortos y bien reseñados", () => {
-    const backlog = game({ playtime_forever_minutes: 0, hltb_main_hours: 8, review_score_desc: "Muy positivas" });
-    const played = game({ playtime_forever_minutes: 900, hltb_main_hours: 80, review_score_desc: "Mixtas" });
+    const backlog = game({ playtime_forever_minutes: 0, duration_hours: 8, review_score_desc: "Muy positivas" });
+    const played = game({ playtime_forever_minutes: 900, duration_hours: 80, review_score_desc: "Mixtas" });
     expect(smartWeight(backlog)).toBeGreaterThan(smartWeight(played));
     expect(smartWeight(game({ review_score_desc: "Mayormente positivas", playtime_forever_minutes: 60 }))).toBe(1);
   });

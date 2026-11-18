@@ -270,7 +270,7 @@ def test_backlog_counts_unplayed_games_not_closed(db_session):
 
 
 def test_monthly_challenges_track_this_month_only(db_session):
-    from app.models.game import CachedGameDetails, GameState
+    from app.models.game import CompletionSample, GameState
     from app.services import challenge_service
 
     now = datetime(2026, 11, 18, tzinfo=timezone.utc)
@@ -278,7 +278,10 @@ def test_monthly_challenges_track_this_month_only(db_session):
         GameState(steam_id=ANA, appid=1, state="finished", updated_at=datetime(2026, 11, 2, tzinfo=timezone.utc)),
         GameState(steam_id=ANA, appid=2, state="finished", updated_at=datetime(2026, 10, 30, tzinfo=timezone.utc)),
         GameState(steam_id=ANA, appid=3, state="playing", updated_at=datetime(2026, 11, 10, tzinfo=timezone.utc)),
-        CachedGameDetails(appid=1, hltb_main_hours=4.5, fetched_at=now),
+        # Tres personas lo terminaron en unas 4 horas: cuenta como corto.
+        CompletionSample(steam_id="a", appid=1, minutes=230, created_at=now),
+        CompletionSample(steam_id="b", appid=1, minutes=250, created_at=now),
+        CompletionSample(steam_id="c", appid=1, minutes=900, created_at=now),
     ])
     db_session.commit()
 
@@ -287,3 +290,57 @@ def test_monthly_challenges_track_this_month_only(db_session):
     assert (items["start"]["progress"], items["start"]["goal"]) == (1, 1)
     assert (items["short"]["progress"], items["short"]["goal"]) == (1, 1)
     assert (items["finish"]["progress"], items["finish"]["goal"]) == (1, 3)  # el de octubre no cuenta
+
+
+# ---------- Duración según la comunidad ----------
+
+
+def _finish(db, steam_id, appid, minutes):
+    db.add(CachedLibraryEntry(steam_id=steam_id, appid=appid, name="Juego", playtime_forever_minutes=minutes, fetched_at=datetime.now(timezone.utc)))
+    db.commit()
+    library_service.set_state(db, steam_id, appid, "finished")
+
+
+def test_community_duration_needs_three_people_and_uses_the_median(db_session):
+    from app.services import duration_service
+
+    _finish(db_session, ANA, 10, 600)
+    _finish(db_session, BETO, 10, 720)
+    assert duration_service.community_durations(db_session, [10]) == {}  # con 2 todavía no se muestra
+
+    _finish(db_session, "76561198000000003", 10, 6000)  # lo dejó abierto días: la mediana no se mueve
+    assert duration_service.community_durations(db_session, [10]) == {10: (12.0, 3)}
+
+
+def test_unfinishing_or_tiny_playtime_does_not_count(db_session):
+    from app.models.game import CompletionSample
+
+    _finish(db_session, ANA, 10, 600)
+    _finish(db_session, BETO, 20, 10)  # 10 minutos: no es terminarlo
+    library_service.set_state(db_session, ANA, 10, "playing")
+    library_service.set_state(db_session, ANA, 30, "finished")  # juego de un familiar: sin horas propias
+
+    assert db_session.query(CompletionSample).count() == 0
+
+
+def test_hltb_is_off_by_default_and_community_fills_in(db_session, monkeypatch):
+    from app.core.config import Settings
+    from app.models.game import CachedGameDetails
+    from app.services import duration_service
+
+    db_session.add(CachedGameDetails(appid=10, hltb_main_hours=20.0, fetched_at=datetime.now(timezone.utc)))
+    for index, minutes in enumerate((540, 600, 660)):
+        _finish(db_session, f"7656119800000010{index}", 10, minutes)
+
+    assert Settings().hltb_enabled is False
+    assert duration_service.durations(db_session, [10]) == {10: {"hours": 10.0, "source": "community", "samples": 3}}
+    monkeypatch.setattr(duration_service, "get_settings", lambda: Settings(hltb_enabled=True))
+    assert duration_service.durations(db_session, [10])[10]["source"] == "hltb"
+
+
+def test_deleting_data_removes_completion_samples(db_session):
+    from app.models.game import CompletionSample
+
+    _finish(db_session, ANA, 10, 600)
+    profile_service.delete_user_data(db_session, ANA)
+    assert db_session.query(CompletionSample).count() == 0

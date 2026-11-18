@@ -10,8 +10,8 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.config import get_settings
-from app.models.game import CachedGameDetails, CachedLibraryEntry, GameState
+from app.models.game import CachedLibraryEntry, GameState
+from app.services import duration_service
 
 SHORT_GAME_HOURS = 5
 FINISH_GOAL = 3
@@ -40,12 +40,21 @@ def monthly_challenges(db: Session, steam_id: str, now: datetime | None = None) 
     finished = [row.appid for row in this_month if row.state == "finished"]
     started = [row.appid for row in this_month if row.state == "playing"]
 
+    short = [appid for appid, duration in duration_service.durations(db, finished).items() if duration["hours"] <= SHORT_GAME_HOURS]
+
     challenges = [
         {
             "id": "start",
             "title": "Empezá algo nuevo",
             "description": "Marcá un juego como “Jugando” este mes.",
             "progress": min(len(started), 1),
+            "goal": 1,
+        },
+        {
+            "id": "short",
+            "title": "Uno cortito",
+            "description": f"Terminá un juego que dure {SHORT_GAME_HOURS} horas o menos.",
+            "progress": min(len(short), 1),
             "goal": 1,
         },
         {
@@ -56,28 +65,7 @@ def monthly_challenges(db: Session, steam_id: str, now: datetime | None = None) 
             "goal": FINISH_GOAL,
         },
     ]
-    if get_settings().hltb_enabled:
-        short = _short_games(db, finished)
-        challenges.insert(
-            1,
-            {
-                "id": "short",
-                "title": "Uno cortito",
-                "description": f"Terminá un juego de {SHORT_GAME_HOURS} horas o menos (según HowLongToBeat).",
-                "progress": min(len(short), 1),
-                "goal": 1,
-            },
-        )
     return {"year": now.year, "month": now.month, "items": challenges}
-
-
-def _short_games(db: Session, appids: list[int]) -> list[int]:
-    if not appids:
-        return []
-    rows = db.execute(
-        select(CachedGameDetails.appid, CachedGameDetails.hltb_main_hours).where(CachedGameDetails.appid.in_(appids))
-    ).all()
-    return [appid for appid, hours in rows if hours is not None and hours <= SHORT_GAME_HOURS]
 
 
 def _same_month(value: datetime, now: datetime) -> bool:

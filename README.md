@@ -10,7 +10,7 @@
 
 ### Ruleta
 - **Rodillo en vivo**: las portadas de tu biblioteca giran y el juego que frena en el centro es el que te toca. La página toma el color que predomina en su portada.
-- **Filtros**: sin estrenar (0 horas), poco jugados (menos de 2 horas), abandonados (jugados, pero no en los últimos 6 meses), favoritos, *Jugando*, *Casi al 100%* (te falta poco para todos los logros), género, duración según HowLongToBeat (cortos, medianos, largos) y modo de juego (un jugador, cooperativo, multijugador, pantalla compartida). Los terminados y los juegos para adultos quedan fuera por defecto.
+- **Filtros**: sin estrenar (0 horas), poco jugados (menos de 2 horas), abandonados (jugados, pero no en los últimos 6 meses), favoritos, *Jugando*, *Casi al 100%* (te falta poco para todos los logros), género, duración (cortos, medianos, largos; ver *Duración* más abajo) y modo de juego (un jugador, cooperativo, multijugador, pantalla compartida). Los terminados y los juegos para adultos quedan fuera por defecto.
 - **Para jugar juntos**: con la familia sumada, *En común con la familia* deja solo los juegos que tienen los dos; combinado con *Cooperativos*, la ruleta elige qué jugar en pareja o con amigos.
 - **Ruleta inteligente** (opcional): todos pueden salir, pero salen más seguido los sin estrenar, los cortos, los bien reseñados, tus favoritos y los que estás jugando.
 - **Barra espaciadora** para girar y **sonido** opcional del rodillo.
@@ -25,11 +25,11 @@
 - **Antes del primer giro**: juegos sin estrenar para elegir a mano y tus más jugados.
 
 ### Ficha de cada juego
-Duración estimada (HowLongToBeat), puntaje de la comunidad, **lo bueno y lo malo** en frases cortas tomadas de las reseñas más útiles de Steam (sin groserías ni dibujos con caracteres), dificultad de logros, tu progreso y precio.
+Duración (según quienes lo terminaron en Ruletazo), puntaje de la comunidad, **lo bueno y lo malo** en frases cortas tomadas de las reseñas más útiles de Steam (sin groserías ni dibujos con caracteres), dificultad de logros, tu progreso y precio.
 
 ### Biblioteca
 - Búsqueda instantánea, los mismos filtros que la ruleta y orden por nombre, horas jugadas, última partida, duración, precio o fecha de salida.
-- Los datos se completan **solos en segundo plano**, en dos pasadas: primero los de la tienda (géneros, modos de juego, sinopsis en español, portada, precio), de a 50 juegos por pedido, que tarda segundos; después la duración (HowLongToBeat) y tu progreso de logros, de a un juego. Se puede pausar.
+- Los datos se completan **solos en segundo plano**, en dos pasadas: primero los de la tienda (géneros, modos de juego, sinopsis en español, portada, precio), de a 50 juegos por pedido, que tarda segundos; después tu progreso de logros (y la duración de HowLongToBeat, solo si está activado), de a un juego. Se puede pausar.
 - **Progreso**: cuántos juegos estás jugando, terminaste y abandonaste, y cuántos terminaste y empezaste en el año.
 - **Familia**: combina tu biblioteca con la de hasta 5 familiares e indica de quién es cada juego. Un perfil privado o un ID mal escrito se omite sin romper la tuya.
 
@@ -108,7 +108,7 @@ Completá `backend/.env`:
 | `ADMIN_STEAM_IDS` | SteamID64 de los moderadores del foro, separados por coma. |
 | `ENVIRONMENT` | `development` o `production` (en producción `SESSION_SECRET` es obligatoria). |
 | `CONTACT_EMAIL` | Mail de contacto de la política de privacidad y los términos. |
-| `HLTB_ENABLED` | `true` (por defecto) o `false` para dejar de usar HowLongToBeat y ocultar la duración. |
+| `HLTB_ENABLED` | `false` (por defecto). Prenderlo solo con permiso por escrito de Ziff Davis (ver *Riesgos antes de monetizar*). |
 | `SUPPORT_LINKS` | Links para apoyar el proyecto en el pie de página: `Cafecito|https://cafecito.app/usuario,Ko-fi|https://ko-fi.com/usuario`. |
 | `SUPPORTER_STEAM_IDS` | SteamID64 de quienes apoyan el proyecto: muestran la insignia "Supporter" en su perfil y el foro. |
 | `AFFILIATE_STORES` | Tiendas con link de afiliado en el foro de cada juego: `Humble|https://www.humblebundle.com/store/search?search={query}&partner=TU_ID`. |
@@ -164,7 +164,10 @@ Pensada para no tocar la experiencia: **la plata nunca influye en qué juego sal
 
 ### Riesgos antes de monetizar
 - **Steam Web API**: sus términos (de 2010) licencian los datos para el "uso personal" de los usuarios, prohíben dar a entender una relación con Valve y piden una política de privacidad, informar qué datos se guardan y consultar datos de un usuario solo cuando él lo pide. Varios endpoints que usa la app (biblioteca, tienda) no figuran en la documentación oficial. Lo más prudente es **pedir permiso por escrito a Valve** (webapi@valvesoftware.com) antes de monetizar, y no ofrecer planes pagos que den acceso a datos de Steam.
-- **HowLongToBeat**: no tiene API oficial y la app lee su búsqueda interna. Antes de monetizar, pedí permiso o apagalo con `HLTB_ENABLED=false`.
+- **HowLongToBeat**: los términos de uso de Ziff Davis, su dueña, prohíben usar robots o programas para extraer datos del sitio y mostrarlos en otro programa, con o sin fines comerciales. Por eso viene **apagado** (`HLTB_ENABLED=false`) y solo debería prenderse con permiso por escrito.
+
+### Duración
+Cuando alguien marca un juego como *Terminado*, se guardan sus horas en Steam en ese momento. La duración de cada juego es la **mediana** de esas horas y se muestra recién cuando lo terminaron al menos 3 personas (nunca por persona). Las horas de menos de 30 minutos no cuentan. Al principio casi ningún juego tiene duración, así que el filtro por duración aparece recién cuando hay datos.
 - **El nombre**: la app se llama Ruletazo, sin "Steam", para no dar a entender una relación con Valve. Internamente se conservan algunos nombres viejos (la base `steam_roulette.db`, las claves `steamRoulette.*` del navegador) para no perder datos ni preferencias.
 - La política de privacidad y los términos (`#/privacidad`, `#/terminos`) son un **borrador**: revisalos con alguien con conocimiento legal de tu país y completá el país del servidor (`frontend/src/pages/LegalPage.jsx`) y `CONTACT_EMAIL`.
 

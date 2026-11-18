@@ -143,6 +143,9 @@ async def test_nothing_is_fetched_while_reviews_are_rate_limited(db_session, mon
 
 
 async def test_expired_details_refresh_every_part(db_session, monkeypatch):
+    from app.core.config import Settings
+
+    monkeypatch.setattr(game_details_service, "get_settings", lambda: Settings(hltb_enabled=True))
     db_session.add(_complete_details(fetched_at=datetime.now(timezone.utc) - timedelta(days=30)))
     db_session.commit()
     calls = _track_fetches(monkeypatch)

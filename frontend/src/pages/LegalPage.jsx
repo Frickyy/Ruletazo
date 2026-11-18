@@ -43,6 +43,11 @@ function Privacy({ contact }) {
           <strong>Tu progreso de logros</strong>, solo si activás “Seguir mi progreso de logros” en tu perfil.
         </li>
         <li>
+          <strong>Cuánto te llevó terminar un juego:</strong> cuando marcás un juego como terminado, guardamos las horas que tenés en
+          Steam en ese momento. Se usan solo para calcular la duración que ve todo el mundo, como un número combinado con el de al
+          menos otras dos personas; nunca se muestran las tuyas por separado.
+        </li>
+        <li>
           <strong>Lo que publicás en el foro:</strong> reseñas, discusiones, respuestas y denuncias, junto con tu nombre y avatar de
           Steam en el momento de publicar.
         </li>
@@ -63,8 +68,8 @@ function Privacy({ contact }) {
 
       <h2>Con quién se comparte</h2>
       <p>
-        No vendemos ni compartimos tus datos. Para funcionar, la página consulta a Steam (Valve) y a otros servicios de datos de
-        juegos, a los que solo se les envía el nombre o el número del juego, nunca tus datos. Las portadas se cargan desde los
+        No vendemos ni compartimos tus datos. Para funcionar, la página consulta a Steam (Valve), al que solo se le envía tu SteamID o el
+        número del juego. Las portadas se cargan desde los
         servidores de imágenes de Steam. Si la página tiene links a tiendas, pueden ser links de afiliado: la tienda sabe que
         llegaste desde acá, no quién sos.
       </p>

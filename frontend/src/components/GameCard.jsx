@@ -111,13 +111,22 @@ function GameCard({ game, isStale = false, isDemo = false, onToggleFavorite, onS
       <div className="game-card__side">
         <dl className="game-card__stats">
           <div>
-            <dt>Historia principal (HLTB)</dt>
-            <dd className="mono">{formatHours(game.hltb_main_hours)}</dd>
+            <dt>{game.duration_source === "hltb" ? "Historia principal (HLTB)" : "Duración"}</dt>
+            <dd>
+              <span className="mono">{formatHours(game.duration_hours)}</span>
+              {game.duration_source === "community" && (
+                <span className="muted game-card__source" title="Mediana de las horas en Steam de quienes lo marcaron como terminado en Ruletazo">
+                  {" "}· según {game.duration_samples} jugadores
+                </span>
+              )}
+            </dd>
           </div>
-          <div>
-            <dt>Completista (HLTB)</dt>
-            <dd className="mono">{formatHours(game.hltb_completionist_hours)}</dd>
-          </div>
+          {game.hltb_completionist_hours != null && (
+            <div>
+              <dt>Completista (HLTB)</dt>
+              <dd className="mono">{formatHours(game.hltb_completionist_hours)}</dd>
+            </div>
+          )}
           <div>
             <dt>Reseñas</dt>
             <dd>

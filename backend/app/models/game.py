@@ -114,6 +114,17 @@ class UserGameProgress(Base):
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 
+class CompletionSample(Base):
+    """Horas en Steam de alguien al marcar un juego como terminado (ver duration_service)."""
+
+    __tablename__ = "completion_samples"
+
+    steam_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    appid: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    minutes: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
 class UserProfile(Base):
     """Preferencias del perfil de un usuario. Sin fila = valores por defecto (perfil privado)."""
 
