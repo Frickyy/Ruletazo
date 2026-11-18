@@ -3,6 +3,7 @@ import { deleteMyData, fetchGamesInCommon, fetchProfile, updateMyPreferences } f
 import SteamLoginButton from "../components/SteamLoginButton.jsx";
 import { MODE_OPTIONS, matchesFilters } from "../services/libraryFilters.js";
 import SupporterBadge from "../components/SupporterBadge.jsx";
+import { shareYearCard } from "../services/yearCard.js";
 import "./ProfilePage.css";
 
 /**
@@ -77,6 +78,7 @@ function ProfilePage({ profileId, viewer, onLogin, onOpenForum, onAddToFamily, f
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [sharingYear, setSharingYear] = useState(false);
 
   useEffect(() => {
     if (!targetId) return;
@@ -159,6 +161,25 @@ function ProfilePage({ profileId, viewer, onLogin, onOpenForum, onAddToFamily, f
           </p>
         </div>
         <div className="profile-hero__actions">
+          {profile.is_me && (
+            <button
+              type="button"
+              className="button"
+              disabled={sharingYear}
+              onClick={async () => {
+                setSharingYear(true);
+                try {
+                  await shareYearCard(profile);
+                } catch {
+                  setSaveError("No se pudo generar la imagen. Probá de nuevo.");
+                } finally {
+                  setSharingYear(false);
+                }
+              }}
+            >
+              {sharingYear ? "Generando imagen…" : `Compartir mi ${summary.year}`}
+            </button>
+          )}
           {profile.is_me && profile.is_public && (
             <button type="button" className="button" onClick={copyLink}>
               {copied ? "¡Link copiado!" : "Copiar link del perfil"}
