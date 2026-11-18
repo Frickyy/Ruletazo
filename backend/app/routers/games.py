@@ -10,7 +10,7 @@ from app.core.rate_limit import background, steam_reads
 from app.core.security import current_steam_id, require_steam_id
 from app.db.session import get_db
 from app.schemas.game import Game
-from app.services import favorites_service, game_details_service, hidden_service, library_service
+from app.services import forum_service, favorites_service, game_details_service, hidden_service, library_service
 from app.services.steam_client import InvalidSteamIDError, PrivateProfileError, SteamAPIError, SteamClient
 
 router = APIRouter(prefix="/api/games", tags=["games"])
@@ -126,11 +126,18 @@ async def get_game_details(
         details = await game_details_service.get_or_fetch_details(db, game.appid, game.name)
         library_service.apply_cached_details(game, details)
         game.short_description = mock.short_description  # la de ejemplo está en español; la Store la da en inglés
-        return game
+        return _with_community_reviews(db, game)
 
     game = await _unwrap_steam_errors(library_service.get_game_details(db, steamid, friend_steamid, appid, viewer_steam_id=viewer))
     if game is None:
         raise HTTPException(status_code=404, detail="Ese juego no está en la biblioteca.")
+    return _with_community_reviews(db, game)
+
+
+def _with_community_reviews(db: Session, game: Game) -> Game:
+    stats = forum_service.review_stats(db, game.appid)
+    game.community_review_count = stats["review_count"]
+    game.community_average_score = stats["average_score"]
     return game
 
 

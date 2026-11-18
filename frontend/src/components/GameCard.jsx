@@ -126,6 +126,23 @@ function GameCard({ game, isStale = false, isDemo = false, onToggleFavorite, onS
             </dd>
           </div>
           <div>
+            <dt>Reseñas en Ruletazo</dt>
+            <dd>
+              {game.community_review_count > 0 ? (
+                <>
+                  <span className="mono">{game.community_average_score.toLocaleString("es-AR")}/10</span>
+                  <span className="mono muted"> · {game.community_review_count.toLocaleString("es-AR")}</span>
+                </>
+              ) : onOpenForum ? (
+                <button type="button" className="text-button" onClick={() => onOpenForum({ appid: game.appid, name: game.name, tab: "reviews" })}>
+                  Escribí la primera
+                </button>
+              ) : (
+                "Sin reseñas"
+              )}
+            </dd>
+          </div>
+          <div>
             <dt>Dificultad de logros</dt>
             <dd>{game.achievement_difficulty}</dd>
           </div>
