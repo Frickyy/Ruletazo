@@ -19,7 +19,7 @@
 - **Historial**: los últimos juegos que salieron, para volver a cualquiera con un clic.
 
 ### Salas en grupo
-- **Jugar en grupo** arma una sala (`#/sala/<código>`) con los juegos que hoy entran en tu ruleta. Tus amigos entran con el link e inician sesión con Steam.
+- **Ruleta grupal** arma una sala (`#/sala/<código>`) con los juegos que hoy entran en tu ruleta. Tus amigos entran con el link e inician sesión con Steam.
 - Cada uno **veta** los juegos que no quiere. Quien armó la sala gira y el backend elige al azar entre los que nadie vetó: todos ven el mismo rodillo al mismo tiempo.
 - Las salas duran 12 horas y entran hasta 8 personas.
 - **Antes del primer giro**: juegos sin estrenar para elegir a mano y tus más jugados.

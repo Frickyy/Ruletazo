@@ -90,7 +90,7 @@ const en = {
   "Armá una sala con estos juegos: tus amigos entran con un link, vetan y la ruleta gira para todos":
     "Create a room with these games: your friends join with a link, veto games and the wheel spins for everyone",
   "Armando sala…": "Creating room…",
-  "Jugar en grupo": "Play as a group",
+  "Ruleta grupal": "Group wheel",
   "Deshacer": "Undo",
   "Biblioteca en uso": "Library in use",
   "Perfil de Steam": "Steam profile",

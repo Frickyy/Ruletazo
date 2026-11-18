@@ -500,7 +500,7 @@ function RoulettePage({
                   disabled={isSpinning || creatingRoom || spinnable.length < 2}
                   title={t("Armá una sala con estos juegos: tus amigos entran con un link, vetan y la ruleta gira para todos")}
                 >
-                  {creatingRoom ? t("Armando sala…") : t("Jugar en grupo")}
+                  {creatingRoom ? t("Armando sala…") : t("Ruleta grupal")}
                 </button>
               )}
             </div>
