@@ -121,6 +121,7 @@ class SteamStoreClient:
             "app_type": app_type,
             "release_date": normalize_release_date(data.get("release_date", {}).get("date", "")),
             "is_adult": is_adult_content(data),
+            "header_image": data.get("header_image", ""),
             "store_available": True,
         }
 
@@ -284,5 +285,6 @@ def _empty_app_details() -> dict:
         "price_cents": None,
         "release_date": "",
         "is_adult": False,
+        "header_image": "",
         "store_available": False,
     }

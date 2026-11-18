@@ -282,6 +282,7 @@ async def _ensure_store_metadata(db: Session, games: list[Game]) -> None:
             details.price_cents = store_details["price_cents"]
             details.release_date = store_details["release_date"]
             details.is_adult = store_details["is_adult"]
+            details.header_image = store_details["header_image"] or details.header_image
         details.store_metadata_version = game_details_service.STORE_METADATA_VERSION
         details.fetched_at = datetime.now(timezone.utc)
     db.commit()
@@ -301,6 +302,8 @@ def apply_cached_details(game: Game, details: CachedGameDetails) -> None:
     game.hltb_completionist_hours = details.hltb_completionist_hours
     game.achievement_difficulty = game_details_service.difficulty_label(details)
     game.is_adult = bool(details.is_adult) or looks_adult_by_name(game.name)
+    if details.header_image:
+        game.header_image = details.header_image
 
 
 def _get_cached_details_map(db: Session, appids: list[int]) -> dict[int, CachedGameDetails]:

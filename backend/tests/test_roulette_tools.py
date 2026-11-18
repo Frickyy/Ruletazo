@@ -189,7 +189,7 @@ def test_migrations_create_a_fresh_database(tmp_path):
     connection = sqlite3.connect(db_file)
     tables = {row[0] for row in connection.execute("select name from sqlite_master where type='table'")}
     assert {"hidden_games", "forum_reports", "cached_game_details"} <= tables
-    assert connection.execute("select version_num from alembic_version").fetchone() == ("0002",)
+    assert connection.execute("select version_num from alembic_version").fetchone() == ("0003",)
     connection.close()
 
 
@@ -222,3 +222,34 @@ def test_migrations_upgrade_a_database_created_before_alembic(tmp_path):
     assert {"is_adult", "hltb_version", "review_pros"} <= detail_columns
     assert connection.execute("select name from cached_library_entries").fetchone() == ("Juego",)
     connection.close()
+
+
+@respx.mock
+async def test_app_details_reads_spanish_data_cover_and_adult_flag():
+    respx.get("https://store.steampowered.com/api/appdetails").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "4704690": {
+                    "success": True,
+                    "data": {
+                        "type": "game",
+                        "name": "MECCHA CHAMELEON",
+                        "short_description": "Una aventura.",
+                        "release_date": {"date": "9 DIC 2025"},
+                        "header_image": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4704690/abc/header.jpg",
+                        "content_descriptors": {"ids": [4]},
+                        "genres": [{"description": "Aventura"}],
+                    },
+                }
+            },
+        )
+    )
+
+    async with SteamStoreClient() as client:
+        details = await client.get_app_details(4704690)
+
+    assert details["release_date"] == "2025-12-09"
+    assert details["header_image"].endswith("/abc/header.jpg")
+    assert details["is_adult"] is True
+    assert details["genres"] == ["Aventura"]

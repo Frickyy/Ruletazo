@@ -45,6 +45,8 @@ class CachedGameDetails(Base):
     developer: Mapped[str] = mapped_column(String(255), default="")
     price_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
     release_date: Mapped[str] = mapped_column(String(32), default="")
+    # Portada según la tienda (los juegos recientes no la tienen en la dirección fija). Vacío si no se sabe.
+    header_image: Mapped[str] = mapped_column(String(512), default="")
     # La tienda lo marca como contenido sexual para adultos (descriptores 3 o 4).
     is_adult: Mapped[bool] = mapped_column(Boolean, default=False)
     store_metadata_version: Mapped[int] = mapped_column(Integer, default=3)
