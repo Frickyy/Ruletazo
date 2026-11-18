@@ -75,20 +75,36 @@ function App() {
     writeStorage("steamRoulette.hideAdult", String(hideAdult));
   }, [hideAdult]);
 
-  const [familyProfiles, setFamilyProfiles] = useState([]);
+  // Perfiles de la familia (nombre y foto) por ID. Se guardan en este navegador: si Steam no
+  // responde en un momento dado (por ejemplo, por exceso de pedidos), se sigue mostrando el último.
+  const [familyProfiles, setFamilyProfiles] = useState(() => readFamilyProfiles());
+  const [failedProfiles, setFailedProfiles] = useState(() => new Set());
+  const onFamilyPage = activeView === "family";
 
   // Se espera a que se deje de escribir: si no, cada tecla pedía un perfil a la Steam API.
+  // También se vuelve a pedir al entrar a Familia, por si la vez anterior Steam no respondió.
   useEffect(() => {
     let cancelled = false;
-    const timer = setTimeout(() => {
-      Promise.all(familyIdsValue.map((id) => fetchSteamProfile(id).then((profile) => ({ id, profile })).catch(() => ({ id, profile: null }))))
-        .then((profiles) => { if (!cancelled) setFamilyProfiles(profiles); });
+    const timer = setTimeout(async () => {
+      const results = await Promise.all(
+        familyIdsValue.map((id) => fetchSteamProfile(id).then((profile) => ({ id, profile })).catch(() => ({ id, profile: null }))),
+      );
+      if (cancelled) return;
+      setFamilyProfiles((current) => {
+        const next = { ...current };
+        for (const { id, profile } of results) {
+          if (profile) next[id] = { name: profile.name, avatar: profile.avatar };
+        }
+        writeFamilyProfiles(next);
+        return next;
+      });
+      setFailedProfiles(new Set(results.filter(({ profile }) => !profile).map(({ id }) => id)));
     }, 600);
     return () => {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [familyIdsStorageValue]);
+  }, [familyIdsStorageValue, onFamilyPage]);
 
   function updateFamilyId(index, value) {
     setFamilyIds((current) => current.map((id, currentIndex) => currentIndex === index ? value : id));
@@ -248,15 +264,21 @@ function App() {
             </div>
             <div className="family-members">
               {familyIds.map((familyId, index) => {
-                const familyProfile = familyProfiles.find(({ id }) => id === familyId)?.profile;
+                const familyProfile = familyProfiles[familyId];
+                const profileFailed = !familyProfile && failedProfiles.has(familyId);
                 return (
                   <div className="family-member" key={`${index}-${familyId}`}>
                     <SteamIdInput id={`family-${index}`} label={`Familiar ${index + 1}`} placeholder="URL de perfil o SteamID64" value={familyId} onChange={(value) => updateFamilyId(index, value)} />
                     {familyProfile && (
                       <div className="family-profile">
-                        <img src={familyProfile.avatar} alt="" />
+                        {familyProfile.avatar ? <img src={familyProfile.avatar} alt="" /> : <span className="family-profile__avatar" aria-hidden="true" />}
                         <span>{familyProfile.name}</span>
                       </div>
+                    )}
+                    {profileFailed && (
+                      <p className="family-profile family-profile--missing" role="status">
+                        No se encontró el perfil. ¿Está bien escrito y es público?
+                      </p>
                     )}
                     {familyIds.length > 1 && (
                       <button type="button" className="button family-remove" onClick={() => removeFamilyId(index)}>Quitar</button>
@@ -276,6 +298,21 @@ function App() {
       </main>
     </div>
   );
+}
+
+const FAMILY_PROFILES_KEY = "steamRoulette.familyProfiles";
+
+function readFamilyProfiles() {
+  try {
+    const parsed = JSON.parse(readStorage(FAMILY_PROFILES_KEY) ?? "{}");
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeFamilyProfiles(profiles) {
+  writeStorage(FAMILY_PROFILES_KEY, JSON.stringify(profiles));
 }
 
 function readStorage(key) {

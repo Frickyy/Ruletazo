@@ -6,6 +6,7 @@ import time
 import httpx
 
 from app.core.config import get_settings
+from app.services import throttle
 
 STEAM_API_BASE_URL = "https://api.steampowered.com"
 
@@ -142,7 +143,17 @@ class SteamClient:
         return {"total": len(percentages), "average_percent": sum(percentages) / len(percentages)}
 
     async def get_achievement_progress(self, steam_id: str, appid: int) -> dict:
-        """Solo cuántos logros desbloqueó el usuario y cuántos hay (sin nombres ni íconos)."""
+        """Solo cuántos logros desbloqueó el usuario y cuántos hay (sin nombres ni íconos).
+
+        Es para la clasificación en segundo plano: va con ritmo propio ("achievements" en
+        throttle.py) para no gastar la cuota de la API key, que comparten el login, la
+        biblioteca y los perfiles. Sin ese freno llegaban a ser 75 pedidos por minuto y Steam
+        empezaba a rechazar también los pedidos de la página (por ejemplo, perfiles de familia).
+        """
+        try:
+            await throttle.wait_turn("achievements")
+        except throttle.ServiceCoolingDown as exc:
+            raise SteamAPIError("Pausado por rate limit de Steam.") from exc
         try:
             response = await self._get(
                 "/ISteamUserStats/GetPlayerAchievements/v0001/",
@@ -201,6 +212,12 @@ class SteamClient:
             logger.error("Fallo de red llamando a %s: %s", path, exc)
             raise SteamAPIError(f"No se pudo conectar con la Steam Web API: {exc}") from exc
 
+        if response.status_code == 429:
+            # Nos pasamos de pedidos: se frena la clasificación en segundo plano, que es la que
+            # más pide, para que la página (perfiles, biblioteca) siga funcionando.
+            throttle.cool_down("achievements")
+            logger.warning("Steam Web API respondió 429 (demasiados pedidos) en %s", path)
+            raise SteamAPIError("Steam Web API respondió 429.")
         if response.status_code == 401:
             logger.warning("Steam API respondió 401 (API key inválida) en %s", path)
             raise SteamAPIError("Steam API Key inválida (revisá STEAM_API_KEY en tu backend/.env).")

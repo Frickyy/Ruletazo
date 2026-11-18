@@ -20,6 +20,8 @@ MIN_INTERVAL_SECONDS = {
     "storebrowse": 0.5,
     "reviews": 1.5,
     "hltb": 1.0,
+    # Progreso de logros (Steam Web API con la API key) durante la clasificación en segundo plano.
+    "achievements": 1.5,
 }
 DEFAULT_COOLDOWN_SECONDS = 10 * 60
 

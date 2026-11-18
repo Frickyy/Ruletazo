@@ -273,3 +273,23 @@ async def test_enrich_skips_games_that_just_failed(db_session, monkeypatch):
     assert db_session.get(UserGameProgress, (STEAM_ID64, 621)) is not None
     assert second["remaining"] == 0
     library_service._enrich_failures.clear()
+
+
+@respx.mock
+async def test_steam_429_pauses_background_achievement_requests():
+    from app.services import throttle
+    from app.services.steam_client import SteamAPIError, SteamClient
+
+    route = respx.get("https://api.steampowered.com/ISteamUserStats/GetPlayerAchievements/v0001/").mock(
+        return_value=httpx.Response(429)
+    )
+
+    async with SteamClient(api_key="clave") as client:
+        with pytest.raises(SteamAPIError):
+            await client.get_achievement_progress(STEAM_ID64, 620)
+        assert throttle.is_cooling_down("achievements")
+        # Mientras está en pausa no se vuelve a pedir.
+        with pytest.raises(SteamAPIError):
+            await client.get_achievement_progress(STEAM_ID64, 620)
+
+    assert route.call_count == 1

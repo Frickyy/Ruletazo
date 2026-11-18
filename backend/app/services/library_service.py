@@ -310,8 +310,8 @@ async def enrich_library_batch(db: Session, identifier: str, limit: int) -> dict
         # Los que se saltean por fallas recientes no cuentan: se reintentan en otra sesión.
         "remaining": max(len(ready) - len(to_process), 0),
         "failed": failed > 0,
-        # Si HowLongToBeat nos limitó, no tiene sentido seguir pidiendo ahora.
-        "paused": throttle.is_cooling_down("hltb"),
+        # Si HowLongToBeat o la Steam Web API nos limitaron, no tiene sentido seguir pidiendo ahora.
+        "paused": throttle.is_cooling_down("hltb") or throttle.is_cooling_down("achievements"),
     }
 
 
