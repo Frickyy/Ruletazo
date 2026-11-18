@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.models.forum import ForumPost, ForumReport, ForumReview, ForumThread
+from app.models.room import Room
 from app.models.game import (
     CachedGameDetails,
     CachedLibraryEntry,
@@ -175,6 +176,17 @@ def delete_user_data(db: Session, steam_id: str) -> dict:
     db.flush()
     for thread in db.execute(select(ForumThread).where(ForumThread.id.in_(touched_thread_ids))).scalars():
         refresh_last_activity(db, thread)
+
+    # Salas en grupo: las suyas se cierran; de las ajenas sale (con sus vetos).
+    counts["rooms"] = db.execute(delete(Room).where(Room.host_steam_id == steam_id)).rowcount
+    for room in db.execute(select(Room)).scalars():
+        if any(member["steam_id"] == steam_id for member in room.members):
+            room.members = [member for member in room.members if member["steam_id"] != steam_id]
+            room.vetoes = {
+                appid: [voter for voter in voters if voter != steam_id]
+                for appid, voters in room.vetoes.items()
+                if any(voter != steam_id for voter in voters)
+            }
 
     row = get_preferences(db, steam_id)
     if row is None:
