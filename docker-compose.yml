@@ -12,6 +12,8 @@ services:
       DATABASE_URL: sqlite:////data/steam_roulette.db
       FRONTEND_DIST: /app/frontend-dist
       ENVIRONMENT: production
+      # Una copia de la base por día, en el mismo volumen.
+      BACKUP_DIR: /data/backups
     volumes:
       - data:/data
     restart: unless-stopped
