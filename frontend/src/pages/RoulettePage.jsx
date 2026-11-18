@@ -52,6 +52,7 @@ function RoulettePage({
   trackAchievements = false,
   onOpenProfile,
   hltbEnabled = true,
+  onCreateRoom,
 }) {
   const { games, status: libraryStatus, error: libraryError, updateGame } = library;
   const [collection, setCollection] = useState("all");
@@ -69,6 +70,7 @@ function RoulettePage({
   const [isLoadingAchievements, setIsLoadingAchievements] = useState(false);
   const [achievementError, setAchievementError] = useState(false);
   const [notice, setNotice] = useState(null); // { text, undo? }
+  const [creatingRoom, setCreatingRoom] = useState(false);
   const [history, addToHistory] = useSpinHistory(steamId);
   // "Otro": el juego que no querías no vuelve a salir hasta que cierres la pestaña.
   const [skipped, setSkipped] = useSessionSet("steamRoulette.skippedToday");
@@ -249,6 +251,17 @@ function RoulettePage({
         setNotice({ text: `${target.name} vuelve a estar en la ruleta.` });
       },
     });
+  }
+
+  async function handleCreateRoom() {
+    setCreatingRoom(true);
+    try {
+      await onCreateRoom(spinnable);
+    } catch (err) {
+      setNotice({ text: err.response?.data?.detail ?? "No se pudo armar la sala. Probá de nuevo." });
+    } finally {
+      setCreatingRoom(false);
+    }
   }
 
   let status = null;
@@ -471,6 +484,17 @@ function RoulettePage({
                 label="Ruleta inteligente"
                 title="Salen más seguido los sin estrenar, los cortos, los bien reseñados, tus favoritos y los que estás jugando"
               />
+              {onCreateRoom && (
+                <button
+                  type="button"
+                  className="toggle toggle--action"
+                  onClick={handleCreateRoom}
+                  disabled={isSpinning || creatingRoom || spinnable.length < 2}
+                  title="Armá una sala con estos juegos: tus amigos entran con un link, vetan y la ruleta gira para todos"
+                >
+                  {creatingRoom ? "Armando sala…" : "Jugar en grupo"}
+                </button>
+              )}
             </div>
           </>
         )}

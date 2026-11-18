@@ -6,9 +6,11 @@ const LibraryPage = lazy(() => import("./pages/LibraryPage.jsx"));
 const ForumPage = lazy(() => import("./pages/ForumPage.jsx"));
 const LegalPage = lazy(() => import("./pages/LegalPage.jsx"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage.jsx"));
+const RoomPage = lazy(() => import("./pages/RoomPage.jsx"));
 import SiteFooter from "./components/SiteFooter.jsx";
 import SteamLoginButton from "./components/SteamLoginButton.jsx";
 import { fetchPublicConfig } from "./services/profileService.js";
+import { createRoom } from "./services/roomService.js";
 import SteamIdInput from "./components/SteamIdInput.jsx";
 import { fetchSession, fetchSteamProfile, logoutSession } from "./services/gameService.js";
 import { useHashRoute } from "./routes.js";
@@ -44,7 +46,7 @@ function App() {
     const legacyId = localStorage.getItem(FRIEND_STEAM_ID_KEY) ?? "";
     return legacyId ? [legacyId] : [""];
   });
-  const [{ view: activeView, forumTarget, profileId }, navigate] = useHashRoute();
+  const [{ view: activeView, forumTarget, profileId, roomCode }, navigate] = useHashRoute();
   const [guestId, setGuestId] = useState(() => readStorage(GUEST_ID_KEY) ?? "");
   const [guestProfile, setGuestProfile] = useState(null);
   const isGuest = sessionChecked && !isLoggedIn && Boolean(guestId);
@@ -170,6 +172,13 @@ function App() {
     setProfile((current) => (current ? { ...current, ...preferences } : current));
     // Recién activado el seguimiento de logros: se vuelve a correr la segunda pasada para pedirlos.
     if (preferences.track_achievements && !profile?.track_achievements) library.restartEnrichment();
+  }
+
+  /** Arma una sala con los juegos que hoy entran en la ruleta y la abre. */
+  async function handleCreateRoom(games) {
+    const room = await createRoom(games);
+    navigate("room", null, room.code);
+    window.scrollTo({ top: 0 });
   }
 
   function removeFamilyId(index) {
@@ -299,7 +308,12 @@ function App() {
             trackAchievements={Boolean(profile?.track_achievements)}
             onOpenProfile={() => openProfile(null)}
             hltbEnabled={config?.hltb_enabled !== false}
+            onCreateRoom={isLoggedIn ? handleCreateRoom : undefined}
           />
+        )}
+
+        {activeView === "room" && (
+          <RoomPage code={roomCode} viewer={profile} onLogin={handleSteamLogin} onBack={() => setActiveView("roulette")} />
         )}
 
         {activeView === "forum" && (

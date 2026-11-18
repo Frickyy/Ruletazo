@@ -230,6 +230,19 @@
   color: var(--text);
 }
 
+/* Acción (no on/off) en la fila de opciones: mismo tamaño, con el acento. */
+.toggle--action {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+  background: transparent;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.toggle--action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .toggle--on {
   border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
   background: color-mix(in srgb, var(--accent) 10%, transparent);
