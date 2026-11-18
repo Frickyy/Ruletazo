@@ -14,8 +14,14 @@
 - **Para jugar juntos**: con la familia sumada, *En común con la familia* deja solo los juegos que tienen los dos; combinado con *Cooperativos*, la ruleta elige qué jugar en pareja o con amigos.
 - **Ruleta inteligente** (opcional): todos pueden salir, pero salen más seguido los sin estrenar, los cortos, los bien reseñados, tus favoritos y los que estás jugando.
 - **Barra espaciadora** para girar y **sonido** opcional del rodillo.
-- **Después de girar**: *Jugar ahora* abre Steam y lanza el juego; *Otro* vuelve a girar sin ese juego; *No me lo muestres más* lo saca de la ruleta (se recupera desde Biblioteca → Ocultos); y se puede marcar como *Jugando*, *Terminado* o *Abandonado*.
+- **Sin cuenta**: pegando el link de un perfil público de Steam se gira con esa biblioteca. Para guardar favoritos y estados hace falta iniciar sesión.
+- **Después de girar**: *Jugar ahora* abre Steam y lanza el juego; *Otro* vuelve a girar y ese juego no sale más por hoy (se puede deshacer); *No me lo muestres más* lo saca de la ruleta (se recupera desde Biblioteca → Ocultos); y se puede marcar como *Jugando*, *Terminado* o *Abandonado*.
 - **Historial**: los últimos juegos que salieron, para volver a cualquiera con un clic.
+
+### Salas en grupo
+- **Jugar en grupo** arma una sala (`#/sala/<código>`) con los juegos que hoy entran en tu ruleta. Tus amigos entran con el link e inician sesión con Steam.
+- Cada uno **veta** los juegos que no quiere. Quien armó la sala gira y el backend elige al azar entre los que nadie vetó: todos ven el mismo rodillo al mismo tiempo.
+- Las salas duran 12 horas y entran hasta 8 personas.
 - **Antes del primer giro**: juegos sin estrenar para elegir a mano y tus más jugados.
 
 ### Ficha de cada juego
@@ -38,7 +44,10 @@ En el celular se puede agregar a la pantalla de inicio y se abre como una app (P
 - **Privado por defecto**: solo lo ves vos hasta que lo hacés público y compartís el link.
 - En el perfil de otra persona, **"¿Qué tenemos en común?"** compara las bibliotecas (filtrable por cooperativo o multijugador) y permite sumarla a tu familia para girar entre los juegos en común.
 - El seguimiento del progreso de logros (para *Casi al 100%*) se activa desde el perfil.
-- **Borrar mis datos** elimina todo lo que la página guarda de vos.
+- **Pila de pendientes y desafíos del mes** (empezar algo nuevo, terminar uno cortito, terminar 3 juegos), calculados con los estados que marcás.
+- **Compartir mi año**: genera una imagen con tus números y tus últimos terminados (en el celular abre el menú de compartir).
+- Tus favoritos, ocultos, estados y progreso solo los ves vos, aunque alguien conozca tu SteamID.
+- **Borrar mis datos** elimina todo lo que la página guarda de vos y cierra las sesiones abiertas en otros dispositivos.
 
 ### Cuenta
 **Inicio de sesión con Steam** (OpenID, con el botón oficial): no se piden ni se guardan contraseñas. La sesión queda en una cookie firmada por el backend.
