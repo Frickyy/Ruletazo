@@ -21,6 +21,55 @@ export function familyIdMatches(rawId, profile) {
   return last === vanity;
 }
 
+const MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+
+/** Pila de pendientes y desafíos del mes (se calculan en el backend con los estados marcados). */
+function Challenges({ challenges, backlog, isMe }) {
+  const done = challenges.items.filter((item) => item.progress >= item.goal).length;
+  return (
+    <section className="profile-section" aria-labelledby="profile-challenges">
+      <div className="profile-section__heading">
+        <h2 id="profile-challenges">Desafíos de {MONTHS[challenges.month - 1]}</h2>
+        <span className="muted mono">
+          {done} de {challenges.items.length} cumplidos
+        </span>
+      </div>
+      <ul className="challenges">
+        {backlog && (
+          <li className="challenge challenge--backlog">
+            <strong>Pila de pendientes</strong>
+            <span className="challenge__number">{backlog.unplayed.toLocaleString("es-AR")}</span>
+            <small>
+              {backlog.total > 0
+                ? `juegos sin estrenar (${Math.round((backlog.unplayed / backlog.total) * 100)}% de la biblioteca)`
+                : "Todavía no hay biblioteca cargada."}
+            </small>
+          </li>
+        )}
+        {challenges.items.map((item) => {
+          const complete = item.progress >= item.goal;
+          return (
+            <li key={item.id} className={`challenge${complete ? " challenge--done" : ""}`}>
+              <strong>
+                {complete && <span aria-hidden="true">✓ </span>}
+                {item.title}
+              </strong>
+              <small>{item.description}</small>
+              <span className="challenge__bar" role="progressbar" aria-valuemin={0} aria-valuemax={item.goal} aria-valuenow={item.progress} aria-label={item.title}>
+                <span style={{ width: `${(item.progress / item.goal) * 100}%` }} />
+              </span>
+              <span className="challenge__count mono">
+                {item.progress} / {item.goal}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+      {isMe && <p className="hint">Se renuevan el primer día de cada mes. Para avanzar, marcá tus juegos como “Jugando” o “Terminado” desde la ficha de la ruleta.</p>}
+    </section>
+  );
+}
+
 function ProfilePage({ profileId, viewer, onLogin, onOpenForum, onAddToFamily, familyIds = [], onPreferencesChange, onDeleted }) {
   const targetId = profileId || viewer?.steam_id || null;
   const [profile, setProfile] = useState(null);
@@ -171,6 +220,8 @@ function ProfilePage({ profileId, viewer, onLogin, onOpenForum, onAddToFamily, f
           <dd>{summary.finished_this_year}</dd>
         </div>
       </dl>
+
+      {profile.challenges && <Challenges challenges={profile.challenges} backlog={profile.backlog} isMe={profile.is_me} />}
 
       <GameShelf title="Jugando ahora" games={profile.playing} empty={profile.is_me ? "Marcá un juego como “Jugando” desde la ficha de la ruleta." : "No está jugando nada por ahora."} />
       <GameShelf title="Terminados" games={profile.finished} empty={profile.is_me ? "Cuando termines un juego, marcalo como “Terminado”." : "Todavía no marcó juegos como terminados."} />

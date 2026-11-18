@@ -64,7 +64,7 @@ def update_preferences(
 
 def build_profile(db: Session, target_steam_id: str, viewer_steam_id: str | None, steam_profile: dict) -> dict:
     """Todo lo que muestra la página de perfil. Quien llama ya verificó `can_view`."""
-    from app.services import library_service  # evita la importación circular
+    from app.services import challenge_service, library_service  # evita la importación circular
 
     is_me = target_steam_id == viewer_steam_id
     preferences = get_preferences(db, target_steam_id)
@@ -100,6 +100,8 @@ def build_profile(db: Session, target_steam_id: str, viewer_steam_id: str | None
         "is_supporter": target_steam_id in get_settings().supporter_steam_id_set,
         "library_size": len(names),
         "summary": library_service.state_summary(db, target_steam_id),
+        "backlog": challenge_service.backlog(db, target_steam_id),
+        "challenges": challenge_service.monthly_challenges(db, target_steam_id),
         "playing": [game(row.appid) for row in states if row.state == "playing"][:MAX_GAMES_PER_SECTION],
         "finished": [game(row.appid) for row in states if row.state == "finished"][:MAX_GAMES_PER_SECTION],
         "favorites": [game(row.appid) for row in favorites][:MAX_GAMES_PER_SECTION],

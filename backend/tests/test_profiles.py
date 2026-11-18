@@ -250,3 +250,40 @@ def test_profile_names_family_games_from_other_libraries(db_session):
     profile = profile_service.build_profile(db_session, ANA, ANA, {"name": "Ana"})
 
     assert [game["name"] for game in profile["favorites"]] == ["Juego de Beto"]
+
+
+# ---------- Pila de pendientes y desafíos ----------
+
+
+def test_backlog_counts_unplayed_games_not_closed(db_session):
+    from app.services import challenge_service
+
+    db_session.add_all([
+        CachedLibraryEntry(steam_id=ANA, appid=1, name="A", playtime_forever_minutes=0, fetched_at=datetime.now(timezone.utc)),
+        CachedLibraryEntry(steam_id=ANA, appid=2, name="B", playtime_forever_minutes=0, fetched_at=datetime.now(timezone.utc)),
+        CachedLibraryEntry(steam_id=ANA, appid=3, name="C", playtime_forever_minutes=90, fetched_at=datetime.now(timezone.utc)),
+    ])
+    db_session.commit()
+    library_service.set_state(db_session, ANA, 2, "abandoned")
+
+    assert challenge_service.backlog(db_session, ANA) == {"unplayed": 1, "total": 3}
+
+
+def test_monthly_challenges_track_this_month_only(db_session):
+    from app.models.game import CachedGameDetails, GameState
+    from app.services import challenge_service
+
+    now = datetime(2026, 11, 18, tzinfo=timezone.utc)
+    db_session.add_all([
+        GameState(steam_id=ANA, appid=1, state="finished", updated_at=datetime(2026, 11, 2, tzinfo=timezone.utc)),
+        GameState(steam_id=ANA, appid=2, state="finished", updated_at=datetime(2026, 10, 30, tzinfo=timezone.utc)),
+        GameState(steam_id=ANA, appid=3, state="playing", updated_at=datetime(2026, 11, 10, tzinfo=timezone.utc)),
+        CachedGameDetails(appid=1, hltb_main_hours=4.5, fetched_at=now),
+    ])
+    db_session.commit()
+
+    items = {item["id"]: item for item in challenge_service.monthly_challenges(db_session, ANA, now)["items"]}
+
+    assert (items["start"]["progress"], items["start"]["goal"]) == (1, 1)
+    assert (items["short"]["progress"], items["short"]["goal"]) == (1, 1)
+    assert (items["finish"]["progress"], items["finish"]["goal"]) == (1, 3)  # el de octubre no cuenta
