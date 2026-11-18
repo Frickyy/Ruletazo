@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import RoulettePage from "./pages/RoulettePage.jsx";
-import LibraryPage from "./pages/LibraryPage.jsx";
-import ForumPage from "./pages/ForumPage.jsx";
-import LegalPage from "./pages/LegalPage.jsx";
-import ProfilePage from "./pages/ProfilePage.jsx";
+
+// La ruleta va en el paquete principal; el resto se descarga recién cuando se abre.
+const LibraryPage = lazy(() => import("./pages/LibraryPage.jsx"));
+const ForumPage = lazy(() => import("./pages/ForumPage.jsx"));
+const LegalPage = lazy(() => import("./pages/LegalPage.jsx"));
+const ProfilePage = lazy(() => import("./pages/ProfilePage.jsx"));
 import SiteFooter from "./components/SiteFooter.jsx";
 import SteamLoginButton from "./components/SteamLoginButton.jsx";
 import { fetchPublicConfig } from "./services/profileService.js";
@@ -16,6 +18,8 @@ import "./App.css";
 
 const FRIEND_STEAM_ID_KEY = "steamRoulette.friendSteamId";
 const FAMILY_IDS_KEY = "steamRoulette.familyIds";
+// Sin sesión se puede girar con cualquier biblioteca pública pegando el link del perfil.
+const GUEST_ID_KEY = "steamRoulette.guestId";
 // Claves de la versión anterior (la sesión vivía en localStorage); se limpian al arrancar.
 const LEGACY_SESSION_KEYS = ["steamRoulette.steamId", "steamRoulette.verifiedSteamId", "steamRoulette.profile"];
 
@@ -41,6 +45,27 @@ function App() {
     return legacyId ? [legacyId] : [""];
   });
   const [{ view: activeView, forumTarget, profileId }, navigate] = useHashRoute();
+  const [guestId, setGuestId] = useState(() => readStorage(GUEST_ID_KEY) ?? "");
+  const [guestProfile, setGuestProfile] = useState(null);
+  const isGuest = sessionChecked && !isLoggedIn && Boolean(guestId);
+  // Se espera a saber si hay sesión: si no, quien inició sesión cargaba primero la biblioteca de invitado.
+  const librarySteamId = steamId || (isGuest ? guestId : "");
+
+  useEffect(() => {
+    if (guestId) writeStorage(GUEST_ID_KEY, guestId);
+    else removeStorage(GUEST_ID_KEY);
+    setGuestProfile(null);
+    if (!guestId) return undefined;
+    let cancelled = false;
+    fetchSteamProfile(guestId)
+      .then((data) => {
+        if (!cancelled) setGuestProfile({ name: data.name, avatar: data.avatar });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [guestId]);
   // Configuración pública: links para apoyar, tiendas con afiliados, si hay duración (HLTB).
   const [config, setConfig] = useState(null);
   useEffect(() => {
@@ -180,7 +205,8 @@ function App() {
 
   const friendSteamId = includeFamily ? familyIdsStorageValue : "";
   // Una sola biblioteca para la ruleta y la página Biblioteca (se clasifica sola en segundo plano).
-  const library = useLibrary(steamId, friendSteamId);
+  const library = useLibrary(librarySteamId, friendSteamId);
+  const guest = isGuest ? { id: guestId, name: guestProfile?.name ?? "", avatar: guestProfile?.avatar ?? "" } : null;
 
   return (
     <div className="app-shell">
@@ -252,9 +278,12 @@ function App() {
       {authMessage && <p className="auth-message" role="status">{authMessage}</p>}
 
       <main className="main-panel">
+        <Suspense fallback={<p className="hint">Cargando…</p>}>
         {activeView === "roulette" && (
           <RoulettePage
-            steamId={steamId}
+            steamId={librarySteamId}
+            guest={guest}
+            onGuestChange={setGuestId}
             isLoggedIn={isLoggedIn}
             friendSteamId={friendSteamId}
             library={library}
@@ -287,6 +316,8 @@ function App() {
         {activeView === "library" && (
           <LibraryPage
             steamId={steamId}
+            guest={guest}
+            onLogin={handleSteamLogin}
             library={library}
             hideAdult={hideAdult}
             onHideAdultChange={setHideAdult}
@@ -358,6 +389,7 @@ function App() {
             </div>
           </section>
         )}
+        </Suspense>
       </main>
 
       <SiteFooter config={config} onNavigate={(view) => setActiveView(view)} />
@@ -385,6 +417,14 @@ function readStorage(key) {
     return localStorage.getItem(key);
   } catch {
     return null;
+  }
+}
+
+function removeStorage(key) {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    /* almacenamiento bloqueado */
   }
 }
 

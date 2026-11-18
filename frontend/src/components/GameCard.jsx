@@ -72,7 +72,7 @@ function GameCard({ game, isStale = false, isDemo = false, onToggleFavorite, onS
               </a>
             )}
             {onSpinAgain && (
-              <button type="button" className={`button${canPlay ? "" : " button--primary"}`} onClick={onSpinAgain}>
+              <button type="button" className={`button${canPlay ? "" : " button--primary"}`} onClick={onSpinAgain} title="Gira de nuevo y este juego no vuelve a salir por hoy">
                 ↻ Otro
               </button>
             )}

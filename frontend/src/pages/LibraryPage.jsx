@@ -1,3 +1,4 @@
+import SteamLoginButton from "../components/SteamLoginButton.jsx";
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { addFavorite, fetchStateSummary, removeFavorite, unhideGame } from "../services/gameService.js";
 import {
@@ -33,6 +34,8 @@ function LibraryPage({
   onIncludeFamilyChange,
   onManageFamily,
   hltbEnabled = true,
+  guest = null,
+  onLogin,
 }) {
   const { games, status, error: loadError, updateGame, classification, setClassificationPaused } = library;
   const [collection, setCollection] = useState("all");
@@ -111,7 +114,12 @@ function LibraryPage({
     return (
       <section className="library-page">
         <h1>Biblioteca</h1>
-        <p className="hint">Iniciá sesión con Steam para ver tu biblioteca.</p>
+        <p className="hint">
+          {guest
+            ? `En la ruleta estás usando la biblioteca de ${guest.name || "un perfil público"}. Iniciá sesión con Steam para explorarla, marcar favoritos y guardar qué estás jugando.`
+            : "Iniciá sesión con Steam para ver tu biblioteca."}
+        </p>
+        {onLogin && <SteamLoginButton onClick={onLogin} />}
       </section>
     );
   }
