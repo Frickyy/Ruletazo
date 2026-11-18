@@ -18,21 +18,57 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem 1.5rem;
-  padding-bottom: 1.1rem;
-  border-bottom: 1px solid var(--line);
+  gap: 1rem 1.5rem;
+  padding: 1.25rem 1.5rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 50%, var(--line));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--accent) 9%, var(--surface));
+  scroll-margin-top: 6rem;
 }
 
-.site-footer__support p {
-  margin: 0;
+.site-footer__support-text strong {
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+}
+
+.site-footer__support-text p {
+  margin: 0.25rem 0 0;
   color: var(--text-soft);
   font-size: 0.9375rem;
 }
 
 .site-footer__support-links {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-auto-columns: minmax(9.5rem, 1fr);
+  grid-auto-flow: column;
+  gap: 0.75rem;
+}
+
+.site-footer__donate {
+  justify-content: center;
   gap: 0.5rem;
+  min-height: 48px;
+  padding: 0 1.25rem;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.site-footer__donate svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* En el celular, los botones a todo el ancho y del mismo tamaño. */
+@media (max-width: 560px) {
+  .site-footer__support-links {
+    width: 100%;
+    grid-auto-columns: minmax(0, 1fr);
+  }
 }
 
 .site-footer__links {

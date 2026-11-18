@@ -11,13 +11,15 @@ function SiteFooter({ config, onNavigate }) {
       <div className="site-footer__inner">
         {supportLinks.length > 0 && (
           <div className="site-footer__support" id="apoyar">
-            <p>
-              <strong>¿Te sirve la ruleta?</strong> Es gratis y sin publicidad: si querés, podés ayudar a mantenerla.
-            </p>
+            <div className="site-footer__support-text">
+              <strong>¿Te sirve la ruleta?</strong>
+              <p>Es gratis y sin publicidad. Si querés, invitame un cafecito para ayudar a mantenerla.</p>
+            </div>
             <div className="site-footer__support-links">
               {supportLinks.map((link) => (
-                <a key={link.url} className="button" href={link.url} target="_blank" rel="noopener noreferrer">
-                  ♥ {link.name}
+                <a key={link.url} className="button button--primary site-footer__donate" href={link.url} target="_blank" rel="noopener noreferrer">
+                  <CupIcon />
+                  {link.name}
                 </a>
               ))}
             </div>
@@ -33,6 +35,14 @@ function SiteFooter({ config, onNavigate }) {
         </p>
       </div>
     </footer>
+  );
+}
+
+function CupIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 9h12v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V9Zm12 1.5h1.5a2.5 2.5 0 0 1 0 5H16M8 3.5c0 1 1 1.5 1 2.5M12 3.5c0 1 1 1.5 1 2.5" />
+    </svg>
   );
 }
 
