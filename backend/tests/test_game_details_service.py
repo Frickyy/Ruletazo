@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 from app.models.game import CachedGameDetails
-from app.services import game_details_service
+from app.services import game_details_service, library_service
 
 
 def _make_details(**overrides) -> CachedGameDetails:
@@ -58,5 +58,20 @@ def test_old_cache_row_is_missing_store_metadata():
 
 
 def test_current_cache_row_has_store_metadata_even_when_free_or_undated():
-    details = _make_details(store_metadata_version=3, price_cents=0, release_date="")
+    details = _make_details(
+        store_metadata_version=game_details_service.STORE_METADATA_VERSION, price_cents=0, release_date=""
+    )
     assert game_details_service.has_store_metadata(details) is True
+
+
+def test_expired_row_with_current_metadata_still_counts_as_classified():
+    details = _make_details(
+        store_metadata_version=game_details_service.STORE_METADATA_VERSION,
+        fetched_at=datetime.now(timezone.utc) - timedelta(days=30),
+    )
+    assert library_service._is_classified(details) is True
+
+
+def test_missing_or_outdated_row_is_not_classified():
+    assert library_service._is_classified(None) is False
+    assert library_service._is_classified(_make_details(store_metadata_version=0)) is False

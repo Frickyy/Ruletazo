@@ -132,23 +132,27 @@ async def get_random_from_library(
     return chosen
 
 
+def _is_classified(details: CachedGameDetails | None) -> bool:
+    """Un juego cuenta como clasificado si ya tiene los metadatos actuales de la Store.
+
+    No se exige que estén "frescos": los datos vencidos se refrescan solos cuando el juego
+    sale en la ruleta (ver game_details_service.get_or_fetch_details). Si se exigiera,
+    toda la biblioteca volvería a figurar como pendiente cada vez que vence el TTL.
+    """
+    return details is not None and game_details_service.has_store_metadata(details)
+
+
 async def get_classification_status(db: Session, identifier: str) -> dict:
-    """Cuántos juegos de la biblioteca ya tienen detalles frescos vs. el total."""
+    """Cuántos juegos de la biblioteca ya tienen metadatos de la Store vs. el total."""
     steam_id = await resolve_steam_id(identifier)
     appids = [entry.appid for entry in _get_cached_entries(db, steam_id)]
     details_map = _get_cached_details_map(db, appids)
-    classified = sum(
-        1
-        for appid in appids
-        if appid in details_map
-        and game_details_service.is_fresh(details_map[appid])
-        and game_details_service.has_store_metadata(details_map[appid])
-    )
+    classified = sum(1 for appid in appids if _is_classified(details_map.get(appid)))
     return {"classified": classified, "total": len(appids)}
 
 
 async def classify_library_batch(db: Session, identifier: str, limit: int) -> dict:
-    """Enriquece hasta `limit` juegos de la biblioteca que todavía no tengan detalles frescos.
+    """Enriquece hasta `limit` juegos de la biblioteca que todavía no estén clasificados.
 
     Steam no documenta un límite de rate para su Store API, así que esto avanza de a poco
     (con una pequeña pausa entre juegos) y se llama repetidas veces desde el frontend hasta
@@ -158,13 +162,7 @@ async def classify_library_batch(db: Session, identifier: str, limit: int) -> di
     entries = _get_cached_entries(db, steam_id)
     details_map = _get_cached_details_map(db, [entry.appid for entry in entries])
 
-    pending = [
-        entry
-        for entry in entries
-        if entry.appid not in details_map
-        or not game_details_service.is_fresh(details_map[entry.appid])
-        or not game_details_service.has_store_metadata(details_map[entry.appid])
-    ]
+    pending = [entry for entry in entries if not _is_classified(details_map.get(entry.appid))]
     to_process = pending[:limit]
 
     for index, entry in enumerate(to_process):

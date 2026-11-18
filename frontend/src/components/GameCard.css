@@ -501,3 +501,9 @@
     padding: 1.2rem 1.4rem;
   }
 }
+
+/* Los paneles de HLTB y reseñas viven en la columna lateral: apilados entran a
+   cualquier ancho (en dos columnas el de reseñas se cortaba en tablets). */
+.game-card__dashboard {
+  grid-template-columns: minmax(0, 1fr);
+}

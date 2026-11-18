@@ -131,7 +131,7 @@ function App() {
   }
 
   function handleSteamLogin() {
-    const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:8000/api";
+    const apiUrl = import.meta.env.VITE_API_URL ?? "/api";
     window.location.href = `${apiUrl}/auth/login`;
   }
 
@@ -242,7 +242,7 @@ function App() {
         )}
 
         {activeView !== "roulette" && <div className="content-surface">
-          {(activeView === "roulette" || activeView === "library") && activeView === "library" && (
+          {activeView === "library" && (
             <div className="family-inline-control">
               <span>Incluir biblioteca familiar</span>
               <label className="switch">

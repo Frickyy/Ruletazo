@@ -1087,24 +1087,6 @@ body {
   box-shadow: 0 0 0 0.18rem rgba(52, 211, 153, 0.12);
 }
 
-/* The navbar belongs to the viewport, independent of document scrolling. */
-.topbar {
-  position: absolute !important;
-  top: 1.5rem !important;
-  left: 0 !important;
-  right: 0 !important;
-  z-index: 10 !important;
-  margin: 0 !important;
-}
-
-@media (max-width: 760px) {
-  .topbar {
-    top: 1rem !important;
-    left: 0.7rem !important;
-    right: 0.7rem !important;
-  }
-}
-
 /* Final palette overrides. */
 html,
 body,
@@ -1442,63 +1424,100 @@ body,
   }
 }
 
-/* Fixed three-zone navigation on desktop. */
-@media (min-width: 761px) {
+/* Navigation: three columns on desktop (brand · tabs · account), two rows on
+   narrow screens. A grid keeps the zones from overlapping at any width. */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  max-width: 1024px;
+  margin: 0 auto 2rem;
+  padding: 1rem 0;
+  border: 0;
+  border-radius: 0;
+  background: rgba(8, 9, 13, 0.92);
+  box-shadow: none;
+  backdrop-filter: blur(12px);
+}
+
+.topbar__left {
+  display: contents;
+}
+
+.brand {
+  position: static;
+  grid-column: 1;
+  justify-self: start;
+}
+
+.topbar__links {
+  position: static;
+  grid-column: 2;
+  transform: none;
+  margin: 0;
+  max-width: none;
+  overflow: visible;
+}
+
+.topbar__meta {
+  position: static;
+  grid-column: 3;
+  justify-self: end;
+}
+
+.modern-shell {
+  padding-top: 0;
+}
+
+@media (max-width: 900px) {
   .topbar {
-    position: fixed;
-    top: 1.5rem;
-    left: 0;
-    right: 0;
-    margin: 0;
-    justify-content: initial;
-    border: 0;
-    background: transparent !important;
-    box-shadow: none;
-    backdrop-filter: none;
-  }
-
-  .topbar__left {
-    position: static;
-    width: 100%;
-  }
-
-  .brand {
-    position: absolute;
-    left: max(1rem, calc((100vw - 1024px) / 2));
-  }
-
-  .topbar__links {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    margin: 0;
+    grid-template-columns: 1fr auto;
+    row-gap: 0.75rem;
+    padding: 0.75rem 0;
   }
 
   .topbar__meta {
-    position: absolute;
-    right: max(1rem, calc((100vw - 1024px) / 2));
+    grid-column: 2;
+    grid-row: 1;
   }
 
-  .modern-shell {
-    padding-top: 6rem;
+  .topbar__links {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-self: stretch;
+    display: flex;
+    justify-content: center;
+    flex-wrap: nowrap;
+  }
+
+  .topbar__links .nav-link {
+    flex: 1;
   }
 }
 
-@media (max-width: 760px) {
-  .topbar {
-    position: fixed;
-    top: 1rem;
-    left: 0.7rem;
-    right: 0.7rem;
-    margin: 0;
-    border: 0;
-    border-radius: 0.7rem;
-    background: transparent !important;
-    box-shadow: none;
-    backdrop-filter: none;
+/* El brillo detrás del botón no puede ser más ancho que la pantalla (generaba scroll horizontal). */
+.hero-orb {
+  width: min(34rem, 100%);
+}
+
+@media (max-width: 480px) {
+  .brand {
+    gap: 0.5rem;
+    font-size: 1rem;
   }
 
-  .modern-shell {
-    padding-top: 5rem;
+  .steam-login-top {
+    padding: 0.45rem 0.7rem;
+    font-size: 0.68rem;
+    white-space: nowrap;
+  }
+
+  .glow-button {
+    font-size: 1.15rem;
   }
 }

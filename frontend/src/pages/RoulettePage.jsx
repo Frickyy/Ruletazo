@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useRandomGame } from "../hooks/useRandomGame.js";
-import { addFavorite, fetchGenres, fetchPlayerAchievements, removeFavorite } from "../services/gameService.js";
+import { addFavorite, fetchGenres, fetchLibrary, fetchPlayerAchievements, removeFavorite } from "../services/gameService.js";
 import GameCard from "../components/GameCard.jsx";
 import "../components/GameCard.css";
 import "./RoulettePage.css";
@@ -15,6 +15,8 @@ function RoulettePage({ steamId, friendSteamId, playtimeFilter = "all", spinRequ
   const [achievementError, setAchievementError] = useState(false);
   const optionsRef = useRef({});
   const [thinkingIndex, setThinkingIndex] = useState(0);
+  const [libraryPreview, setLibraryPreview] = useState([]);
+  const [thinkingGames, setThinkingGames] = useState(DEMO_THINKING_GAMES);
   const lastSpinRequestRef = useRef(spinRequest);
 
   optionsRef.current = { steamId, friendSteamId, collection, genre: genre || undefined, playtimeFilter };
@@ -23,11 +25,40 @@ function RoulettePage({ steamId, friendSteamId, playtimeFilter = "all", spinRequ
     onLoadingChange?.(isLoading);
   }, [isLoading, onLoadingChange]);
 
+  // Juegos reales de la biblioteca (propia + familia) para la animación de "Buscando".
+  // El backend la tiene cacheada, así que este pedido es liviano.
+  useEffect(() => {
+    if (!steamId) {
+      setLibraryPreview([]);
+      return undefined;
+    }
+    let cancelled = false;
+    fetchLibrary({ steamId, friendSteamId })
+      .then((games) => {
+        if (!cancelled) setLibraryPreview(games);
+      })
+      .catch(() => {
+        if (!cancelled) setLibraryPreview([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [steamId, friendSteamId]);
+
+  // Al empezar cada giro se arma una tanda nueva, respetando los filtros activos,
+  // y se precargan las portadas para que no parpadeen mientras rotan.
   useEffect(() => {
     if (!isLoading) return undefined;
-    const timer = window.setInterval(() => setThinkingIndex((index) => (index + 1) % THINKING_GAMES.length), 350);
+    const nextGames = pickThinkingGames(libraryPreview, optionsRef.current);
+    nextGames.forEach(({ image }) => {
+      const preload = new Image();
+      preload.src = image;
+    });
+    setThinkingGames(nextGames);
+    setThinkingIndex(0);
+    const timer = window.setInterval(() => setThinkingIndex((index) => (index + 1) % nextGames.length), 350);
     return () => window.clearInterval(timer);
-  }, [isLoading]);
+  }, [isLoading, libraryPreview]);
 
   useEffect(() => {
     onGameChange?.(game);
@@ -127,13 +158,13 @@ function RoulettePage({ steamId, friendSteamId, playtimeFilter = "all", spinRequ
 
       {error && <p className="roulette-page__error">{error}</p>}
 
-      {isLoading && <ThinkingCard game={THINKING_GAMES[thinkingIndex]} />}
+      {isLoading && <ThinkingCard game={thinkingGames[thinkingIndex] ?? thinkingGames[0]} />}
 
       {!error && !game && !isLoading && (
         <p className="roulette-page__hint">
           {steamId
             ? "Presioná el botón para elegir un juego al azar de tu biblioteca de Steam."
-            : "Presioná el botón para probar con la biblioteca de ejemplo, o ingresá tu SteamID arriba."}
+            : "Presioná el botón para probar con una biblioteca de ejemplo, o iniciá sesión con Steam para usar la tuya."}
         </p>
       )}
 
@@ -142,11 +173,41 @@ function RoulettePage({ steamId, friendSteamId, playtimeFilter = "all", spinRequ
   );
 }
 
-const THINKING_GAMES = [
-  { name: "Buscando en tu biblioteca", image: "https://cdn.cloudflare.steamstatic.com/steam/apps/1091500/header.jpg" },
-  { name: "Revisando tus juegos", image: "https://cdn.cloudflare.steamstatic.com/steam/apps/1245620/header.jpg" },
-  { name: "Encontrando una sorpresa", image: "https://cdn.cloudflare.steamstatic.com/steam/apps/1145360/header.jpg" },
+const THINKING_BATCH_SIZE = 14;
+
+// Sin sesión iniciada la ruleta usa la biblioteca de ejemplo del backend: se muestran esos mismos juegos.
+const DEMO_THINKING_GAMES = [
+  { name: "Cyberpunk 2077", image: steamHeader(1091500) },
+  { name: "ELDEN RING", image: steamHeader(1245620) },
+  { name: "Stardew Valley", image: steamHeader(413150) },
+  { name: "Red Dead Redemption 2", image: steamHeader(1174180) },
+  { name: "Hades", image: steamHeader(1145360) },
 ];
+
+function steamHeader(appid) {
+  return `https://cdn.cloudflare.steamstatic.com/steam/apps/${appid}/header.jpg`;
+}
+
+/** Elige una tanda al azar de la biblioteca, priorizando los juegos que cumplen los filtros del giro. */
+function pickThinkingGames(library, { collection, genre, playtimeFilter } = {}) {
+  if (library.length === 0) return DEMO_THINKING_GAMES;
+
+  const matching = library.filter((game) => {
+    if (collection === "favorites" && !game.is_favorite) return false;
+    if (genre && !game.genres.includes(genre)) return false;
+    if (playtimeFilter === "zero" && game.playtime_forever_minutes !== 0) return false;
+    if (playtimeFilter === "under2" && game.playtime_forever_minutes >= 120) return false;
+    return true;
+  });
+  const pool = matching.length >= 3 ? matching : library;
+
+  const shuffled = [...pool];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+  return shuffled.slice(0, THINKING_BATCH_SIZE).map((game) => ({ name: game.name, image: game.header_image }));
+}
 
 function ThinkingCard({ game }) {
   return (

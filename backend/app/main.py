@@ -10,6 +10,8 @@ from app.db.session import init_db
 from app.routers import auth, games
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+# httpx registra cada URL completa en nivel INFO, incluida la STEAM_API_KEY que viaja como parámetro.
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 settings = get_settings()
 

@@ -6,6 +6,7 @@
  */
 function GameCard({ game, onToggleFavorite, achievementProgress, isLoadingAchievements, achievementError }) {
   const playtimeHours = Math.round(game.playtime_forever_minutes / 60);
+  const featuredReview = game.featured_reviews.find(isReadableReview);
 
   return (
     <article className="game-card">
@@ -54,8 +55,8 @@ function GameCard({ game, onToggleFavorite, achievementProgress, isLoadingAchiev
         <div className="game-card__dashboard">
           <section className="game-card__panel">
             <h3>Tiempo Estimado (HLTB)</h3>
-            <div className="game-card__stat"><span>Historia Principal</span><strong>{game.hltb_main_hours != null ? `${game.hltb_main_hours}h` : "Sin datos"}</strong></div>
-            <div className="game-card__stat"><span>Completista</span><strong>{game.hltb_completionist_hours != null ? `${game.hltb_completionist_hours}h` : "Sin datos"}</strong></div>
+            <div className="game-card__stat"><span>Historia Principal</span><strong>{formatHours(game.hltb_main_hours)}</strong></div>
+            <div className="game-card__stat"><span>Completista</span><strong>{formatHours(game.hltb_completionist_hours)}</strong></div>
             <div className="game-card__alert">
               <span>Dificultad de logros <strong>{game.achievement_difficulty}</strong></span>
             </div>
@@ -65,7 +66,7 @@ function GameCard({ game, onToggleFavorite, achievementProgress, isLoadingAchiev
             <h3>Resumen de reseñas</h3>
             <strong>{game.review_score_desc || "Reseñas de la comunidad"}</strong>
             <span>{game.review_total > 0 ? `${game.review_total.toLocaleString("es-AR")} reseñas` : "Todavía no hay reseñas clasificadas"}</span>
-            {game.featured_reviews.length > 0 && <p>“{game.featured_reviews[0]}”</p>}
+            {featuredReview && <p>“{featuredReview}”</p>}
           </section>
         </div>
 
@@ -98,6 +99,24 @@ function GameCard({ game, onToggleFavorite, achievementProgress, isLoadingAchiev
       )}
     </article>
   );
+}
+
+/** HowLongToBeat devuelve decimales (ej. 21.88): se muestran redondeados. */
+function formatHours(hours) {
+  if (hours == null) return "Sin datos";
+  if (hours < 1) return "< 1 h";
+  return `${Math.round(hours)} h`;
+}
+
+/**
+ * Descarta reseñas que son solo arte con símbolos o emojis (pasa seguido en Steam):
+ * al menos la mitad de los caracteres visibles tienen que ser letras.
+ */
+function isReadableReview(review) {
+  const visible = review.replace(/\s/g, "");
+  if (visible.length < 15) return false;
+  const letters = visible.match(/\p{L}/gu)?.length ?? 0;
+  return letters / visible.length >= 0.5;
 }
 
 export default GameCard;

@@ -124,7 +124,7 @@ function LibraryPage({ steamId, friendSteamId, playtimeFilter = "all" }) {
   }
 
   if (!steamId) {
-    return <p className="roulette-page__hint">Ingresá tu SteamID arriba para ver tu biblioteca.</p>;
+    return <p className="roulette-page__hint">Iniciá sesión con Steam para ver tu biblioteca.</p>;
   }
 
   return (
