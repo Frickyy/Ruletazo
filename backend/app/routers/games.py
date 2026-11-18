@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.core.security import require_steam_id
 from app.db.session import get_db
 from app.schemas.game import Game
 from app.services import favorites_service, library_service
@@ -100,6 +101,28 @@ async def get_random_game(
     return game
 
 
+@router.get("/details", response_model=Game)
+async def get_game_details(
+    appid: int = Query(..., description="appid del juego que frenó en el rodillo."),
+    steamid: str | None = Query(default=None, description="SteamID64 o vanity URL. Sin él se usa la biblioteca de ejemplo."),
+    friend_steamid: str | None = Query(default=None, description="SteamID64/vanity de familiares, separados por coma."),
+    db: Session = Depends(get_db),
+) -> Game:
+    """Ficha completa de un juego de la biblioteca. La ruleta elige el juego en el navegador
+    (el que queda en la ventana del rodillo) y después pide sus datos acá."""
+    settings = get_settings()
+    if not steamid or not settings.has_steam_api_key:
+        mock = next((game for game in _MOCK_LIBRARY if game.appid == appid), None)
+        if mock is None:
+            raise HTTPException(status_code=404, detail="Ese juego no está en la biblioteca de ejemplo.")
+        return mock
+
+    game = await _unwrap_steam_errors(library_service.get_game_details(db, steamid, friend_steamid, appid))
+    if game is None:
+        raise HTTPException(status_code=404, detail="Ese juego no está en la biblioteca.")
+    return game
+
+
 @router.get("/library", response_model=list[Game])
 async def get_library(
     steamid: str = Query(..., description="SteamID64 o vanity URL."),
@@ -160,24 +183,24 @@ async def classify_library(
     return await _unwrap_steam_errors(library_service.classify_library_batch(db, steamid, limit))
 
 
+# Favoritos: se guardan para el usuario de la sesión (cookie firmada), no para el `steamid`
+# que mande el navegador, así nadie puede tocar los favoritos de otra persona.
 @router.post("/favorites")
 async def add_favorite(
-    steamid: str = Query(..., description="SteamID64 o vanity URL."),
     appid: int = Query(..., description="appid del juego a favoritear."),
     db: Session = Depends(get_db),
+    steam_id: str = Depends(require_steam_id),
 ) -> dict:
-    steam_id = await _unwrap_steam_errors(library_service.resolve_steam_id(steamid))
     favorites_service.add_favorite(db, steam_id, appid)
     return {"appid": appid, "is_favorite": True}
 
 
 @router.delete("/favorites")
 async def remove_favorite(
-    steamid: str = Query(..., description="SteamID64 o vanity URL."),
     appid: int = Query(..., description="appid del juego a sacar de favoritos."),
     db: Session = Depends(get_db),
+    steam_id: str = Depends(require_steam_id),
 ) -> dict:
-    steam_id = await _unwrap_steam_errors(library_service.resolve_steam_id(steamid))
     favorites_service.remove_favorite(db, steam_id, appid)
     return {"appid": appid, "is_favorite": False}
 

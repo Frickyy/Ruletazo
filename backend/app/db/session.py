@@ -21,7 +21,7 @@ class Base(DeclarativeBase):
 
 def init_db() -> None:
     """Crea en la DB las tablas que falten, según los modelos declarados. No borra datos existentes."""
-    from app.models import game  # noqa: F401  (registra CachedLibraryEntry en Base.metadata)
+    from app.models import forum, game  # noqa: F401  (registra los modelos en Base.metadata)
 
     Base.metadata.create_all(bind=engine)
     _upgrade_game_details_table()
@@ -41,6 +41,12 @@ def _upgrade_game_details_table() -> None:
             connection.execute(text("ALTER TABLE cached_game_details ADD COLUMN store_metadata_version INTEGER DEFAULT 0"))
         if "developer" not in columns:
             connection.execute(text("ALTER TABLE cached_game_details ADD COLUMN developer VARCHAR(255) DEFAULT ''"))
+        if "review_pros" not in columns:
+            connection.execute(text("ALTER TABLE cached_game_details ADD COLUMN review_pros TEXT DEFAULT ''"))
+        if "review_cons" not in columns:
+            connection.execute(text("ALTER TABLE cached_game_details ADD COLUMN review_cons TEXT DEFAULT ''"))
+        if "reviews_version" not in columns:
+            connection.execute(text("ALTER TABLE cached_game_details ADD COLUMN reviews_version INTEGER DEFAULT 0"))
 
 
 def get_db() -> Generator[Session, None, None]:

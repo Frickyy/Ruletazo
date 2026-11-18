@@ -142,6 +142,23 @@ def _is_classified(details: CachedGameDetails | None) -> bool:
     return details is not None and game_details_service.has_store_metadata(details)
 
 
+async def get_game_details(
+    db: Session, identifier: str, friend_identifier: str | None, appid: int
+) -> Game | None:
+    """Ficha completa de un juego de la biblioteca (propia o familiar), enriquecida al toque.
+
+    La ruleta "en vivo" elige el juego en el navegador (el que frena en el rodillo) y pide
+    su ficha con esto, en vez de que el backend elija uno al azar.
+    """
+    games = await get_filtered_library(db, identifier, friend_identifier, collection="all", genre=None)
+    chosen = next((game for game in games if game.appid == appid), None)
+    if chosen is None:
+        return None
+    details = await game_details_service.get_or_fetch_details(db, chosen.appid, chosen.name)
+    _apply_cached_details(chosen, details)
+    return chosen
+
+
 async def get_classification_status(db: Session, identifier: str) -> dict:
     """Cuántos juegos de la biblioteca ya tienen metadatos de la Store vs. el total."""
     steam_id = await resolve_steam_id(identifier)
@@ -238,6 +255,8 @@ def _apply_cached_details(game: Game, details: CachedGameDetails) -> None:
     game.review_score_desc = details.review_score_desc
     game.review_total = details.review_total
     game.featured_reviews = details.featured_reviews
+    game.review_pros = details.review_pros or ""
+    game.review_cons = details.review_cons or ""
     game.hltb_main_hours = details.hltb_main_hours
     game.hltb_completionist_hours = details.hltb_completionist_hours
     game.achievement_difficulty = game_details_service.difficulty_label(details)

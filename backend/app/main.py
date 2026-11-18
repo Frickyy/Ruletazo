@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
 from app.db.session import init_db
-from app.routers import auth, games
+from app.routers import auth, forum, games
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 # httpx registra cada URL completa en nivel INFO, incluida la STEAM_API_KEY que viaja como parámetro.
@@ -34,12 +34,13 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
 app.include_router(games.router)
 app.include_router(auth.router)
+app.include_router(forum.router)
 
 
 @app.get("/api/health", tags=["health"])

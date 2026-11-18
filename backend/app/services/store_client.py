@@ -99,6 +99,7 @@ class SteamStoreClient:
             app_type = data.get("type", "")
             release_date = _normalize_release_date(data.get("release_date", {}).get("date", ""))
             result[appid] = {
+                "name": data.get("name", ""),
                 "genres": genres,
                 "short_description": data.get("short_description", ""),
                 "developer": ", ".join(data.get("developers", [])),
@@ -146,6 +147,84 @@ class SteamStoreClient:
         }
 
 
+    async def get_review_highlights(self, appid: int) -> dict:
+        """La reseña positiva y la negativa más votadas como útiles ("lo bueno" y "lo malo").
+
+        Busca primero en español; si no hay una reseña con contenido, en cualquier idioma.
+        """
+        highlights = {}
+        for review_type in ("positive", "negative"):
+            text = ""
+            for language in ("spanish", "all"):
+                text = await self._most_helpful_review(appid, review_type, language)
+                if text:
+                    break
+            highlights[review_type] = text
+        return {"pros": highlights["positive"], "cons": highlights["negative"]}
+
+    async def _most_helpful_review(self, appid: int, review_type: str, language: str) -> str:
+        try:
+            response = await self._client.get(
+                f"/appreviews/{appid}",
+                params={
+                    "json": 1,
+                    "filter": "all",
+                    "review_type": review_type,
+                    "language": language,
+                    "num_per_page": 10,
+                    "purchase_type": "all",
+                },
+            )
+            response.raise_for_status()
+        except httpx.HTTPError:
+            return ""
+        return pick_highlight([review.get("review", "") for review in response.json().get("reviews", [])])
+
+    async def search_games(self, term: str, limit: int = 10) -> list[dict]:
+        """Busca juegos en la tienda de Steam por nombre (para el buscador del foro)."""
+        try:
+            response = await self._client.get(
+                "/api/storesearch/",
+                params={"term": term, "l": "spanish", "cc": "us"},
+            )
+            response.raise_for_status()
+        except httpx.HTTPError:
+            return []
+        return parse_search_results(response.json(), limit)
+
+
+# Largo máximo guardado para "lo bueno" / "lo malo": la ficha muestra un extracto.
+HIGHLIGHT_MAX_LENGTH = 600
+
+
+def pick_highlight(reviews: list[str]) -> str:
+    """Primera reseña con contenido real (descarta dibujos ASCII), recortada a HIGHLIGHT_MAX_LENGTH."""
+    for review in reviews:
+        text = " ".join(review.split())
+        if _is_readable_highlight(text):
+            if len(text) > HIGHLIGHT_MAX_LENGTH:
+                text = text[:HIGHLIGHT_MAX_LENGTH].rsplit(" ", 1)[0] + "…"
+            return text
+    return ""
+
+
+def parse_search_results(payload: dict, limit: int = 10) -> list[dict]:
+    """Convierte la respuesta de storesearch en [{appid, name, image}] (solo juegos/apps)."""
+    results = []
+    for item in payload.get("items", []):
+        if item.get("type") != "app" or not item.get("id"):
+            continue
+        appid = int(item["id"])
+        results.append({"appid": appid, "name": item.get("name", ""), "image": steam_header_image(appid)})
+        if len(results) >= limit:
+            break
+    return results
+
+
+def steam_header_image(appid: int) -> str:
+    return f"https://cdn.cloudflare.steamstatic.com/steam/apps/{appid}/header.jpg"
+
+
 def _normalize_release_date(value: str) -> str:
     """Converts Steam's English display date into ISO for reliable sorting."""
     for date_format in ("%b %d, %Y", "%d %b, %Y", "%b %Y", "%Y"):
@@ -157,7 +236,15 @@ def _normalize_release_date(value: str) -> str:
 
 
 def _empty_app_details() -> dict:
-    return {"genres": [], "short_description": "", "developer": "", "price_cents": None, "release_date": "", "store_available": False}
+    return {
+        "name": "",
+        "genres": [],
+        "short_description": "",
+        "developer": "",
+        "price_cents": None,
+        "release_date": "",
+        "store_available": False,
+    }
 
 
 def _is_substantive_review(review: str) -> bool:
@@ -166,3 +253,13 @@ def _is_substantive_review(review: str) -> bool:
         return False
     letters = sum(character.isalpha() for character in review)
     return letters >= 40 and len(set(review.casefold())) >= 12
+
+
+def _is_readable_highlight(text: str) -> bool:
+    """Más permisivo que _is_substantive_review (acepta reseñas cortas), pero exige texto real:
+    al menos 60 caracteres y que la mitad sean letras (descarta dibujos con símbolos)."""
+    visible = text.replace(" ", "")
+    if len(text) < 60 or not visible:
+        return False
+    letters = sum(character.isalpha() for character in visible)
+    return letters / len(visible) >= 0.5 and len(set(text.casefold())) >= 12

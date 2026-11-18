@@ -65,10 +65,11 @@
   line-height: 1.6;
 }
 
-.game-card__steam-link {
-  margin-top: 0.4rem;
-  font-size: 0.875rem;
-  font-weight: 600;
+.game-card__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.6rem;
 }
 
 .game-card__side {
@@ -104,17 +105,58 @@
   text-align: right;
 }
 
-.game-card__review {
+/* "Lo bueno" y "lo malo": las reseñas positiva y negativa más útiles de Steam. */
+.game-card__verdict {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.verdict {
   margin: 0;
   padding-left: 0.9rem;
   border-left: 2px solid var(--line-strong);
-  color: var(--muted);
+}
+
+.verdict--good {
+  border-left-color: var(--success);
+}
+
+.verdict--bad {
+  border-left-color: var(--danger);
+}
+
+.verdict figcaption {
+  margin-bottom: 0.2rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.verdict--good figcaption {
+  color: var(--success);
+}
+
+.verdict--bad figcaption {
+  color: var(--danger);
+}
+
+.verdict blockquote {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-soft);
   font-size: 0.875rem;
   line-height: 1.55;
-  display: -webkit-box;
-  -webkit-line-clamp: 4;
+  -webkit-line-clamp: 5;
   -webkit-box-orient: vertical;
-  overflow: hidden;
+}
+
+.game-card__verdict-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.75rem;
 }
 
 /* ---------- Logros ---------- */

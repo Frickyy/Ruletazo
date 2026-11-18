@@ -26,6 +26,8 @@ class Game(BaseModel):
     review_score_desc: str = ""
     review_total: int = 0
     featured_reviews: list[str] = Field(default_factory=list)
+    review_pros: str = ""
+    review_cons: str = ""
     hltb_main_hours: float | None = None
     hltb_completionist_hours: float | None = None
     achievement_difficulty: str = "Sin datos"

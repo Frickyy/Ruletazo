@@ -10,6 +10,9 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./steam_roulette.db"
     cors_origins: str = "http://localhost:5173"
     frontend_url: str = "http://localhost:5173"
+    # Clave para firmar la cookie de sesión. Si queda vacía se genera una al azar en cada arranque
+    # (las sesiones se pierden al reiniciar el backend). Ver core/security.py.
+    session_secret: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

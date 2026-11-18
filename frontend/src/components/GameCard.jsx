@@ -1,11 +1,10 @@
 /**
  * Componente presentacional: recibe el juego elegido y lo muestra.
- * No sabe de dónde vienen los datos (eso es de `useRandomGame` y `gameService`).
+ * No sabe de dónde vienen los datos (eso es de `RoulettePage` y `gameService`).
  * `onToggleFavorite` es opcional: sin sesión no se muestra la estrella.
  */
-function GameCard({ game, onToggleFavorite, achievementProgress, isLoadingAchievements, achievementError }) {
+function GameCard({ game, onToggleFavorite, onOpenForum, achievementProgress, isLoadingAchievements, achievementError }) {
   const playtimeHours = Math.round(game.playtime_forever_minutes / 60);
-  const featuredReview = game.featured_reviews.find(isReadableReview);
   const releaseYear = game.release_date ? game.release_date.slice(0, 4) : "";
   const meta = [game.developer, game.genres.join(", "), releaseYear].filter(Boolean).join(" · ");
   const showAchievements = isLoadingAchievements || achievementError || achievementProgress?.total > 0;
@@ -42,9 +41,16 @@ function GameCard({ game, onToggleFavorite, achievementProgress, isLoadingAchiev
           <p className="game-card__description">
             {game.short_description || "Steam no tiene una sinopsis para este juego."}
           </p>
-          <a className="game-card__steam-link" href={`https://store.steampowered.com/app/${game.appid}/`} target="_blank" rel="noopener noreferrer">
-            Ver en Steam →
-          </a>
+          <div className="game-card__links">
+            {onOpenForum && (
+              <button type="button" className="button button--primary" onClick={() => onOpenForum({ appid: game.appid, name: game.name })}>
+                Foro del juego
+              </button>
+            )}
+            <a className="button" href={`https://store.steampowered.com/app/${game.appid}/`} target="_blank" rel="noopener noreferrer">
+              Ver en Steam ↗
+            </a>
+          </div>
         </div>
       </div>
 
@@ -80,7 +86,23 @@ function GameCard({ game, onToggleFavorite, achievementProgress, isLoadingAchiev
             <dd className="mono">{playtimeHours} h</dd>
           </div>
         </dl>
-        {featuredReview && <blockquote className="game-card__review">“{featuredReview}”</blockquote>}
+        {(game.review_pros || game.review_cons) && (
+          <div className="game-card__verdict">
+            {game.review_pros && (
+              <figure className="verdict verdict--good">
+                <figcaption>Lo bueno</figcaption>
+                <blockquote>{game.review_pros}</blockquote>
+              </figure>
+            )}
+            {game.review_cons && (
+              <figure className="verdict verdict--bad">
+                <figcaption>Lo malo</figcaption>
+                <blockquote>{game.review_cons}</blockquote>
+              </figure>
+            )}
+            <p className="game-card__verdict-note">Las reseñas más votadas como útiles en Steam.</p>
+          </div>
+        )}
       </div>
 
       {showAchievements && (
@@ -132,17 +154,6 @@ function formatHours(hours) {
 function formatPrice(priceCents) {
   if (priceCents === 0) return "Gratis";
   return new Intl.NumberFormat("es-AR", { style: "currency", currency: "USD" }).format(priceCents / 100);
-}
-
-/**
- * Descarta reseñas que son solo arte con símbolos o emojis (pasa seguido en Steam):
- * al menos la mitad de los caracteres visibles tienen que ser letras.
- */
-function isReadableReview(review) {
-  const visible = review.replace(/\s/g, "");
-  if (visible.length < 15) return false;
-  const letters = visible.match(/\p{L}/gu)?.length ?? 0;
-  return letters / visible.length >= 0.5;
 }
 
 export default GameCard;

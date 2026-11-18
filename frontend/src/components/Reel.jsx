@@ -1,93 +1,131 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import "./Reel.css";
 
-// Cantidad de portadas en el rodillo quieto: impar, para que haya una en el centro.
-const STRIP_SIZE = 9;
-const CENTER = Math.floor(STRIP_SIZE / 2);
-// Portadas que pasan en loop mientras se espera la respuesta del backend.
-const SPIN_SIZE = 16;
-// Opacidad según la distancia al centro: la ventana marca el juego elegido.
-const FADE_BY_DISTANCE = [1, 0.75, 0.5, 0.32, 0.2];
+// Portadas a cada lado del centro que se mantienen en pantalla.
+const SIDE = 7;
+// Cuántas portadas pasan por la ventana en cada giro (más = giro más largo).
+const SPIN_DISTANCE = 38;
+// Debe coincidir con la duración de la transición en Reel.css.
+const SPIN_DURATION_MS = 4600;
 
 /**
- * Rodillo horizontal de portadas.
- * - Quieto: muestra juegos al azar de `pool`.
- * - Girando (`isSpinning`): las portadas pasan en loop.
- * - Con `result`: frena con el juego elegido dentro de la ventana central.
- * Es decorativo (aria-hidden); el estado se anuncia en un texto oculto para lectores de pantalla.
+ * Rodillo horizontal de portadas "en vivo".
+ *
+ * El juego que gana es el que frena dentro de la ventana: cuando llega un `spin`
+ * ({ id, winner }), la tira se arma con el ganador en la posición de llegada y se anima en
+ * un solo movimiento que desacelera hasta quedar ahí. Al terminar llama a `onSettled(winner)`.
+ * Quieto, muestra juegos de `pool` (los que cumplen los filtros) y se rearma si cambian.
  */
-function Reel({ pool, result, isSpinning }) {
-  const [strip, setStrip] = useState(() => sample(pool, STRIP_SIZE));
-  const [landingKey, setLandingKey] = useState(0);
+function Reel({ pool, spin, onSettled }) {
+  const [strip, setStrip] = useState(() => idleStrip(pool));
+  const [index, setIndex] = useState(SIDE);
+  const [nudge, setNudge] = useState(0);
+  const [animating, setAnimating] = useState(false);
+  const [pendingTarget, setPendingTarget] = useState(null);
+  const trackRef = useRef(null);
+  const stripRef = useRef(strip);
+  const settleRef = useRef(null);
+  const finishRef = useRef(null);
+  stripRef.current = strip;
 
-  const resultAppid = result?.appid;
-
-  // Rodillo quieto: se vuelve a mezclar cuando cambian los filtros (salvo que esté mostrando un resultado).
+  // Filtros nuevos → tira nueva al instante (si el juego del centro sigue siendo válido, queda).
   useEffect(() => {
-    if (!isSpinning && !result) setStrip(sample(pool, STRIP_SIZE));
+    if (animating) return;
+    const center = stripRef.current[SIDE];
+    const keepCenter = center && pool.some((game) => game.appid === center.appid);
+    setStrip(idleStrip(pool, keepCenter ? center : null));
+    setIndex(SIDE);
   }, [pool]);
 
-  // Llegó un resultado: se arma la tira con ese juego en el centro y se anima la frenada.
-  // Depende del appid (no del objeto) para que marcar favorito no vuelva a animar.
   useEffect(() => {
-    if (!result) return;
-    const chosen = { appid: result.appid, name: result.name, image: result.header_image };
-    const others = sample(pool.filter((game) => game.appid !== result.appid), STRIP_SIZE - 1);
-    setStrip([...others.slice(0, CENTER), chosen, ...others.slice(CENTER)]);
-    setLandingKey((key) => key + 1);
-  }, [resultAppid]);
+    if (!spin) return undefined;
+    const current = stripRef.current;
+    // 1) Se conserva exactamente lo que se ve ahora (sin transición, no se mueve nada)...
+    const visible = current.slice(index - SIDE, index + SIDE + 1);
+    const fillers = sample(pool, SPIN_DISTANCE - SIDE - 1);
+    const tail = sample(pool, SIDE);
+    const nextStrip = [...visible, ...fillers, spin.winner, ...tail];
+    const target = visible.length + fillers.length;
+    setAnimating(false);
+    setStrip(nextStrip);
+    setIndex(SIDE);
+    // 2) ...y apenas se pinta esa tira, arranca el giro (ver el useLayoutEffect de abajo).
+    setPendingTarget(target);
 
-  const spinTrack = useMemo(() => (isSpinning ? sample(pool, SPIN_SIZE) : []), [isSpinning, pool]);
+    const finish = () => {
+      if (settleRef.current === null) return;
+      clearTimeout(settleRef.current);
+      settleRef.current = null;
+      setAnimating(false);
+      setStrip(nextStrip.slice(target - SIDE, target + SIDE + 1));
+      setIndex(SIDE);
+      onSettled?.(spin.winner);
+    };
+    // Respaldo por si el navegador no dispara transitionend (pestaña en segundo plano, etc.).
+    settleRef.current = setTimeout(finish, SPIN_DURATION_MS + 400);
+    finishRef.current = finish;
+
+    return () => {
+      if (settleRef.current !== null) clearTimeout(settleRef.current);
+      settleRef.current = null;
+    };
+  }, [spin?.id]);
+
+  // Forzar un reflow con la tira en la posición inicial y recién ahí cambiar --index hace que
+  // el navegador anime desde donde estaba (no depende de requestAnimationFrame, que se
+  // congela con la pestaña en segundo plano). El ganador frena un poco corrido del centro.
+  useLayoutEffect(() => {
+    if (pendingTarget === null || !trackRef.current) return;
+    void trackRef.current.offsetWidth;
+    setAnimating(true);
+    setIndex(pendingTarget);
+    setNudge((Math.random() - 0.5) * 0.6);
+    setPendingTarget(null);
+  }, [pendingTarget]);
+
+  function handleTransitionEnd(event) {
+    if (event.target === event.currentTarget && event.propertyName === "transform") finishRef.current?.();
+  }
 
   return (
-    <>
-      <div className="reel" aria-hidden="true">
-        {isSpinning ? (
-          <div className="reel__track reel__track--spinning">
-            {[...spinTrack, ...spinTrack].map((game, index) => (
-              <ReelCard key={`${game.appid}-${index}`} game={game} opacity={0.85} />
-            ))}
+    <div className="reel" aria-hidden="true">
+      <div
+        ref={trackRef}
+        className={`reel__track${animating ? " reel__track--spinning" : ""}`}
+        style={{ "--index": index, "--nudge": nudge }}
+        onTransitionEnd={handleTransitionEnd}
+      >
+        {strip.map((game, position) => (
+          <div className="reel__card" key={`${game.appid}-${position}`}>
+            <span className="reel__card-name">{game.name}</span>
+            <img src={game.image} alt="" onError={(event) => { event.currentTarget.style.visibility = "hidden"; }} />
           </div>
-        ) : (
-          <div key={landingKey} className={`reel__track${result ? " reel__track--landing" : ""}`}>
-            {strip.map((game, index) => (
-              <ReelCard
-                key={`${game.appid}-${index}`}
-                game={game}
-                opacity={FADE_BY_DISTANCE[Math.min(Math.abs(index - CENTER), FADE_BY_DISTANCE.length - 1)]}
-              />
-            ))}
-          </div>
-        )}
-        <div className="reel__window" />
-        <div className="reel__pointer" />
+        ))}
       </div>
-      <p className="visually-hidden" aria-live="polite">
-        {isSpinning ? "Buscando un juego…" : result ? `Te tocó ${result.name}` : ""}
-      </p>
-    </>
+      <div className="reel__window" />
+      <div className="reel__pointer" />
+    </div>
   );
 }
 
-function ReelCard({ game, opacity }) {
-  return (
-    <div className="reel__card" style={{ opacity }}>
-      <span className="reel__card-name">{game.name}</span>
-      <img src={game.image} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.visibility = "hidden"; }} />
-    </div>
-  );
+function idleStrip(pool, center = null) {
+  const cards = sample(pool, SIDE * 2 + 1);
+  if (center && cards.length) cards[SIDE] = center;
+  return cards;
 }
 
 /** `count` juegos al azar de `pool`; si el pool es más chico, se repiten. */
 function sample(pool, count) {
   if (pool.length === 0) return [];
-  const shuffled = [...pool];
-  for (let index = shuffled.length - 1; index > 0; index -= 1) {
-    const swapIndex = Math.floor(Math.random() * (index + 1));
-    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
-  }
   const picked = [];
-  while (picked.length < count) picked.push(...shuffled);
+  while (picked.length < count) {
+    const shuffled = [...pool];
+    for (let i = shuffled.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    picked.push(...shuffled);
+  }
   return picked.slice(0, count);
 }
 

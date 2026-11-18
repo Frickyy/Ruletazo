@@ -13,9 +13,10 @@ function buildParams({ steamId, friendSteamId, collection, genre, search, sortBy
   return params;
 }
 
-/** Juego aleatorio del pool filtrado (colección/género/familia). Sin steamId usa el mock. */
-export async function fetchRandomGame(options = {}) {
-  const { data } = await api.get("/games/random", { params: buildParams(options) });
+/** Ficha completa del juego que frenó en el rodillo. Sin steamId usa la biblioteca de ejemplo. */
+export async function fetchGameDetails({ steamId, friendSteamId, appid }) {
+  const params = { ...buildParams({ steamId, friendSteamId }), appid };
+  const { data } = await api.get("/games/details", { params, timeout: 60000 });
   return data;
 }
 
@@ -62,6 +63,21 @@ export async function removeFavorite(steamId, appid) {
 export async function fetchPlayerAchievements(steamId, appid) {
   const { data } = await api.get("/games/achievements", { params: { steamid: steamId, appid } });
   return data;
+}
+
+/** Usuario de la sesión (cookie firmada). Devuelve null si no inició sesión. */
+export async function fetchSession() {
+  try {
+    const { data } = await api.get("/auth/me");
+    return data;
+  } catch (err) {
+    if (err.response?.status === 401) return null;
+    throw err;
+  }
+}
+
+export async function logoutSession() {
+  await api.post("/auth/logout");
 }
 
 export async function fetchSteamProfile(steamId) {

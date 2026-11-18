@@ -7,8 +7,10 @@ export default defineConfig({
     port: 5173,
     // El frontend y la API comparten origen: /api se reenvía al backend de FastAPI.
     // Así no hace falta CORS en desarrollo y el login con Steam vuelve al mismo puerto.
+    // changeOrigin: false conserva el host del navegador (localhost:5173), así la vuelta del
+    // login de Steam también pasa por este puerto en vez de ir directo al backend.
     proxy: {
-      "/api": "http://localhost:8000",
+      "/api": { target: "http://localhost:8000", changeOrigin: false },
     },
   },
 });

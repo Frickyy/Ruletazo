@@ -48,6 +48,10 @@ class CachedGameDetails(Base):
     review_total: Mapped[int] = mapped_column(Integer, default=0)
     review_positive: Mapped[int] = mapped_column(Integer, default=0)
     featured_reviews: Mapped[list[str]] = mapped_column(JSON, default=list)
+    # La reseña positiva y la negativa más votadas como útiles en Steam ("lo bueno" y "lo malo").
+    review_pros: Mapped[str] = mapped_column(Text, default="")
+    review_cons: Mapped[str] = mapped_column(Text, default="")
+    reviews_version: Mapped[int] = mapped_column(Integer, default=0)
     hltb_main_hours: Mapped[float | None] = mapped_column(Float, nullable=True)
     hltb_completionist_hours: Mapped[float | None] = mapped_column(Float, nullable=True)
     achievement_total: Mapped[int] = mapped_column(Integer, default=0)

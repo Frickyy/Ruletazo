@@ -9,7 +9,7 @@ from app.db.session import Base
 @pytest.fixture()
 def db_session():
     """Sesión SQLite en memoria, aislada por test (no toca steam_roulette.db)."""
-    from app.models import game  # noqa: F401  registra los modelos en Base.metadata
+    from app.models import forum, game  # noqa: F401  registra los modelos en Base.metadata
 
     engine = create_engine(
         "sqlite:///:memory:",

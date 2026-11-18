@@ -1,10 +1,16 @@
 from urllib.parse import urlencode
 
 import httpx
-from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import RedirectResponse, Response
 
 from app.core.config import get_settings
+from app.core.security import (
+    SESSION_COOKIE,
+    SESSION_MAX_AGE_SECONDS,
+    create_session_token,
+    current_steam_id,
+)
 from app.services.steam_client import InvalidSteamIDError, SteamAPIError, SteamClient
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -70,4 +76,35 @@ async def steam_auth_callback(request: Request) -> RedirectResponse:
     if not (steam_id.isdigit() and len(steam_id) == 17):
         return RedirectResponse(f"{frontend_url}/?auth_error=invalid_steamid")
 
-    return RedirectResponse(f"{frontend_url}/?steamid={steam_id}&login=success")
+    # El SteamID viaja en una cookie firmada (HttpOnly): el frontend lo obtiene de /api/auth/me
+    # y nadie puede hacerse pasar por otro usuario editando la URL o localStorage.
+    redirect = RedirectResponse(f"{frontend_url}/?login=success")
+    redirect.set_cookie(
+        SESSION_COOKIE,
+        create_session_token(steam_id),
+        max_age=SESSION_MAX_AGE_SECONDS,
+        httponly=True,
+        samesite="lax",
+        secure=request.url.scheme == "https",
+        path="/",
+    )
+    return redirect
+
+
+@router.get("/me")
+async def current_session(steam_id: str | None = Depends(current_steam_id)) -> dict:
+    """Usuario de la sesión actual (perfil público de Steam). 401 si no inició sesión."""
+    if steam_id is None:
+        raise HTTPException(status_code=401, detail="No hay una sesión iniciada.")
+    try:
+        async with SteamClient() as client:
+            return await client.get_profile(steam_id)
+    except SteamAPIError:
+        return {"steam_id": steam_id, "name": "Jugador de Steam", "avatar": ""}
+
+
+@router.post("/logout", status_code=204)
+async def logout() -> Response:
+    response = Response(status_code=204)
+    response.delete_cookie(SESSION_COOKIE, path="/")
+    return response

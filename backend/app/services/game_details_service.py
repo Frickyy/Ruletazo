@@ -19,6 +19,8 @@ from app.services.store_client import SteamStoreClient
 logger = logging.getLogger(__name__)
 
 STORE_METADATA_VERSION = 5
+# Subir este número fuerza a volver a pedir "lo bueno / lo malo" de las reseñas.
+REVIEWS_VERSION = 1
 
 # Store API / reseñas / logros cambian poco: se reutilizan varios días antes de
 # volver a golpear las 3 APIs externas para el mismo juego.
@@ -39,6 +41,11 @@ def is_fresh(details: CachedGameDetails) -> bool:
 def has_store_metadata(details: CachedGameDetails) -> bool:
     """Old cache rows lack price/release metadata and must be refreshed from Store API."""
     return details.store_metadata_version >= STORE_METADATA_VERSION
+
+
+def has_review_highlights(details: CachedGameDetails) -> bool:
+    """True si ya se buscaron "lo bueno / lo malo" con la versión actual (aunque Steam no haya tenido)."""
+    return (details.reviews_version or 0) >= REVIEWS_VERSION
 
 
 def has_rich_content(details: CachedGameDetails) -> bool:
@@ -63,11 +70,17 @@ async def get_or_fetch_details(db: Session, appid: int, name: str) -> CachedGame
     has_hltb_result = cached is not None and (
         cached.hltb_main_hours is not None or cached.hltb_completionist_hours is not None
     )
-    if cached is not None and is_fresh(cached) and has_store_metadata(cached) and has_hltb_result:
+    if (
+        cached is not None
+        and is_fresh(cached)
+        and has_store_metadata(cached)
+        and has_hltb_result
+        and has_review_highlights(cached)
+    ):
         return cached
 
     logger.info("Enriqueciendo detalles de '%s' (appid %s)", name, appid)
-    (store_details, reviews), achievements, hltb = await asyncio.gather(
+    (store_details, reviews, highlights), achievements, hltb = await asyncio.gather(
         _fetch_store_data(appid),
         _fetch_achievements(appid),
         hltb_client.get_completion_times(name),
@@ -89,6 +102,9 @@ async def get_or_fetch_details(db: Session, appid: int, name: str) -> CachedGame
         cached.review_total = reviews["total_reviews"]
         cached.review_positive = reviews["total_positive"]
         cached.featured_reviews = reviews["featured_reviews"]
+    cached.review_pros = highlights["pros"]
+    cached.review_cons = highlights["cons"]
+    cached.reviews_version = REVIEWS_VERSION
     cached.hltb_main_hours = hltb["main_hours"]
     cached.hltb_completionist_hours = hltb["completionist_hours"]
     cached.achievement_total = achievements["total"]
@@ -125,7 +141,11 @@ async def get_or_fetch_store_metadata(db: Session, appid: int) -> CachedGameDeta
 
 async def _fetch_store_data(appid: int) -> list[dict]:
     async with SteamStoreClient() as client:
-        return await asyncio.gather(client.get_app_details(appid), client.get_reviews(appid))
+        return await asyncio.gather(
+            client.get_app_details(appid),
+            client.get_reviews(appid),
+            client.get_review_highlights(appid),
+        )
 
 
 async def _fetch_achievements(appid: int) -> dict:

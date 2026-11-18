@@ -1,18 +1,30 @@
 import { useEffect, useState } from "react";
 import RoulettePage from "./pages/RoulettePage.jsx";
 import LibraryPage from "./pages/LibraryPage.jsx";
+import ForumPage from "./pages/ForumPage.jsx";
 import SteamIdInput from "./components/SteamIdInput.jsx";
-import { fetchSteamProfile } from "./services/gameService.js";
+import { fetchSession, fetchSteamProfile, logoutSession } from "./services/gameService.js";
 import "./components/SteamIdInput.css";
 import "./App.css";
 
-const STEAM_ID_KEY = "steamRoulette.steamId";
 const FRIEND_STEAM_ID_KEY = "steamRoulette.friendSteamId";
-const VERIFIED_STEAM_ID_KEY = "steamRoulette.verifiedSteamId";
 const FAMILY_IDS_KEY = "steamRoulette.familyIds";
+// Claves de la versión anterior (la sesión vivía en localStorage); se limpian al arrancar.
+const LEGACY_SESSION_KEYS = ["steamRoulette.steamId", "steamRoulette.verifiedSteamId", "steamRoulette.profile"];
+
+const VIEWS = [
+  { id: "roulette", label: "ruleta" },
+  { id: "library", label: "biblioteca" },
+  { id: "family", label: "familia" },
+  { id: "forum", label: "foro" },
+];
 
 function App() {
-  const [steamId, setSteamId] = useState(() => localStorage.getItem(STEAM_ID_KEY) ?? "");
+  // La sesión la define el backend (cookie firmada); acá solo se refleja lo que devuelve /auth/me.
+  const [profile, setProfile] = useState(null);
+  const [sessionChecked, setSessionChecked] = useState(false);
+  const steamId = profile?.steam_id ?? "";
+  const isLoggedIn = Boolean(steamId);
   const [familyIds, setFamilyIds] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(FAMILY_IDS_KEY) ?? "null");
@@ -22,48 +34,27 @@ function App() {
     return legacyId ? [legacyId] : [""];
   });
   const [activeView, setActiveView] = useState("roulette");
+  const [forumTarget, setForumTarget] = useState(null);
   const [authMessage, setAuthMessage] = useState("");
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [includeFamily, setIncludeFamily] = useState(() => localStorage.getItem("steamRoulette.includeFamily") !== "false");
   const [playtimeFilter, setPlaytimeFilter] = useState("all");
-  const [sessionVerified, setSessionVerified] = useState(() => {
-    const savedSteamId = localStorage.getItem(STEAM_ID_KEY) ?? "";
-    return savedSteamId !== "" && savedSteamId === localStorage.getItem(VERIFIED_STEAM_ID_KEY);
-  });
-  const [profile, setProfile] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem("steamRoulette.profile") ?? "null");
-    } catch {
-      return null;
-    }
-  });
 
   useEffect(() => {
+    LEGACY_SESSION_KEYS.forEach((key) => localStorage.removeItem(key));
     const params = new URLSearchParams(window.location.search);
-    const loggedInSteamId = params.get("steamid");
-    const authError = params.get("auth_error");
-
-    if (loggedInSteamId) {
-      if (/^\d{17}$/.test(loggedInSteamId)) {
-        setSteamId(loggedInSteamId);
-        setSessionVerified(true);
-        localStorage.setItem(VERIFIED_STEAM_ID_KEY, loggedInSteamId);
-        setAuthMessage("Sesión verificada con Steam.");
-      } else {
-        setAuthMessage("Steam devolvió un identificador inválido.");
-      }
-    } else if (authError) {
-      setAuthMessage("No se pudo iniciar sesión con Steam. Probá nuevamente.");
-    }
-
-    if (loggedInSteamId || authError || params.get("login")) {
+    if (params.get("auth_error")) setAuthMessage("No se pudo iniciar sesión con Steam. Probá nuevamente.");
+    if (params.get("auth_error") || params.get("login")) {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
+    fetchSession()
+      .then((session) => {
+        setProfile(session);
+        if (session && params.get("login") === "success") setAuthMessage(`Sesión iniciada como ${session.name}.`);
+      })
+      .catch(() => setProfile(null))
+      .finally(() => setSessionChecked(true));
   }, []);
-
-  useEffect(() => {
-    localStorage.setItem(STEAM_ID_KEY, steamId);
-  }, [steamId]);
 
   const familyIdsValue = familyIds.filter(Boolean);
   const familyIdsStorageValue = familyIdsValue.join(",");
@@ -76,19 +67,6 @@ function App() {
   useEffect(() => {
     localStorage.setItem("steamRoulette.includeFamily", String(includeFamily));
   }, [includeFamily]);
-
-  useEffect(() => {
-    if (!sessionVerified || !steamId) {
-      setProfile(null);
-      return;
-    }
-    fetchSteamProfile(steamId)
-      .then((nextProfile) => {
-        setProfile(nextProfile);
-        localStorage.setItem("steamRoulette.profile", JSON.stringify(nextProfile));
-      })
-      .catch(() => setProfile(null));
-  }, [sessionVerified, steamId]);
 
   const [familyProfiles, setFamilyProfiles] = useState([]);
 
@@ -114,57 +92,61 @@ function App() {
     window.location.href = `${apiUrl}/auth/login`;
   }
 
-  function handleLogout() {
-    localStorage.removeItem(STEAM_ID_KEY);
-    localStorage.removeItem(VERIFIED_STEAM_ID_KEY);
-    localStorage.removeItem("steamRoulette.profile");
-    setSteamId("");
-    setSessionVerified(false);
-    setProfile(null);
-    setProfileMenuOpen(false);
-    setAuthMessage("Sesión cerrada.");
+  async function handleLogout() {
+    try {
+      await logoutSession();
+    } finally {
+      setProfile(null);
+      setProfileMenuOpen(false);
+      setAuthMessage("Sesión cerrada.");
+    }
   }
 
-  const views = [
-    { id: "roulette", label: "Ruleta" },
-    { id: "library", label: "Biblioteca" },
-    { id: "family", label: "Familia" },
-  ];
+  function openForum(target = null) {
+    setForumTarget(target);
+    setActiveView("forum");
+    window.scrollTo({ top: 0 });
+  }
+
   const friendSteamId = includeFamily ? familyIdsStorageValue : "";
 
   return (
     <div className="app-shell">
       <header className="topbar">
-        <button type="button" className="brand" onClick={() => setActiveView("roulette")} aria-label="Steam Roulette, ir a la ruleta">
-          steam<span className="brand__slash">/</span>roulette
-        </button>
-
-        <nav className="topbar__links" aria-label="Secciones">
-          {views.map((view) => (
-            <button
-              key={view.id}
-              type="button"
-              className="nav-link"
-              aria-current={activeView === view.id ? "page" : undefined}
-              onClick={() => setActiveView(view.id)}
-            >
-              {view.label}
-            </button>
-          ))}
+        <nav className="topbar__nav" aria-label="Secciones">
+          <button type="button" className="brand" onClick={() => setActiveView("roulette")} aria-label="Steam Roulette, ir a la ruleta">
+            steam<span className="brand__slash">/</span>roulette
+          </button>
+          <ul className="topbar__links">
+            {VIEWS.map((view) => (
+              <li key={view.id}>
+                <button
+                  type="button"
+                  className="nav-link"
+                  aria-current={activeView === view.id ? "page" : undefined}
+                  onClick={() => (view.id === "forum" ? openForum(null) : setActiveView(view.id))}
+                >
+                  <span className="nav-link__slash" aria-hidden="true">/</span>
+                  {view.label}
+                </button>
+              </li>
+            ))}
+          </ul>
         </nav>
 
         <div className="topbar__meta">
-          {sessionVerified && profile ? (
+          {!sessionChecked ? null : isLoggedIn ? (
             <div className="profile-menu-wrap">
               <button
                 type="button"
-                className="button steam-profile"
+                className="account-button"
                 onClick={() => setProfileMenuOpen((isOpen) => !isOpen)}
                 aria-expanded={profileMenuOpen}
                 aria-haspopup="menu"
               >
-                <img src={profile.avatar} alt="" />
+                {profile.avatar && <img src={profile.avatar} alt="" />}
                 <span>{profile.name}</span>
+                <span className="account-button__caret" aria-hidden="true">▾</span>
               </button>
               {profileMenuOpen && (
                 <div className="profile-menu" role="menu">
@@ -179,8 +161,8 @@ function App() {
               )}
             </div>
           ) : (
-            <button type="button" className="button" onClick={handleSteamLogin}>
-              Iniciar sesión con Steam
+            <button type="button" className="account-button" onClick={handleSteamLogin}>
+              Iniciar sesión con Steam <span aria-hidden="true">→</span>
             </button>
           )}
         </div>
@@ -192,12 +174,18 @@ function App() {
         {activeView === "roulette" && (
           <RoulettePage
             steamId={steamId}
+            isLoggedIn={isLoggedIn}
             friendSteamId={friendSteamId}
             playtimeFilter={playtimeFilter}
             onPlaytimeFilterChange={setPlaytimeFilter}
             includeFamily={includeFamily}
             onIncludeFamilyChange={setIncludeFamily}
+            onOpenForum={openForum}
           />
+        )}
+
+        {activeView === "forum" && (
+          <ForumPage target={forumTarget} onTargetChange={setForumTarget} viewer={profile} onLogin={handleSteamLogin} />
         )}
 
         {activeView === "library" && (
