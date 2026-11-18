@@ -269,33 +269,40 @@ function RoulettePage({
         {isSpinning ? "Girando la ruleta…" : shownGame ? `Te tocó ${shownGame.name}` : ""}
       </p>
 
-      <div className="roulette__controls">
-        <button
-          type="button"
-          className="button button--primary button--large"
-          onClick={() => handleSpin()}
-          disabled={!canSpin}
-          aria-keyshortcuts="Space"
-          title="También con la barra espaciadora"
-        >
-          {isSpinning ? "Girando…" : "Girar la ruleta"}
-          <kbd className="roulette__kbd" aria-hidden="true">espacio</kbd>
-        </button>
-        <button
-          type="button"
-          className="button roulette__sound"
-          aria-pressed={sound}
-          onClick={() => {
-            unlockAudio();
-            setSound(!sound);
-          }}
-          title={sound ? "Silenciar el rodillo" : "Activar el sonido del rodillo"}
-          aria-label={sound ? "Silenciar el rodillo" : "Activar el sonido del rodillo"}
-        >
-          {sound ? "🔊" : "🔈"}
-        </button>
+      {/* Controles en una grilla de 4 columnas, todo al mismo alto:
+          fila 1: girar | horas jugadas (2) | género — fila 2: colección (2) | modo | duración — fila 3: opciones. */}
+      <div className={`roulette__panel${steamId ? "" : " roulette__panel--demo"}`}>
+        <div className="roulette__spin-group">
+          <button
+            type="button"
+            className="button button--primary roulette__spin"
+            onClick={() => handleSpin()}
+            disabled={!canSpin}
+            aria-keyshortcuts="Space"
+            title="También con la barra espaciadora"
+          >
+            {isSpinning ? "Girando…" : "Girar la ruleta"}
+            <kbd className="roulette__kbd" aria-hidden="true">espacio</kbd>
+          </button>
+          <button
+            type="button"
+            className="button roulette__sound"
+            aria-pressed={sound}
+            onClick={() => {
+              unlockAudio();
+              setSound(!sound);
+            }}
+            title={sound ? "Silenciar el rodillo" : "Activar el sonido del rodillo"}
+            aria-label={sound ? "Silenciar el rodillo" : "Activar el sonido del rodillo"}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" />
+              {sound ? <path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" /> : <path d="m16 9.5 5 5M21 9.5l-5 5" />}
+            </svg>
+          </button>
+        </div>
 
-        <div className="segmented" role="group" aria-label="Horas jugadas">
+        <div className="segmented roulette__wide" role="group" aria-label="Horas jugadas">
           {PLAYTIME_OPTIONS.filter((option) => steamId || option.id !== "stale").map((option) => (
             <button
               key={option.id}
@@ -309,86 +316,92 @@ function RoulettePage({
             </button>
           ))}
         </div>
-      </div>
 
-      {steamId && (
-        <div className="roulette__filters">
-          <div className="segmented" role="group" aria-label="Colección">
-            <button type="button" aria-pressed={collection === "all"} onClick={() => setCollection("all")} disabled={isSpinning}>
-              Todos
-            </button>
-            <button type="button" aria-pressed={collection === "favorites"} onClick={() => setCollection("favorites")} disabled={isSpinning}>
-              Favoritos
-            </button>
-            <button type="button" aria-pressed={collection === "playing"} onClick={() => setCollection("playing")} disabled={isSpinning}>
-              Jugando
-            </button>
-            <button
-              type="button"
-              aria-pressed={collection === "near_complete"}
-              onClick={() => setCollection("near_complete")}
-              disabled={isSpinning}
-              title="Te falta poco para tener todos los logros (80% o más)"
+        {steamId && (
+          <>
+            <div className="segmented roulette__collection" role="group" aria-label="Colección">
+              <button type="button" aria-pressed={collection === "all"} onClick={() => setCollection("all")} disabled={isSpinning}>
+                Todos
+              </button>
+              <button type="button" aria-pressed={collection === "favorites"} onClick={() => setCollection("favorites")} disabled={isSpinning}>
+                Favoritos
+              </button>
+              <button type="button" aria-pressed={collection === "playing"} onClick={() => setCollection("playing")} disabled={isSpinning}>
+                Jugando
+              </button>
+              <button
+                type="button"
+                aria-pressed={collection === "near_complete"}
+                onClick={() => setCollection("near_complete")}
+                disabled={isSpinning}
+                title="Te falta poco para tener todos los logros (80% o más)"
+              >
+                Casi al 100%
+              </button>
+            </div>
+
+            <select className="select" value={mode} onChange={(event) => setMode(event.target.value)} aria-label="Modo de juego" disabled={isSpinning}>
+              {MODE_OPTIONS.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+
+            <select className="select" value={duration} onChange={(event) => setDuration(event.target.value)} aria-label="Duración" disabled={isSpinning}>
+              {DURATION_OPTIONS.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+
+            {/* Siempre presente (aunque todavía no haya géneros) para que la grilla no quede con un hueco. */}
+            <select
+              className="select roulette__genre"
+              value={genre}
+              onChange={(event) => setGenre(event.target.value)}
+              aria-label="Filtrar por género"
+              disabled={isSpinning || genres.length === 0}
             >
-              Casi al 100%
-            </button>
-          </div>
-
-          <select className="select" value={mode} onChange={(event) => setMode(event.target.value)} aria-label="Modo de juego" disabled={isSpinning}>
-            {MODE_OPTIONS.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-
-          <select className="select" value={duration} onChange={(event) => setDuration(event.target.value)} aria-label="Duración" disabled={isSpinning}>
-            {DURATION_OPTIONS.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-
-          {genres.length > 0 && (
-            <select className="select" value={genre} onChange={(event) => setGenre(event.target.value)} aria-label="Filtrar por género" disabled={isSpinning}>
-              <option value="">Todos los géneros</option>
+              <option value="">{genres.length ? "Todos los géneros" : "Géneros: cargando…"}</option>
               {genres.map((genreOption) => (
                 <option key={genreOption} value={genreOption}>
                   {genreOption}
                 </option>
               ))}
             </select>
-          )}
 
-          <div className="roulette__toggles">
-            <label className="checkbox">
-              <input type="checkbox" checked={hideAdult} onChange={(event) => onHideAdultChange?.(event.target.checked)} disabled={isSpinning} />
-              Ocultar +18
-            </label>
-            <label className="checkbox" title="Por defecto los juegos marcados como terminados no salen">
-              <input type="checkbox" checked={includeFinished} onChange={(event) => setIncludeFinished(event.target.checked)} disabled={isSpinning} />
-              Incluir terminados
-            </label>
-            {hasFamily && (
-              <label className="checkbox">
-                <input type="checkbox" checked={includeFamily} onChange={(event) => onIncludeFamilyChange?.(event.target.checked)} disabled={isSpinning} />
-                Incluir Familia
-              </label>
-            )}
-            {hasFamily && includeFamily && (
-              <label className="checkbox" title="Solo los juegos que tenés vos y alguien de tu familia: para jugar juntos">
-                <input type="checkbox" checked={inCommon} onChange={(event) => setInCommon(event.target.checked)} disabled={isSpinning} />
-                En común con la familia
-              </label>
-            )}
-            <label className="checkbox" title="Salen más seguido los sin estrenar, los cortos, los bien reseñados, tus favoritos y los que estás jugando">
-              <input type="checkbox" checked={smart} onChange={(event) => setSmart(event.target.checked)} disabled={isSpinning} />
-              Ruleta inteligente
-            </label>
-          </div>
-        </div>
-      )}
+            <div className="roulette__toggles" role="group" aria-label="Opciones">
+              <Toggle checked={hideAdult} onChange={onHideAdultChange} disabled={isSpinning} label="Ocultar +18" />
+              <Toggle
+                checked={includeFinished}
+                onChange={setIncludeFinished}
+                disabled={isSpinning}
+                label="Incluir terminados"
+                title="Por defecto los juegos marcados como terminados no salen"
+              />
+              {hasFamily && <Toggle checked={includeFamily} onChange={onIncludeFamilyChange} disabled={isSpinning} label="Incluir Familia" />}
+              {hasFamily && includeFamily && (
+                <Toggle
+                  checked={inCommon}
+                  onChange={setInCommon}
+                  disabled={isSpinning}
+                  label="En común con la familia"
+                  title="Solo los juegos que tenés vos y alguien de tu familia: para jugar juntos"
+                />
+              )}
+              <Toggle
+                checked={smart}
+                onChange={setSmart}
+                disabled={isSpinning}
+                label="Ruleta inteligente"
+                title="Salen más seguido los sin estrenar, los cortos, los bien reseñados, tus favoritos y los que estás jugando"
+              />
+            </div>
+          </>
+        )}
+      </div>
 
       {steamId && <ClassificationBanner classification={library.classification} onPause={library.setClassificationPaused} />}
 
@@ -435,6 +448,16 @@ function RoulettePage({
         />
       )}
     </section>
+  );
+}
+
+/** Opción on/off con forma de botón: todas del mismo ancho en la fila de opciones. */
+function Toggle({ checked, onChange, disabled, label, title }) {
+  return (
+    <label className={`toggle${checked ? " toggle--on" : ""}`} title={title}>
+      <input type="checkbox" checked={checked} onChange={(event) => onChange?.(event.target.checked)} disabled={disabled} />
+      <span>{label}</span>
+    </label>
   );
 }
 

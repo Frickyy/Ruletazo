@@ -26,6 +26,9 @@
 }
 
 .spin-history__item {
+  /* Contiene el texto oculto para lectores de pantalla: sin esto se ubicaba contra la página
+     y generaba scroll horizontal en el celular. */
+  position: relative;
   display: block;
   width: 92px;
   padding: 0;
