@@ -1,25 +1,28 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { classifyLibraryBatch, fetchClassificationStatus, fetchLibrary } from "./gameService.js";
+import { classifyLibraryBatch, enrichLibraryBatch, fetchClassificationStatus, fetchLibrary } from "./gameService.js";
 
-// Juegos por tanda de clasificación y pausa entre tandas (la tienda de Steam limita los pedidos).
-const CLASSIFY_BATCH_SIZE = 4; // cada juego tarda unos segundos (tienda, reseñas, HLTB, logros)
-const PAUSE_BETWEEN_BATCHES_MS = 1500;
-// Cada cuántas tandas se vuelve a pedir la biblioteca para que aparezcan géneros, duración, etc.
-const REFRESH_EVERY_BATCHES = 3;
+// Primera pasada (datos de la tienda): de a 100 juegos, Steam los manda de a 50 por pedido.
+const CLASSIFY_BATCH_SIZE = 100;
+// Segunda pasada (duración y logros): de a un juego en el backend, así que tandas chicas.
+const ENRICH_BATCH_SIZE = 5;
+const PAUSE_BETWEEN_BATCHES_MS = 800;
+// Cada cuántas tandas de la segunda pasada se vuelve a pedir la biblioteca.
+const REFRESH_EVERY_ENRICH_BATCHES = 6;
 
 /**
  * La biblioteca del usuario (más la de su familia), pedida una sola vez y compartida por la
  * ruleta y la página Biblioteca, que filtran en el navegador.
  *
- * Además clasifica en segundo plano los juegos que todavía no tienen datos de la tienda
- * (género, sinopsis, duración, reseñas…): antes había que tocar un botón en Biblioteca y,
- * hasta hacerlo, el filtro de género quedaba vacío.
+ * Además completa en segundo plano lo que falte, en dos pasadas:
+ * 1. "store": género, sinopsis, precio, portada, modos de juego. Rápida (50 juegos por pedido).
+ * 2. "enrich": duración de HowLongToBeat y tu progreso de logros. Lenta (de a un juego).
  */
 export function useLibrary(steamId, friendSteamId) {
   const [games, setGames] = useState([]);
   const [status, setStatus] = useState("idle"); // idle | loading | ready | error
   const [error, setError] = useState(null);
-  const [classification, setClassification] = useState(null); // { classified, total, running, paused }
+  // { phase: "store" | "enrich" | "done", classified, total, withDuration, running }
+  const [classification, setClassification] = useState(null);
   const [paused, setPaused] = useState(false);
   const requestId = useRef(0);
 
@@ -55,10 +58,13 @@ export function useLibrary(steamId, friendSteamId) {
     reload();
   }, [steamId, friendSteamId, reload]);
 
-  // Clasificación en segundo plano: tandas chicas hasta que no quede nada pendiente.
   useEffect(() => {
     if (!steamId || status !== "ready" || paused) return undefined;
     let cancelled = false;
+    const pause = () => new Promise((resolve) => setTimeout(resolve, PAUSE_BETWEEN_BATCHES_MS));
+    const stop = () => {
+      if (!cancelled) setClassification((current) => (current ? { ...current, running: false } : current));
+    };
 
     (async () => {
       let progress;
@@ -67,25 +73,60 @@ export function useLibrary(steamId, friendSteamId) {
       } catch {
         return;
       }
-      let remaining = progress.total - progress.classified;
       if (cancelled) return;
-      setClassification({ classified: progress.classified, total: progress.total, running: remaining > 0 });
-      let batches = 0;
+      const base = { classified: progress.classified, total: progress.total, withDuration: progress.with_duration ?? 0 };
+
+      // 1) Datos de la tienda.
+      let remaining = progress.total - progress.classified;
+      setClassification({ ...base, phase: remaining > 0 ? "store" : "enrich", running: true });
       while (!cancelled && remaining > 0) {
+        let result;
         try {
-          const result = await classifyLibraryBatch(steamId, CLASSIFY_BATCH_SIZE);
-          remaining = result.remaining;
-          batches += 1;
-          if (cancelled) return;
-          setClassification({ classified: result.total - result.remaining, total: result.total, running: remaining > 0 });
-          if (batches % REFRESH_EVERY_BATCHES === 0 || remaining === 0) await reload({ silent: true });
+          result = await classifyLibraryBatch(steamId, CLASSIFY_BATCH_SIZE);
         } catch {
-          // Steam cortó o el backend no responde: se reintenta más tarde, sin insistir.
-          if (!cancelled) setClassification((current) => (current ? { ...current, running: false } : current));
-          return;
+          return stop();
         }
-        await new Promise((resolve) => setTimeout(resolve, PAUSE_BETWEEN_BATCHES_MS));
+        if (cancelled) return;
+        remaining = result.remaining;
+        setClassification((current) => ({ ...current, classified: result.total - result.remaining, total: result.total }));
+        if (result.failed) return stop(); // Steam no respondió: se reintenta la próxima vez
+        await pause();
       }
+      if (cancelled) return;
+      if (progress.total - progress.classified > 0) await reload({ silent: true });
+
+      // 2) Duración y logros.
+      setClassification((current) => ({ ...current, phase: "enrich" }));
+      let batches = 0;
+      for (;;) {
+        if (cancelled) return;
+        let result;
+        try {
+          result = await enrichLibraryBatch(steamId, ENRICH_BATCH_SIZE);
+        } catch {
+          return stop();
+        }
+        if (cancelled) return;
+        batches += 1;
+        if (result.processed === 0 || result.remaining === 0) break;
+        if (batches % REFRESH_EVERY_ENRICH_BATCHES === 0) {
+          const latest = await fetchClassificationStatus(steamId).catch(() => null);
+          if (latest && !cancelled) setClassification((current) => ({ ...current, withDuration: latest.with_duration ?? current.withDuration }));
+          await reload({ silent: true });
+        }
+        // Un servicio externo nos pausó (rate limit): se sigue la próxima vez que abras la app.
+        if (result.paused) return stop();
+        await pause();
+      }
+      const latest = await fetchClassificationStatus(steamId).catch(() => null);
+      if (cancelled) return;
+      await reload({ silent: true });
+      setClassification((current) => ({
+        ...current,
+        withDuration: latest?.with_duration ?? current.withDuration,
+        phase: "done",
+        running: false,
+      }));
     })();
 
     return () => {
@@ -95,7 +136,7 @@ export function useLibrary(steamId, friendSteamId) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [steamId, status === "ready", paused]);
 
-  /** Cambia campos de un juego en la lista (favorito, oculto…) sin volver a pedirla. */
+  /** Cambia campos de un juego en la lista (favorito, oculto, estado…) sin volver a pedirla. */
   const updateGame = useCallback((appid, patch) => {
     setGames((current) => current.map((game) => (game.appid === appid ? { ...game, ...patch } : game)));
   }, []);

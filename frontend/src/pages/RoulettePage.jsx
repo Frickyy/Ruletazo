@@ -5,13 +5,24 @@ import {
   fetchPlayerAchievements,
   hideGame,
   removeFavorite,
+  setGameState,
   unhideGame,
 } from "../services/gameService.js";
 import GameCard from "../components/GameCard.jsx";
 import IdlePanel from "../components/IdlePanel.jsx";
 import SpinHistory, { useSpinHistory } from "../components/SpinHistory.jsx";
 import { coverAccent } from "../services/coverColor.js";
-import { DURATION_OPTIONS, PLAYTIME_OPTIONS, genresOf, matchesFilters } from "../services/libraryFilters.js";
+import ClassificationBanner from "../components/ClassificationBanner.jsx";
+import {
+  DURATION_OPTIONS,
+  MODE_OPTIONS,
+  PLAYTIME_OPTIONS,
+  genresOf,
+  matchesFilters,
+  pickWeighted,
+  smartWeight,
+} from "../services/libraryFilters.js";
+import { unlockAudio } from "../services/reelSound.js";
 import Reel from "../components/Reel.jsx";
 import "../components/GameCard.css";
 import "./RoulettePage.css";
@@ -41,6 +52,11 @@ function RoulettePage({
   const [collection, setCollection] = useState("all");
   const [genre, setGenre] = useState("");
   const [duration, setDuration] = useState("any");
+  const [mode, setMode] = useState("any");
+  const [inCommon, setInCommon] = useState(false);
+  const [includeFinished, setIncludeFinished] = useState(false);
+  const [smart, setSmart] = useStoredFlag("steamRoulette.smart", false);
+  const [sound, setSound] = useStoredFlag("steamRoulette.sound", false);
   const [spin, setSpin] = useState(null); // { id, winner, instant }
   const [settledSpinId, setSettledSpinId] = useState(null);
   const [details, setDetails] = useState(null); // { spinId, game, error }
@@ -51,14 +67,17 @@ function RoulettePage({
   const [history, addToHistory] = useSpinHistory(steamId);
 
   const genres = useMemo(() => genresOf(games), [games]);
-  const filters = { collection, genre, playtimeFilter, duration, hideAdult };
+  // "En común" solo tiene sentido con la familia sumada.
+  const commonOnly = inCommon && hasFamily && includeFamily;
+  const filters = { collection, genre, playtimeFilter, duration, hideAdult, mode, inCommon: commonOnly, includeFinished };
+  const gamesById = useMemo(() => new Map(games.map((game) => [game.appid, game])), [games]);
 
   // Los juegos que pueden salir: exactamente los que cumplen los filtros actuales.
   const pool = useMemo(() => {
     if (!steamId) return DEMO_GAMES;
     return games.filter((game) => matchesFilters(game, filters)).map(toReelGame);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [steamId, games, collection, genre, playtimeFilter, duration, hideAdult]);
+  }, [steamId, games, collection, genre, playtimeFilter, duration, hideAdult, mode, commonOnly, includeFinished]);
 
   const isSpinning = spin !== null && settledSpinId !== spin.id;
   const isLoadingDetails = spin !== null && settledSpinId === spin.id && details?.spinId !== spin.id;
@@ -125,8 +144,22 @@ function RoulettePage({
       return;
     }
     setNotice(null);
-    showGame(candidates[Math.floor(Math.random() * candidates.length)]);
+    unlockAudio();
+    // Ruleta inteligente: salen más seguido los sin estrenar, cortos, bien reseñados… (ver smartWeight).
+    showGame(pickWeighted(candidates, smart && steamId ? (game) => smartWeight(gamesById.get(game.appid)) : undefined));
   }
+
+  // Barra espaciadora para girar (salvo que se esté escribiendo o haya un botón con foco).
+  useEffect(() => {
+    function onKeyDown(event) {
+      if (event.code !== "Space" || event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
+      if (event.target.closest?.("input, textarea, select, button, a, [contenteditable='true']")) return;
+      event.preventDefault();
+      handleSpin();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  });
 
   /** Elegido a mano (panel de abajo o historial): queda en el centro del rodillo sin girar. */
   function handlePick(game) {
@@ -157,6 +190,19 @@ function RoulettePage({
     }
     setDetails((current) => (current ? { ...current, game: { ...current.game, is_favorite: nextValue } } : current));
     updateGame(target.appid, { is_favorite: nextValue });
+  }
+
+  /** Jugando / Terminado / Abandonado (o null para quitarlo). */
+  async function handleSetState(target, state) {
+    try {
+      await setGameState(target.appid, state);
+    } catch {
+      setNotice({ text: "No se pudo guardar el estado. Probá de nuevo." });
+      return;
+    }
+    updateGame(target.appid, { state });
+    setDetails((current) => (current?.game?.appid === target.appid ? { ...current, game: { ...current.game, state } } : current));
+    setLastCard((current) => (current?.appid === target.appid ? { ...current, state } : current));
   }
 
   /** "No me lo muestres más": sale de la ruleta y se gira otra vez. Se puede deshacer. */
@@ -218,14 +264,35 @@ function RoulettePage({
         )}
       </header>
 
-      <Reel pool={pool} spin={spin} onSettled={() => setSettledSpinId(spin?.id)} />
+      <Reel pool={pool} spin={spin} onSettled={() => setSettledSpinId(spin?.id)} sound={sound} />
       <p className="visually-hidden" aria-live="polite">
         {isSpinning ? "Girando la ruleta…" : shownGame ? `Te tocó ${shownGame.name}` : ""}
       </p>
 
       <div className="roulette__controls">
-        <button type="button" className="button button--primary button--large" onClick={() => handleSpin()} disabled={!canSpin}>
+        <button
+          type="button"
+          className="button button--primary button--large"
+          onClick={() => handleSpin()}
+          disabled={!canSpin}
+          aria-keyshortcuts="Space"
+          title="También con la barra espaciadora"
+        >
           {isSpinning ? "Girando…" : "Girar la ruleta"}
+          <kbd className="roulette__kbd" aria-hidden="true">espacio</kbd>
+        </button>
+        <button
+          type="button"
+          className="button roulette__sound"
+          aria-pressed={sound}
+          onClick={() => {
+            unlockAudio();
+            setSound(!sound);
+          }}
+          title={sound ? "Silenciar el rodillo" : "Activar el sonido del rodillo"}
+          aria-label={sound ? "Silenciar el rodillo" : "Activar el sonido del rodillo"}
+        >
+          {sound ? "🔊" : "🔈"}
         </button>
 
         <div className="segmented" role="group" aria-label="Horas jugadas">
@@ -253,7 +320,27 @@ function RoulettePage({
             <button type="button" aria-pressed={collection === "favorites"} onClick={() => setCollection("favorites")} disabled={isSpinning}>
               Favoritos
             </button>
+            <button type="button" aria-pressed={collection === "playing"} onClick={() => setCollection("playing")} disabled={isSpinning}>
+              Jugando
+            </button>
+            <button
+              type="button"
+              aria-pressed={collection === "near_complete"}
+              onClick={() => setCollection("near_complete")}
+              disabled={isSpinning}
+              title="Te falta poco para tener todos los logros (80% o más)"
+            >
+              Casi al 100%
+            </button>
           </div>
+
+          <select className="select" value={mode} onChange={(event) => setMode(event.target.value)} aria-label="Modo de juego" disabled={isSpinning}>
+            {MODE_OPTIONS.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
+          </select>
 
           <select className="select" value={duration} onChange={(event) => setDuration(event.target.value)} aria-label="Duración" disabled={isSpinning}>
             {DURATION_OPTIONS.map((option) => (
@@ -279,23 +366,31 @@ function RoulettePage({
               <input type="checkbox" checked={hideAdult} onChange={(event) => onHideAdultChange?.(event.target.checked)} disabled={isSpinning} />
               Ocultar +18
             </label>
+            <label className="checkbox" title="Por defecto los juegos marcados como terminados no salen">
+              <input type="checkbox" checked={includeFinished} onChange={(event) => setIncludeFinished(event.target.checked)} disabled={isSpinning} />
+              Incluir terminados
+            </label>
             {hasFamily && (
               <label className="checkbox">
                 <input type="checkbox" checked={includeFamily} onChange={(event) => onIncludeFamilyChange?.(event.target.checked)} disabled={isSpinning} />
                 Incluir Familia
               </label>
             )}
+            {hasFamily && includeFamily && (
+              <label className="checkbox" title="Solo los juegos que tenés vos y alguien de tu familia: para jugar juntos">
+                <input type="checkbox" checked={inCommon} onChange={(event) => setInCommon(event.target.checked)} disabled={isSpinning} />
+                En común con la familia
+              </label>
+            )}
+            <label className="checkbox" title="Salen más seguido los sin estrenar, los cortos, los bien reseñados, tus favoritos y los que estás jugando">
+              <input type="checkbox" checked={smart} onChange={(event) => setSmart(event.target.checked)} disabled={isSpinning} />
+              Ruleta inteligente
+            </label>
           </div>
         </div>
       )}
 
-      {library.classification?.running && (
-        <p className="roulette__classifying">
-          <span className="roulette__classifying-dot" aria-hidden="true" />
-          Completando datos de la biblioteca (género, duración, reseñas): {library.classification.classified.toLocaleString("es-AR")} de{" "}
-          {library.classification.total.toLocaleString("es-AR")}. Los filtros se van llenando solos.
-        </p>
-      )}
+      {steamId && <ClassificationBanner classification={library.classification} onPause={library.setClassificationPaused} />}
 
       {notice && (
         <p className="roulette__notice" role="status">
@@ -336,10 +431,32 @@ function RoulettePage({
           onOpenForum={onOpenForum}
           onSpinAgain={pool.length > 1 ? () => handleSpin({ exclude: cardGame.appid }) : undefined}
           onHide={isLoggedIn ? handleHide : undefined}
+          onSetState={isLoggedIn ? handleSetState : undefined}
         />
       )}
     </section>
   );
+}
+
+/** Preferencia guardada en este navegador (true/false). */
+function useStoredFlag(key, initial) {
+  const [value, setValue] = useState(() => {
+    try {
+      const stored = localStorage.getItem(key);
+      return stored === null ? initial : stored === "true";
+    } catch {
+      return initial;
+    }
+  });
+  const update = (next) => {
+    setValue(next);
+    try {
+      localStorage.setItem(key, String(next));
+    } catch {
+      /* almacenamiento bloqueado: la preferencia dura mientras la página esté abierta */
+    }
+  };
+  return [value, update];
 }
 
 function emptyPoolMessage(duration) {

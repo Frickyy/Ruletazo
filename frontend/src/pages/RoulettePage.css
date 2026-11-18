@@ -94,30 +94,6 @@
   margin-left: auto;
 }
 
-.roulette__classifying {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.8125rem;
-}
-
-.roulette__classifying-dot {
-  width: 8px;
-  height: 8px;
-  flex: 0 0 auto;
-  border-radius: 50%;
-  background: var(--accent);
-  animation: roulette-pulse 1.4s ease-in-out infinite;
-}
-
-@keyframes roulette-pulse {
-  50% {
-    opacity: 0.25;
-  }
-}
-
 .roulette__notice {
   display: flex;
   flex-wrap: wrap;
@@ -175,5 +151,32 @@
   .roulette__controls .segmented button {
     flex: 1;
     padding: 0 0.6rem;
+  }
+}
+
+.roulette__kbd {
+  margin-left: 0.25rem;
+  padding: 0.05rem 0.4rem;
+  border: 1px solid color-mix(in srgb, var(--accent-ink) 30%, transparent);
+  border-radius: 4px;
+  font-family: var(--font-body);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  opacity: 0.7;
+}
+
+.roulette__sound {
+  width: 44px;
+  padding: 0;
+  font-size: 1.05rem;
+}
+
+.roulette__sound[aria-pressed="true"] {
+  border-color: var(--accent);
+}
+
+@media (hover: none) {
+  .roulette__kbd {
+    display: none;
   }
 }

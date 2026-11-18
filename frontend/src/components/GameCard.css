@@ -112,6 +112,24 @@
   filter: saturate(0.4);
 }
 
+.game-card__modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.game-card__state {
+  margin-top: 0.4rem;
+}
+
+.game-card__state button {
+  min-height: 36px;
+  font-size: 0.8125rem;
+}
+
 .game-card__hide {
   align-self: flex-start;
   margin-top: 0.25rem;

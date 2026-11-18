@@ -22,22 +22,59 @@ export const DURATION_OPTIONS = [
   { id: "long", label: "Largos (más de 30 h)", min: 30 },
 ];
 
+// Modos de juego según la tienda.
+export const MODE_OPTIONS = [
+  { id: "any", label: "Cualquier modo" },
+  { id: "single", label: "Un jugador" },
+  { id: "coop", label: "Cooperativos" },
+  { id: "multi", label: "Multijugador" },
+  { id: "local", label: "Pantalla compartida" },
+];
+
+export const STATE_LABELS = { playing: "Jugando", finished: "Terminado", abandoned: "Abandonado" };
+
+export const STATE_OPTIONS = [
+  { id: "any", label: "Cualquier estado" },
+  { id: "none", label: "Sin estado" },
+  { id: "playing", label: "Jugando" },
+  { id: "finished", label: "Terminados" },
+  { id: "abandoned", label: "Abandonados (marcados)" },
+];
+
+// "Casi al 100%": te falta poco para tener todos los logros.
+export const NEAR_COMPLETE_RATIO = 0.8;
+
 export const SORT_OPTIONS = [
   { id: "name", label: "Nombre" },
   { id: "playtime", label: "Horas jugadas" },
   { id: "last_played", label: "Última vez jugado" },
   { id: "duration", label: "Duración (HLTB)" },
+  { id: "achievements", label: "Logros (% completado)" },
   { id: "price", label: "Precio" },
   { id: "release_date", label: "Fecha de salida" },
 ];
 
 /**
  * ¿El juego pasa los filtros?
- * - collection: "all" | "favorites" | "hidden" (los ocultos solo aparecen en "hidden")
+ * - collection: "all" | "favorites" | "playing" | "near_complete" | "hidden" (los ocultos solo aparecen en "hidden")
  * - hideAdult: oculta contenido +18 (según la tienda o, sin datos, por el nombre)
+ * - mode: modo de juego (ver MODE_OPTIONS); inCommon: solo los que tenés vos y alguien de tu familia
+ * - includeFinished: si es false, los terminados no entran (la ruleta los saca por defecto)
+ * - state: filtro por estado de la página Biblioteca (ver STATE_OPTIONS)
  */
 export function matchesFilters(game, filters = {}, now = Date.now()) {
-  const { collection = "all", genre = "", playtimeFilter = "all", duration = "any", hideAdult = false, search = "" } = filters;
+  const {
+    collection = "all",
+    genre = "",
+    playtimeFilter = "all",
+    duration = "any",
+    hideAdult = false,
+    search = "",
+    mode = "any",
+    inCommon = false,
+    includeFinished = true,
+    state = "any",
+  } = filters;
 
   if (collection === "hidden") {
     if (!game.is_hidden) return false;
@@ -45,6 +82,16 @@ export function matchesFilters(game, filters = {}, now = Date.now()) {
     return false;
   }
   if (collection === "favorites" && !game.is_favorite) return false;
+  if (collection === "playing" && game.state !== "playing") return false;
+  if (collection === "near_complete" && !isNearComplete(game)) return false;
+  if (!includeFinished && game.state === "finished") return false;
+  if (state === "none" && game.state) return false;
+  if (!["any", "none"].includes(state) && game.state !== state) return false;
+  if (inCommon && game.source !== "both") return false;
+  if (mode === "single" && !game.single_player) return false;
+  if (mode === "coop" && !game.coop) return false;
+  if (mode === "multi" && !game.multiplayer) return false;
+  if (mode === "local" && !game.local_multiplayer) return false;
   if (hideAdult && game.is_adult) return false;
   if (genre && !(game.genres ?? []).includes(genre)) return false;
   if (search && !game.name.toLocaleLowerCase("es").includes(search.trim().toLocaleLowerCase("es"))) return false;
@@ -62,6 +109,16 @@ export function matchesFilters(game, filters = {}, now = Date.now()) {
     if (range.max != null && hours >= range.max) return false;
   }
   return true;
+}
+
+export function isNearComplete(game) {
+  const { achievements_unlocked: unlocked, achievements_total: total } = game;
+  if (!total || unlocked == null || unlocked >= total) return false;
+  return unlocked / total >= NEAR_COMPLETE_RATIO;
+}
+
+export function achievementRatio(game) {
+  return game.achievements_total ? (game.achievements_unlocked ?? 0) / game.achievements_total : null;
 }
 
 export function isStale(game, now = Date.now()) {
@@ -96,6 +153,7 @@ const SORT_VALUES = {
   playtime: (game) => game.playtime_forever_minutes ?? 0,
   last_played: (game) => game.last_played ?? null,
   duration: (game) => game.hltb_main_hours ?? null,
+  achievements: (game) => achievementRatio(game),
   price: (game) => game.price_cents ?? null,
   release_date: (game) => game.release_date || null,
 };
@@ -103,4 +161,33 @@ const SORT_VALUES = {
 /** Géneros presentes en la biblioteca, ordenados alfabéticamente. */
 export function genresOf(games) {
   return [...new Set(games.flatMap((game) => game.genres ?? []))].sort((a, b) => a.localeCompare(b, "es"));
+}
+
+/**
+ * Peso de cada juego en la "ruleta inteligente": todos pueden salir, pero salen más seguido
+ * los sin estrenar, los cortos, los bien reseñados, los favoritos y los que estás jugando.
+ */
+export function smartWeight(game) {
+  if (!game) return 1;
+  let weight = 1;
+  if (!game.playtime_forever_minutes) weight += 1.5;
+  if (game.hltb_main_hours != null && game.hltb_main_hours < 15) weight += 1;
+  if (/positivas/i.test(game.review_score_desc ?? "") && !/mayormente|mixtas/i.test(game.review_score_desc ?? "")) weight += 1;
+  if (game.is_favorite) weight += 1;
+  if (game.state === "playing") weight += 1.5;
+  return weight;
+}
+
+/** Elige uno al azar según `weightOf` (sin pesos = todos con la misma chance). */
+export function pickWeighted(items, weightOf = () => 1, random = Math.random) {
+  if (items.length === 0) return null;
+  const weights = items.map((item) => Math.max(weightOf(item), 0));
+  const total = weights.reduce((sum, weight) => sum + weight, 0);
+  if (total <= 0) return items[Math.floor(random() * items.length)];
+  let target = random() * total;
+  for (let index = 0; index < items.length; index += 1) {
+    target -= weights[index];
+    if (target < 0) return items[index];
+  }
+  return items[items.length - 1];
 }
