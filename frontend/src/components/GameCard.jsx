@@ -5,7 +5,7 @@
  * `isDemo`: juego de la biblioteca de ejemplo (sin sesión); no se muestran horas jugadas.
  * `onSpinAgain` ("Otro") y `onHide` ("No me lo muestres más") son opcionales.
  */
-function GameCard({ game, isDemo = false, onToggleFavorite, onSpinAgain, onHide, onOpenForum, achievementProgress, isLoadingAchievements, achievementError }) {
+function GameCard({ game, isStale = false, isDemo = false, onToggleFavorite, onSpinAgain, onHide, onOpenForum, achievementProgress, isLoadingAchievements, achievementError }) {
   const playtimeHours = Math.round(game.playtime_forever_minutes / 60);
   // Solo se puede lanzar si es tuyo (un juego de un familiar se juega desde su cuenta compartida).
   const canPlay = !isDemo && game.source !== "friend";
@@ -17,7 +17,8 @@ function GameCard({ game, isDemo = false, onToggleFavorite, onSpinAgain, onHide,
     : 0;
 
   return (
-    <article className="game-card" aria-labelledby="game-card-title">
+    // isStale: es la ficha del giro anterior mientras sale el próximo; se atenúa y no se puede tocar.
+    <article className={`game-card${isStale ? " game-card--stale" : ""}`} aria-labelledby="game-card-title" aria-busy={isStale} inert={isStale ? "" : undefined}>
       <div className="game-card__main">
         <div className="game-card__cover">
           <img src={game.header_image} alt={`Portada de ${game.name}`} />

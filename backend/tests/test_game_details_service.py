@@ -85,3 +85,68 @@ def test_hltb_miss_counts_as_looked_up():
 def test_hltb_never_looked_up():
     details = _make_details(hltb_version=0)
     assert game_details_service.has_hltb_lookup(details) is False
+
+
+def _complete_details(**overrides):
+    defaults = dict(
+        store_metadata_version=game_details_service.STORE_METADATA_VERSION,
+        reviews_version=game_details_service.REVIEWS_VERSION,
+        hltb_version=game_details_service.HLTB_VERSION,
+    )
+    defaults.update(overrides)
+    return _make_details(**defaults)
+
+
+def _track_fetches(monkeypatch):
+    calls = []
+
+    def fake(name, result):
+        async def fetch(*args):
+            calls.append(name)
+            return result
+
+        return fetch
+
+    monkeypatch.setattr(game_details_service, "_fetch_app_details", fake("store", {"fetch_failed": True}))
+    monkeypatch.setattr(
+        game_details_service,
+        "_fetch_reviews",
+        fake("reviews", {"failed": False, "score_desc": "Muy positivas", "total_reviews": 5, "total_positive": 4, "good": ["Bien"], "bad": []}),
+    )
+    monkeypatch.setattr(game_details_service, "_fetch_achievements", fake("achievements", {"total": 0, "average_percent": None}))
+    monkeypatch.setattr(game_details_service.hltb_client, "get_completion_times", fake("hltb", {"main_hours": 1, "completionist_hours": 2}))
+    return calls
+
+
+async def test_only_missing_reviews_are_fetched(db_session, monkeypatch):
+    db_session.add(_complete_details(reviews_version=0))
+    db_session.commit()
+    calls = _track_fetches(monkeypatch)
+
+    details = await game_details_service.get_or_fetch_details(db_session, 10, "Juego")
+
+    assert calls == ["reviews"]
+    assert details.review_pros == "Bien"
+
+
+async def test_nothing_is_fetched_while_reviews_are_rate_limited(db_session, monkeypatch):
+    from app.services import throttle
+
+    db_session.add(_complete_details(reviews_version=0))
+    db_session.commit()
+    calls = _track_fetches(monkeypatch)
+    throttle.cool_down("reviews")
+
+    await game_details_service.get_or_fetch_details(db_session, 10, "Juego")
+
+    assert calls == []
+
+
+async def test_expired_details_refresh_every_part(db_session, monkeypatch):
+    db_session.add(_complete_details(fetched_at=datetime.now(timezone.utc) - timedelta(days=30)))
+    db_session.commit()
+    calls = _track_fetches(monkeypatch)
+
+    await game_details_service.get_or_fetch_details(db_session, 10, "Juego")
+
+    assert sorted(calls) == ["achievements", "hltb", "reviews", "store"]

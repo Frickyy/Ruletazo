@@ -63,14 +63,23 @@ function RoulettePage({
   const isSpinning = spin !== null && settledSpinId !== spin.id;
   const isLoadingDetails = spin !== null && settledSpinId === spin.id && details?.spinId !== spin.id;
   const shownGame = spin && details?.spinId === settledSpinId ? details.game : null;
+  // La ficha que se ve: la del juego nuevo apenas está lista; mientras gira y carga, la anterior
+  // queda en su lugar (atenuada). Antes se borraba al girar y la página se achicaba y volvía a crecer.
+  const [lastCard, setLastCard] = useState(null);
+  useEffect(() => {
+    if (shownGame) setLastCard(shownGame);
+  }, [shownGame]);
+  const cardGame = shownGame ?? lastCard;
+  const cardIsStale = Boolean(cardGame) && !shownGame;
   const detailsError = spin && details?.spinId === settledSpinId ? details.error : null;
   const unplayedCount = useMemo(() => games.filter((game) => game.playtime_forever_minutes === 0 && !game.is_hidden).length, [games]);
   const libraryLoading = Boolean(steamId) && libraryStatus === "loading";
   const canSpin = !isSpinning && !libraryLoading && pool.length > 0;
 
   useEffect(() => {
+    if (!shownGame) return; // girando: se mantienen los del juego anterior hasta tener el nuevo
     // Los logros son los tuyos: un juego que solo tiene un familiar no tiene progreso propio.
-    if (!steamId || !shownGame || shownGame.source === "friend") {
+    if (!steamId || shownGame.source === "friend") {
       setAchievementProgress(null);
       setIsLoadingAchievements(false);
       setAchievementError(false);
@@ -161,6 +170,7 @@ function RoulettePage({
     updateGame(target.appid, { is_hidden: true });
     setSpin(null);
     setDetails(null);
+    setLastCard(null);
     setNotice({
       text: `Listo: ${target.name} no va a volver a salir. Podés recuperarlo desde Biblioteca → Ocultos.`,
       undo: async () => {
@@ -175,7 +185,7 @@ function RoulettePage({
   if (libraryLoading) status = <p className="hint roulette__hint">Cargando tu biblioteca…</p>;
   else if (steamId && libraryStatus === "error") status = <p className="error-text roulette__hint">{libraryError}</p>;
   else if (pool.length === 0) status = <p className="hint roulette__hint">{emptyPoolMessage(duration)}</p>;
-  else if (isLoadingDetails) status = <p className="hint roulette__hint">Cargando la ficha de {spin.winner.name}…</p>;
+  else if (isLoadingDetails && !lastCard) status = <p className="hint roulette__hint">Cargando la ficha de {spin.winner.name}…</p>;
   else if (detailsError) status = <p className="error-text roulette__hint">{detailsError}</p>;
 
   return (
@@ -302,20 +312,29 @@ function RoulettePage({
 
       {history.length > 0 && <SpinHistory items={history} onPick={handlePick} disabled={isSpinning} currentAppid={shownGame?.appid} />}
 
-      {!spin && !libraryLoading && pool.length > 0 && (
-        <IdlePanel steamId={steamId} library={games} pool={pool} onPick={handlePick} onLogin={onLogin} />
+      {/* Se queda hasta que llega la primera ficha, para que la página no se achique mientras gira. */}
+      {!cardGame && !libraryLoading && pool.length > 0 && (
+        <IdlePanel
+          steamId={steamId}
+          library={games}
+          pool={pool}
+          onPick={handlePick}
+          onLogin={onLogin}
+          isStale={Boolean(spin)}
+        />
       )}
 
-      {shownGame && (
+      {cardGame && (
         <GameCard
-          game={shownGame}
+          game={cardGame}
+          isStale={cardIsStale}
           achievementProgress={achievementProgress}
           isLoadingAchievements={isLoadingAchievements}
           achievementError={achievementError}
           isDemo={!steamId}
           onToggleFavorite={isLoggedIn ? handleToggleFavorite : undefined}
           onOpenForum={onOpenForum}
-          onSpinAgain={pool.length > 1 ? () => handleSpin({ exclude: shownGame.appid }) : undefined}
+          onSpinAgain={pool.length > 1 ? () => handleSpin({ exclude: cardGame.appid }) : undefined}
           onHide={isLoggedIn ? handleHide : undefined}
         />
       )}
