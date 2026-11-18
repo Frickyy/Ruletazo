@@ -6,6 +6,8 @@ from datetime import datetime
 
 import httpx
 
+from app.services import review_digest
+
 STORE_API_BASE_URL = "https://store.steampowered.com"
 
 # query_summary.review_score_desc siempre viene en inglés, sin importar el `language`
@@ -124,71 +126,59 @@ class SteamStoreClient:
             "store_available": True,
         }
 
-    async def get_reviews(self, appid: int, language: str = "spanish", num_reviews: int = 3) -> dict:
-        """Devuelve el resumen de reseñas de Steam + hasta `num_reviews` reseñas de texto destacadas."""
-        try:
-            response = await self._client.get(
-                f"/appreviews/{appid}",
-                params={
-                    "json": 1,
-                    "filter": "recent",
-                    "language": language,
-                    "num_per_page": num_reviews,
-                    "purchase_type": "all",
-                },
-            )
-            response.raise_for_status()
-        except httpx.HTTPError:
-            return {"score_desc": "", "total_reviews": 0, "total_positive": 0, "featured_reviews": []}
+    async def get_review_digest(self, appid: int) -> dict:
+        """Puntaje de la comunidad + "lo bueno" y "lo malo" en frases cortas (ver review_digest).
 
-        data = response.json()
-        summary = data.get("query_summary", {})
+        Son dos pedidos: las reseñas más útiles en español (con ambos tipos mezclados, separadas
+        por `voted_up`) y las de todos los idiomas, que dan el puntaje global y completan si en
+        español no alcanza. Antes eran cinco pedidos por juego y Steam empezaba a redirigir a la
+        portada (rate limit); ese error se guardaba como "sin reseñas" durante días.
+
+        Devuelve `failed=True` si Steam no respondió bien, para no cachear un resultado vacío.
+        """
+        spanish = await self._fetch_reviews(appid, language="spanish", num_per_page=100)
+        everyone = await self._fetch_reviews(appid, language="all", num_per_page=60)
+        if everyone is None:
+            return {"failed": True}
+
+        summary = everyone.get("query_summary", {})
         score_desc_en = summary.get("review_score_desc", "")
-        featured = [
-            review
-            for review in (r.get("review", "").strip() for r in data.get("reviews", []))
-            if _is_substantive_review(review)
-        ]
+        good, bad = [], []
+        for payload in (spanish, everyone):
+            if payload is None:
+                continue
+            reviews = payload.get("reviews", [])
+            good += [review.get("review", "") for review in reviews if review.get("voted_up")]
+            bad += [review.get("review", "") for review in reviews if not review.get("voted_up")]
         return {
+            "failed": False,
             "score_desc": _REVIEW_SCORE_TRANSLATIONS.get(score_desc_en, score_desc_en),
             "total_reviews": summary.get("total_reviews", 0),
             "total_positive": summary.get("total_positive", 0),
-            "featured_reviews": featured[:num_reviews],
+            "good": review_digest.pick_excerpts(good),
+            "bad": review_digest.pick_excerpts(bad),
         }
 
-
-    async def get_review_highlights(self, appid: int) -> dict:
-        """La reseña positiva y la negativa más votadas como útiles ("lo bueno" y "lo malo").
-
-        Busca primero en español; si no hay una reseña con contenido, en cualquier idioma.
-        """
-        highlights = {}
-        for review_type in ("positive", "negative"):
-            text = ""
-            for language in ("spanish", "all"):
-                text = await self._most_helpful_review(appid, review_type, language)
-                if text:
-                    break
-            highlights[review_type] = text
-        return {"pros": highlights["positive"], "cons": highlights["negative"]}
-
-    async def _most_helpful_review(self, appid: int, review_type: str, language: str) -> str:
+    async def _fetch_reviews(self, appid: int, language: str, num_per_page: int) -> dict | None:
+        """Primera página de reseñas ordenadas por utilidad. None si Steam no respondió con JSON válido."""
         try:
             response = await self._client.get(
                 f"/appreviews/{appid}",
                 params={
                     "json": 1,
                     "filter": "all",
-                    "review_type": review_type,
                     "language": language,
-                    "num_per_page": 10,
+                    "review_type": "all",
                     "purchase_type": "all",
+                    "num_per_page": num_per_page,
                 },
             )
+            # Con rate limit Steam responde 302 a la portada en vez de un error.
             response.raise_for_status()
-        except httpx.HTTPError:
-            return ""
-        return pick_highlight([review.get("review", "") for review in response.json().get("reviews", [])])
+            payload = response.json()
+        except (httpx.HTTPError, ValueError):
+            return None
+        return payload if payload.get("success") == 1 else None
 
     async def search_games(self, term: str, limit: int = 10) -> list[dict]:
         """Busca juegos en la tienda de Steam por nombre (para el buscador del foro)."""
@@ -211,21 +201,6 @@ _NON_GAME_NAME_RE = re.compile(
     r"\b(?:soundtrack|ost|original score|artbook|art book|wallpapers?|demo|playtest|dedicated server|sdk)\b",
     re.IGNORECASE,
 )
-
-# Largo máximo guardado para "lo bueno" / "lo malo": la ficha muestra un extracto.
-HIGHLIGHT_MAX_LENGTH = 600
-
-
-def pick_highlight(reviews: list[str]) -> str:
-    """Primera reseña con contenido real (descarta dibujos ASCII), recortada a HIGHLIGHT_MAX_LENGTH."""
-    for review in reviews:
-        text = " ".join(review.split())
-        if _is_readable_highlight(text):
-            if len(text) > HIGHLIGHT_MAX_LENGTH:
-                text = text[:HIGHLIGHT_MAX_LENGTH].rsplit(" ", 1)[0] + "…"
-            return text
-    return ""
-
 
 def parse_search_results(payload: dict, limit: int = 10) -> list[dict]:
     """Convierte la respuesta de storesearch en [{appid, name, image}] (solo juegos, sin bandas sonoras ni extras)."""
@@ -269,21 +244,3 @@ def _empty_app_details() -> dict:
         "release_date": "",
         "store_available": False,
     }
-
-
-def _is_substantive_review(review: str) -> bool:
-    """Descarta reseñas cortas o dibujos ASCII aunque superen el mínimo de longitud."""
-    if len(review) < 200:
-        return False
-    letters = sum(character.isalpha() for character in review)
-    return letters >= 40 and len(set(review.casefold())) >= 12
-
-
-def _is_readable_highlight(text: str) -> bool:
-    """Más permisivo que _is_substantive_review (acepta reseñas cortas), pero exige texto real:
-    al menos 60 caracteres y que la mitad sean letras (descarta dibujos con símbolos)."""
-    visible = text.replace(" ", "")
-    if len(text) < 60 or not visible:
-        return False
-    letters = sum(character.isalpha() for character in visible)
-    return letters / len(visible) >= 0.5 and len(set(text.casefold())) >= 12

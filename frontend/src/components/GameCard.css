@@ -126,31 +126,40 @@
   border-left-color: var(--danger);
 }
 
-.verdict figcaption {
-  margin-bottom: 0.2rem;
-  font-family: var(--font-mono);
+.verdict__title {
+  margin: 0 0 0.35rem;
+  font-family: var(--font-body);
   font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
 
-.verdict--good figcaption {
+.verdict--good .verdict__title {
   color: var(--success);
 }
 
-.verdict--bad figcaption {
+.verdict--bad .verdict__title {
   color: var(--danger);
 }
 
-.verdict blockquote {
-  display: -webkit-box;
+.verdict ul {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
   margin: 0;
-  overflow: hidden;
+  padding: 0;
+  list-style: none;
+}
+
+.verdict li {
   color: var(--text-soft);
   font-size: 0.875rem;
-  line-height: 1.55;
-  -webkit-line-clamp: 5;
-  -webkit-box-orient: vertical;
+  line-height: 1.5;
+}
+
+.verdict q {
+  quotes: "“" "”";
 }
 
 .game-card__verdict-note {

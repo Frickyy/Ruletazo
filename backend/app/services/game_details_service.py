@@ -20,7 +20,8 @@ logger = logging.getLogger(__name__)
 
 STORE_METADATA_VERSION = 5
 # Subir este número fuerza a volver a pedir "lo bueno / lo malo" de las reseñas.
-REVIEWS_VERSION = 1
+# 2: varias frases por lado, filtradas (review_digest), y los errores de Steam ya no se cachean.
+REVIEWS_VERSION = 2
 # Subir este número fuerza a volver a buscar en HowLongToBeat los juegos que no tuvieron resultado.
 HLTB_VERSION = 1
 
@@ -60,9 +61,18 @@ def has_hltb_lookup(details: CachedGameDetails) -> bool:
     return has_result or (details.hltb_version or 0) >= HLTB_VERSION
 
 
+# "Lo bueno" y "lo malo" se guardan como varias frases en una columna de texto, una por línea.
+def join_excerpts(excerpts: list[str]) -> str:
+    return "\n".join(excerpts)
+
+
+def split_excerpts(text: str | None) -> list[str]:
+    return [line for line in (text or "").split("\n") if line.strip()]
+
+
 def has_rich_content(details: CachedGameDetails) -> bool:
     """A favorite should not be considered enriched while its synopsis is still empty."""
-    return bool(details.short_description or details.review_score_desc or details.featured_reviews)
+    return bool(details.short_description or details.review_score_desc or details.review_pros)
 
 
 def difficulty_label(details: CachedGameDetails) -> str:
@@ -89,7 +99,7 @@ async def get_or_fetch_details(db: Session, appid: int, name: str) -> CachedGame
         return cached
 
     logger.info("Enriqueciendo detalles de '%s' (appid %s)", name, appid)
-    (store_details, reviews, highlights), achievements, hltb = await asyncio.gather(
+    (store_details, reviews), achievements, hltb = await asyncio.gather(
         _fetch_store_data(appid),
         _fetch_achievements(appid),
         hltb_client.get_completion_times(name),
@@ -107,14 +117,15 @@ async def get_or_fetch_details(db: Session, appid: int, name: str) -> CachedGame
         cached.release_date = store_details["release_date"]
     if not store_details.get("fetch_failed"):
         cached.store_metadata_version = STORE_METADATA_VERSION
-    if reviews["score_desc"] or reviews["total_reviews"] or reviews["featured_reviews"]:
+    if not reviews["failed"]:
+        # Si Steam no respondió (rate limit) se conserva lo que había y se reintenta la próxima vez.
         cached.review_score_desc = reviews["score_desc"]
         cached.review_total = reviews["total_reviews"]
         cached.review_positive = reviews["total_positive"]
-        cached.featured_reviews = reviews["featured_reviews"]
-    cached.review_pros = highlights["pros"]
-    cached.review_cons = highlights["cons"]
-    cached.reviews_version = REVIEWS_VERSION
+        cached.featured_reviews = []
+        cached.review_pros = join_excerpts(reviews["good"])
+        cached.review_cons = join_excerpts(reviews["bad"])
+        cached.reviews_version = REVIEWS_VERSION
     if not hltb.get("failed"):
         # Un error de red no borra las horas que ya había ni cuenta como "no está en HLTB".
         cached.hltb_main_hours = hltb["main_hours"]
@@ -132,8 +143,7 @@ async def _fetch_store_data(appid: int) -> list[dict]:
     async with SteamStoreClient() as client:
         return await asyncio.gather(
             client.get_app_details(appid),
-            client.get_reviews(appid),
-            client.get_review_highlights(appid),
+            client.get_review_digest(appid),
         )
 
 

@@ -291,9 +291,8 @@ def apply_cached_details(game: Game, details: CachedGameDetails) -> None:
     game.release_date = details.release_date
     game.review_score_desc = details.review_score_desc
     game.review_total = details.review_total
-    game.featured_reviews = details.featured_reviews
-    game.review_pros = details.review_pros or ""
-    game.review_cons = details.review_cons or ""
+    game.review_good = game_details_service.split_excerpts(details.review_pros)
+    game.review_bad = game_details_service.split_excerpts(details.review_cons)
     game.hltb_main_hours = details.hltb_main_hours
     game.hltb_completionist_hours = details.hltb_completionist_hours
     game.achievement_difficulty = game_details_service.difficulty_label(details)
