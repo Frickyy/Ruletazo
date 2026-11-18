@@ -1,5 +1,5 @@
 /*
- * Steam Roulette — base visual.
+ * Ruletazo — base visual.
  * Un solo set de variables para toda la app: carbón cálido, un único acento naranja,
  * Space Grotesk para títulos, Inter para texto y JetBrains Mono para números.
  */
@@ -320,4 +320,27 @@ h3 {
 .text-button:hover {
   color: var(--accent-hover);
   text-decoration: underline;
+}
+
+/* Insignia de quienes apoyan el proyecto (perfil y foro). */
+.supporter-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.1rem 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+  font-family: var(--font-body);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
+}
+
+.supporter-badge svg {
+  width: 12px;
+  height: 12px;
+  fill: currentColor;
 }

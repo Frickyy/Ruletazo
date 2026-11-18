@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import {
   createForumThread,
   deleteForumPost,
@@ -21,22 +21,30 @@ import {
   searchForumGames,
 } from "../services/forumService.js";
 import FormattedText, { FORMAT_HELP } from "../components/FormattedText.jsx";
+import SteamLoginButton from "../components/SteamLoginButton.jsx";
+import SupporterBadge from "../components/SupporterBadge.jsx";
 import "./ForumPage.css";
 
 const SCORES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+// Lo que comparten las piezas del foro sin pasarlo de componente en componente:
+// abrir el perfil de un autor y las tiendas con link de afiliado (si están configuradas).
+const ForumContext = createContext({ onOpenProfile: null, affiliateStores: [] });
 
 /**
  * Foro: buscador de juegos, reseñas con puntaje del 1 al 10 y discusiones.
  * `target` decide la vista: null → portada; { appid } → juego; { appid, threadId } → hilo.
  */
-function ForumPage({ target, onTargetChange, viewer, onLogin }) {
+function ForumPage({ target, onTargetChange, viewer, onLogin, onOpenProfile = null, affiliateStores = [] }) {
+  let content;
   if (target?.threadId) {
-    return <ForumThreadView target={target} onTargetChange={onTargetChange} viewer={viewer} onLogin={onLogin} />;
+    content = <ForumThreadView target={target} onTargetChange={onTargetChange} viewer={viewer} onLogin={onLogin} />;
+  } else if (target?.appid) {
+    content = <ForumGameView target={target} onTargetChange={onTargetChange} viewer={viewer} onLogin={onLogin} />;
+  } else {
+    content = <ForumHome onTargetChange={onTargetChange} viewer={viewer} />;
   }
-  if (target?.appid) {
-    return <ForumGameView target={target} onTargetChange={onTargetChange} viewer={viewer} onLogin={onLogin} />;
-  }
-  return <ForumHome onTargetChange={onTargetChange} viewer={viewer} />;
+  return <ForumContext.Provider value={{ onOpenProfile, affiliateStores }}>{content}</ForumContext.Provider>;
 }
 
 // ---------- Portada: buscador + actividad reciente ----------
@@ -216,6 +224,7 @@ function ForumGameView({ target, onTargetChange, viewer, onLogin }) {
           <a className="text-button forum-game__store" href={`https://store.steampowered.com/app/${appid}/`} target="_blank" rel="noopener noreferrer">
             Ver en Steam ↗
           </a>
+          <AffiliateStores name={name} />
         </div>
       </header>
 
@@ -740,10 +749,19 @@ function MessageActions({ kind, id, isMine, viewer, onDelete, onEdit, deleteLabe
 // ---------- Piezas compartidas ----------
 
 function AuthorLine({ author, at, editedAt }) {
+  const { onOpenProfile } = useContext(ForumContext);
+  const name = author.name || "Jugador de Steam";
   return (
     <p className="author-line">
       {author.avatar ? <img src={author.avatar} alt="" /> : <span className="author-line__avatar" aria-hidden="true" />}
-      <strong>{author.name || "Jugador de Steam"}</strong>
+      {onOpenProfile && author.steam_id ? (
+        <button type="button" className="author-line__name" onClick={() => onOpenProfile(author.steam_id)} title="Ver perfil">
+          {name}
+        </button>
+      ) : (
+        <strong>{name}</strong>
+      )}
+      {author.is_supporter && <SupporterBadge />}
       <span className="muted">{timeAgo(at)}</span>
       {editedAt && (
         <span className="muted" title={`Editado ${timeAgo(editedAt)}`}>
@@ -804,10 +822,36 @@ function LoginPrompt({ onLogin, action }) {
   return (
     <div className="login-prompt">
       <p>Iniciá sesión con Steam para {action}.</p>
-      <button type="button" className="button" onClick={onLogin}>
-        Iniciar sesión con Steam
-      </button>
+      <SteamLoginButton onClick={onLogin} />
     </div>
+  );
+}
+
+/**
+ * Otras tiendas donde buscar el juego, con link de afiliado (AFFILIATE_STORES en el backend).
+ * Marcados como tales y con rel="sponsored": la ruleta nunca elige juegos por esto.
+ */
+function AffiliateStores({ name }) {
+  const { affiliateStores } = useContext(ForumContext);
+  if (!affiliateStores?.length || !name) return null;
+  return (
+    <p className="forum-game__stores">
+      <span className="muted">Buscar en otras tiendas:</span>
+      {affiliateStores.map((store) => (
+        <a
+          key={store.name}
+          className="text-button"
+          href={store.url.replaceAll("{query}", encodeURIComponent(name))}
+          target="_blank"
+          rel="sponsored noopener noreferrer"
+        >
+          {store.name} ↗
+        </a>
+      ))}
+      <span className="muted forum-game__affiliate-note" title="Si comprás desde estos links, la página puede recibir una comisión sin costo extra para vos.">
+        (links de afiliado)
+      </span>
+    </p>
   );
 }
 

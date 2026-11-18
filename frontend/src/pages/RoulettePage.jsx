@@ -47,6 +47,9 @@ function RoulettePage({
   onIncludeFamilyChange,
   onOpenForum,
   onLogin,
+  trackAchievements = false,
+  onOpenProfile,
+  hltbEnabled = true,
 }) {
   const { games, status: libraryStatus, error: libraryError, updateGame } = library;
   const [collection, setCollection] = useState("all");
@@ -230,7 +233,17 @@ function RoulettePage({
   let status = null;
   if (libraryLoading) status = <p className="hint roulette__hint">Cargando tu biblioteca…</p>;
   else if (steamId && libraryStatus === "error") status = <p className="error-text roulette__hint">{libraryError}</p>;
-  else if (pool.length === 0) status = <p className="hint roulette__hint">{emptyPoolMessage(duration)}</p>;
+  // Solo si no hay nada que girar: si ya hay progreso guardado, la ruleta funciona igual.
+  else if (collection === "near_complete" && !trackAchievements && pool.length === 0) {
+    status = (
+      <p className="hint roulette__hint">
+        “Casi al 100%” usa tu progreso de logros, que solo se pide a Steam si lo activás.{" "}
+        <button type="button" className="text-button" onClick={onOpenProfile}>
+          Activarlo en tu perfil
+        </button>
+      </p>
+    );
+  } else if (pool.length === 0) status = <p className="hint roulette__hint">{emptyPoolMessage(duration)}</p>;
   else if (isLoadingDetails && !lastCard) status = <p className="hint roulette__hint">Cargando la ficha de {spin.winner.name}…</p>;
   else if (detailsError) status = <p className="error-text roulette__hint">{detailsError}</p>;
 
@@ -340,7 +353,13 @@ function RoulettePage({
               </button>
             </div>
 
-            <select className="select" value={mode} onChange={(event) => setMode(event.target.value)} aria-label="Modo de juego" disabled={isSpinning}>
+            <select
+              className={`select${hltbEnabled ? "" : " roulette__mode--wide"}`}
+              value={mode}
+              onChange={(event) => setMode(event.target.value)}
+              aria-label="Modo de juego"
+              disabled={isSpinning}
+            >
               {MODE_OPTIONS.map((option) => (
                 <option key={option.id} value={option.id}>
                   {option.label}
@@ -348,13 +367,15 @@ function RoulettePage({
               ))}
             </select>
 
-            <select className="select" value={duration} onChange={(event) => setDuration(event.target.value)} aria-label="Duración" disabled={isSpinning}>
-              {DURATION_OPTIONS.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+            {hltbEnabled && (
+              <select className="select" value={duration} onChange={(event) => setDuration(event.target.value)} aria-label="Duración" disabled={isSpinning}>
+                {DURATION_OPTIONS.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            )}
 
             {/* Siempre presente (aunque todavía no haya géneros) para que la grilla no quede con un hueco. */}
             <select

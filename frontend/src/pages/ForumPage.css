@@ -462,3 +462,30 @@
 .moderation__delete {
   color: var(--danger);
 }
+
+.author-line__name {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+}
+
+.author-line__name:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.forum-game__stores {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.9rem;
+  margin: 0;
+  font-size: 0.8125rem;
+}
+
+.forum-game__affiliate-note {
+  font-size: 0.75rem;
+}

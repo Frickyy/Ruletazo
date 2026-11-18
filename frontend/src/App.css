@@ -241,6 +241,43 @@
   font-size: 0.75rem;
 }
 
+.profile-menu__item {
+  width: 100%;
+  min-height: 40px;
+  margin-top: 0.3rem;
+  padding: 0 0.6rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text);
+  font-size: 0.875rem;
+  text-align: left;
+}
+
+.profile-menu__item:hover {
+  background: var(--surface-raised);
+}
+
+/* Botón oficial de Steam: la imagen tal cual, sin bordes propios. */
+.steam-login {
+  display: inline-flex;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  line-height: 0;
+  transition: filter 140ms ease;
+}
+
+.steam-login:hover {
+  filter: brightness(1.12);
+}
+
+.steam-login img {
+  width: 180px;
+  height: 35px;
+}
+
 .profile-menu__logout {
   width: 100%;
   min-height: 40px;
