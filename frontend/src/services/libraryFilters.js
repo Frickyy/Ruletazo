@@ -4,54 +4,56 @@
  * cambiar un filtro es instantáneo, sin volver a pedir nada al backend.
  */
 
+import { tk } from "../i18n/index.js";
+
 // "Abandonados": con horas jugadas, pero sin tocarlos hace más de esto.
 export const STALE_DAYS = 180;
 
 export const PLAYTIME_OPTIONS = [
-  { id: "all", label: "Toda la biblioteca" },
-  { id: "zero", label: "0 horas" },
-  { id: "under2", label: "Menos de 2 h" },
-  { id: "stale", label: "Abandonados", title: `Jugados, pero no en los últimos ${STALE_DAYS / 30} meses` },
+  { id: "all", label: tk("Toda la biblioteca") },
+  { id: "zero", label: tk("0 horas") },
+  { id: "under2", label: tk("Menos de 2 h") },
+  { id: "stale", label: tk("Abandonados"), title: tk("Jugados, pero no en los últimos 6 meses") /* STALE_DAYS / 30 */ },
 ];
 
-// Según HowLongToBeat (historia principal). Los juegos sin dato quedan fuera al filtrar por duración.
+// Según la duración de cada juego (comunidad, o HowLongToBeat si está activado). Los juegos sin dato quedan fuera al filtrar por duración.
 export const DURATION_OPTIONS = [
-  { id: "any", label: "Cualquier duración" },
-  { id: "short", label: "Cortos (menos de 10 h)", max: 10 },
-  { id: "medium", label: "Medianos (10 a 30 h)", min: 10, max: 30 },
-  { id: "long", label: "Largos (más de 30 h)", min: 30 },
+  { id: "any", label: tk("Cualquier duración") },
+  { id: "short", label: tk("Cortos (menos de 10 h)"), max: 10 },
+  { id: "medium", label: tk("Medianos (10 a 30 h)"), min: 10, max: 30 },
+  { id: "long", label: tk("Largos (más de 30 h)"), min: 30 },
 ];
 
 // Modos de juego según la tienda.
 export const MODE_OPTIONS = [
-  { id: "any", label: "Cualquier modo" },
-  { id: "single", label: "Un jugador" },
-  { id: "coop", label: "Cooperativos" },
-  { id: "multi", label: "Multijugador" },
-  { id: "local", label: "Pantalla compartida" },
+  { id: "any", label: tk("Cualquier modo") },
+  { id: "single", label: tk("Un jugador") },
+  { id: "coop", label: tk("Cooperativos") },
+  { id: "multi", label: tk("Multijugador") },
+  { id: "local", label: tk("Pantalla compartida") },
 ];
 
-export const STATE_LABELS = { playing: "Jugando", finished: "Terminado", abandoned: "Abandonado" };
+export const STATE_LABELS = { playing: tk("Jugando"), finished: tk("Terminado"), abandoned: tk("Abandonado") };
 
 export const STATE_OPTIONS = [
-  { id: "any", label: "Cualquier estado" },
-  { id: "none", label: "Sin estado" },
-  { id: "playing", label: "Jugando" },
-  { id: "finished", label: "Terminados" },
-  { id: "abandoned", label: "Abandonados (marcados)" },
+  { id: "any", label: tk("Cualquier estado") },
+  { id: "none", label: tk("Sin estado") },
+  { id: "playing", label: tk("Jugando") },
+  { id: "finished", label: tk("Terminados") },
+  { id: "abandoned", label: tk("Abandonados (marcados)") },
 ];
 
 // "Casi al 100%": te falta poco para tener todos los logros.
 export const NEAR_COMPLETE_RATIO = 0.8;
 
 export const SORT_OPTIONS = [
-  { id: "name", label: "Nombre" },
-  { id: "playtime", label: "Horas jugadas" },
-  { id: "last_played", label: "Última vez jugado" },
-  { id: "duration", label: "Duración (HLTB)" },
-  { id: "achievements", label: "Logros (% completado)" },
-  { id: "price", label: "Precio" },
-  { id: "release_date", label: "Fecha de salida" },
+  { id: "name", label: tk("Nombre") },
+  { id: "playtime", label: tk("Horas jugadas") },
+  { id: "last_played", label: tk("Última vez jugado") },
+  { id: "duration", label: tk("Duración") },
+  { id: "achievements", label: tk("Logros (% completado)") },
+  { id: "price", label: tk("Precio") },
+  { id: "release_date", label: tk("Fecha de salida") },
 ];
 
 /**

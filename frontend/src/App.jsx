@@ -14,6 +14,7 @@ import { createRoom } from "./services/roomService.js";
 import SteamIdInput from "./components/SteamIdInput.jsx";
 import { fetchSession, fetchSteamProfile, logoutSession } from "./services/gameService.js";
 import { useHashRoute } from "./routes.js";
+import { setLang, t, tk, useLang } from "./i18n/index.js";
 import { useLibrary } from "./services/useLibrary.js";
 import "./components/SteamIdInput.css";
 import "./App.css";
@@ -26,13 +27,15 @@ const GUEST_ID_KEY = "steamRoulette.guestId";
 const LEGACY_SESSION_KEYS = ["steamRoulette.steamId", "steamRoulette.verifiedSteamId", "steamRoulette.profile"];
 
 const VIEWS = [
-  { id: "roulette", label: "Ruleta", icon: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 5.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7ZM12 3v5.5M12 15.5V21M3 12h5.5M15.5 12H21" },
-  { id: "library", label: "Biblioteca", icon: "M4 4h6.5v6.5H4zM13.5 4H20v6.5h-6.5zM4 13.5h6.5V20H4zM13.5 13.5H20V20h-6.5z" },
-  { id: "family", label: "Familia", icon: "M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM2.5 20a6.5 6.5 0 0 1 13 0M16 4.3a3.5 3.5 0 0 1 0 6.4M18.5 14.2A6.5 6.5 0 0 1 21.5 20" },
-  { id: "forum", label: "Foro", icon: "M4 5h16v11H9l-5 4z" },
+  { id: "roulette", label: tk("Ruleta"), icon: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 5.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7ZM12 3v5.5M12 15.5V21M3 12h5.5M15.5 12H21" },
+  { id: "library", label: tk("Biblioteca"), icon: "M4 4h6.5v6.5H4zM13.5 4H20v6.5h-6.5zM4 13.5h6.5V20H4zM13.5 13.5H20V20h-6.5z" },
+  { id: "family", label: tk("Familia"), icon: "M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM2.5 20a6.5 6.5 0 0 1 13 0M16 4.3a3.5 3.5 0 0 1 0 6.4M18.5 14.2A6.5 6.5 0 0 1 21.5 20" },
+  { id: "forum", label: tk("Foro"), icon: "M4 5h16v11H9l-5 4z" },
 ];
 
 function App() {
+  // Al cambiar de idioma se vuelve a dibujar toda la página con los textos nuevos.
+  const lang = useLang();
   // La sesión la define el backend (cookie firmada); acá solo se refleja lo que devuelve /auth/me.
   const [profile, setProfile] = useState(null);
   const [sessionChecked, setSessionChecked] = useState(false);
@@ -83,14 +86,14 @@ function App() {
   useEffect(() => {
     LEGACY_SESSION_KEYS.forEach((key) => localStorage.removeItem(key));
     const params = new URLSearchParams(window.location.search);
-    if (params.get("auth_error")) setAuthMessage("No se pudo iniciar sesión con Steam. Probá nuevamente.");
+    if (params.get("auth_error")) setAuthMessage(t("No se pudo iniciar sesión con Steam. Probá nuevamente."));
     if (params.get("auth_error") || params.get("login")) {
       window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
     }
     fetchSession()
       .then((session) => {
         setProfile(session);
-        if (session && params.get("login") === "success") setAuthMessage(`Sesión iniciada como ${session.name}.`);
+        if (session && params.get("login") === "success") setAuthMessage(t("Sesión iniciada como {name}.", { name: session.name }));
       })
       .catch(() => setProfile(null))
       .finally(() => setSessionChecked(true));
@@ -196,7 +199,7 @@ function App() {
     } finally {
       setProfile(null);
       setProfileMenuOpen(false);
-      setAuthMessage("Sesión cerrada.");
+      setAuthMessage(t("Sesión cerrada."));
     }
   }
 
@@ -221,12 +224,12 @@ function App() {
     <div className="app-shell">
       <header className="topbar">
         <div className="topbar__inner">
-          <button type="button" className="brand" onClick={() => setActiveView("roulette")} aria-label="Ruletazo, ir a la ruleta">
+          <button type="button" className="brand" onClick={() => setActiveView("roulette")} aria-label={t("Ruletazo, ir a la ruleta")}>
             <BrandMark />
             <span className="brand__name">Ruletazo</span>
           </button>
 
-          <nav className="topbar__nav" aria-label="Secciones">
+          <nav className="topbar__nav" aria-label={t("Secciones")}>
             <ul className="topbar__links">
               {VIEWS.map((view) => (
                 <li key={view.id}>
@@ -239,7 +242,7 @@ function App() {
                     <svg className="nav-link__icon" viewBox="0 0 24 24" aria-hidden="true">
                       <path d={view.icon} />
                     </svg>
-                    <span>{view.label}</span>
+                    <span>{t(view.label)}</span>
                   </button>
                 </li>
               ))}
@@ -247,6 +250,7 @@ function App() {
           </nav>
 
           <div className="topbar__meta">
+            <LanguageSwitch lang={lang} />
             <SupportButton links={config?.support_links ?? []} />
             {!sessionChecked ? null : isLoggedIn ? (
               <div className="profile-menu-wrap">
@@ -267,13 +271,13 @@ function App() {
                   <div className="profile-menu" role="menu">
                     <div className="profile-menu__identity">
                       <strong>{profile.name}</strong>
-                      <span>Cuenta de Steam</span>
+                      <span>{t("Cuenta de Steam")}</span>
                     </div>
                     <button type="button" className="profile-menu__item" onClick={() => openProfile(null)} role="menuitem">
-                      Mi perfil
+                      {t("Mi perfil")}
                     </button>
                     <button type="button" className="profile-menu__logout" onClick={handleLogout} role="menuitem">
-                      Cerrar sesión
+                      {t("Cerrar sesión")}
                     </button>
                   </div>
                 )}
@@ -288,7 +292,7 @@ function App() {
       {authMessage && <p className="auth-message" role="status">{authMessage}</p>}
 
       <main className="main-panel">
-        <Suspense fallback={<p className="hint">Cargando…</p>}>
+        <Suspense fallback={<p className="hint">{t("Cargando…")}</p>}>
         {activeView === "roulette" && (
           <RoulettePage
             steamId={librarySteamId}
@@ -356,7 +360,7 @@ function App() {
             onPreferencesChange={handlePreferencesChange}
             onDeleted={() => {
               setProfile(null);
-              setAuthMessage("Borramos todos tus datos y cerramos tu sesión.");
+              setAuthMessage(t("Borramos todos tus datos y cerramos tu sesión."));
               navigate("roulette");
             }}
           />
@@ -367,9 +371,9 @@ function App() {
         {activeView === "family" && (
           <section className="family-page">
             <div className="family-page__intro">
-              <p className="eyebrow">Familia</p>
-              <h1>Sumá la biblioteca de tu familia</h1>
-              <p className="hint">Pegá el link del perfil de Steam o el SteamID64 de hasta 5 familiares. Sus juegos entran en la ruleta y en la biblioteca.</p>
+              <p className="eyebrow">{t("Familia")}</p>
+              <h1>{t("Sumá la biblioteca de tu familia")}</h1>
+              <p className="hint">{t("Pegá el link del perfil de Steam o el SteamID64 de hasta 5 familiares. Sus juegos entran en la ruleta y en la biblioteca.")}</p>
             </div>
             <div className="family-members">
               {familyIds.map((familyId, index) => {
@@ -377,7 +381,7 @@ function App() {
                 const profileFailed = !familyProfile && failedProfiles.has(familyId);
                 return (
                   <div className="family-member" key={`${index}-${familyId}`}>
-                    <SteamIdInput id={`family-${index}`} label={`Familiar ${index + 1}`} placeholder="URL de perfil o SteamID64" value={familyId} onChange={(value) => updateFamilyId(index, value)} />
+                    <SteamIdInput id={`family-${index}`} label={t("Familiar {n}", { n: index + 1 })} placeholder={t("URL de perfil o SteamID64")} value={familyId} onChange={(value) => updateFamilyId(index, value)} />
                     {familyProfile && (
                       <div className="family-profile">
                         {familyProfile.avatar ? <img src={familyProfile.avatar} alt="" /> : <span className="family-profile__avatar" aria-hidden="true" />}
@@ -386,20 +390,20 @@ function App() {
                     )}
                     {profileFailed && (
                       <p className="family-profile family-profile--missing" role="status">
-                        No se encontró el perfil. ¿Está bien escrito y es público?
+                        {t("No se encontró el perfil. ¿Está bien escrito y es público?")}
                       </p>
                     )}
                     {familyIds.length > 1 && (
-                      <button type="button" className="button family-remove" onClick={() => removeFamilyId(index)}>Quitar</button>
+                      <button type="button" className="button family-remove" onClick={() => removeFamilyId(index)}>{t("Quitar")}</button>
                     )}
                   </div>
                 );
               })}
             </div>
             <div className="family-actions">
-              {familyIds.length < 5 && <button type="button" className="button" onClick={addFamilyId}>Agregar familiar</button>}
+              {familyIds.length < 5 && <button type="button" className="button" onClick={addFamilyId}>{t("Agregar familiar")}</button>}
               <button type="button" className="button button--primary" onClick={() => setActiveView("library")}>
-                Ver biblioteca combinada
+                {t("Ver biblioteca combinada")}
               </button>
             </div>
           </section>
@@ -472,13 +476,27 @@ function SupportButton({ links }) {
               document.getElementById("apoyar")?.scrollIntoView({ behavior: "smooth" });
             }
       }
-      title="Es gratis y sin publicidad: si querés, ayudá a mantenerla"
+      title={t("Es gratis y sin publicidad: si querés, ayudá a mantenerla")}
     >
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z" />
       </svg>
-      <span className="support-button__label">Apoyar</span>
+      <span className="support-button__label">{t("Apoyar")}</span>
     </a>
+  );
+}
+
+/** Español / English: el idioma elegido se recuerda en este navegador. */
+function LanguageSwitch({ lang }) {
+  return (
+    <div className="lang-switch" role="group" aria-label={t("Idioma")}>
+      <button type="button" aria-pressed={lang === "es"} onClick={() => setLang("es")} lang="es" title="Español">
+        ES
+      </button>
+      <button type="button" aria-pressed={lang === "en"} onClick={() => setLang("en")} lang="en" title="English">
+        EN
+      </button>
+    </div>
   );
 }
 

@@ -1,3 +1,4 @@
+import { formatNumber, t } from "../i18n/index.js";
 import "./ClassificationBanner.css";
 
 /**
@@ -16,18 +17,18 @@ function ClassificationBanner({ classification, onPause }) {
   const percent = Math.round((done / total) * 100);
 
   return (
-    <section className="classification" aria-live="polite" aria-label="Completando datos de la biblioteca">
+    <section className="classification" aria-live="polite" aria-label={t("Completando datos de la biblioteca")}>
       <div className="classification__text">
         <p className="classification__title">
-          {storePending ? "Leyendo tu biblioteca en la tienda de Steam" : "Buscando la duración de tus juegos"}
-          <span className="classification__step mono">paso {step} de 2</span>
+          {storePending ? t("Leyendo tu biblioteca en la tienda de Steam") : t("Buscando la duración de tus juegos")}
+          <span className="classification__step mono">{t("paso {step} de 2", { step })}</span>
         </p>
         <p className="classification__detail">
           {storePending
-            ? "Géneros, modos de juego (cooperativo, multijugador), portadas y precios. Tarda unos segundos."
-            : "Duración según HowLongToBeat y tu progreso de logros, de a un juego para no saturar los servicios. Podés seguir usando la ruleta: los filtros de duración y “Casi al 100%” se van completando."}
-          {paused && " En pausa."}
-          {!paused && !running && " Se cortó la conexión con Steam; se retoma la próxima vez que abras la app."}
+            ? t("Géneros, modos de juego (cooperativo, multijugador), portadas y precios. Tarda unos segundos.")
+            : t("Duración y tu progreso de logros, de a un juego para no saturar los servicios. Podés seguir usando la ruleta: los filtros de duración y “Casi al 100%” se van completando.")}
+          {paused && ` ${t("En pausa.")}`}
+          {!paused && !running && ` ${t("Se cortó la conexión con Steam; se retoma la próxima vez que abras la app.")}`}
         </p>
       </div>
       <div className="classification__progress">
@@ -35,11 +36,11 @@ function ClassificationBanner({ classification, onPause }) {
           <span style={{ width: `${percent}%` }} />
         </div>
         <span className="mono classification__count">
-          {done.toLocaleString("es-AR")}/{total.toLocaleString("es-AR")}
+          {formatNumber(done)}/{formatNumber(total)}
         </span>
         {onPause && (running || paused) && (
           <button type="button" className="text-button" onClick={() => onPause(!paused)}>
-            {paused ? "Reanudar" : "Pausar"}
+            {paused ? t("Reanudar") : t("Pausar")}
           </button>
         )}
       </div>

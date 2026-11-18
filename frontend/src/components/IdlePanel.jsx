@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import SteamLoginButton from "./SteamLoginButton.jsx";
+import { formatNumber, t } from "../i18n/index.js";
 import "./IdlePanel.css";
 
 const UNPLAYED_COUNT = 6;
@@ -44,8 +45,8 @@ function LibraryPanel({ library, pool, onPick }) {
       {unplayed.length > 0 && (
         <section className="idle-panel__block" aria-labelledby="idle-unplayed">
           <div className="idle-panel__heading">
-            <h2 id="idle-unplayed">Esperando su turno</h2>
-            <p className="hint">Juegos sin estrenar que entran en la ruleta. Si alguno te tienta, elegilo directo.</p>
+            <h2 id="idle-unplayed">{t("Esperando su turno")}</h2>
+            <p className="hint">{t("Juegos sin estrenar que entran en la ruleta. Si alguno te tienta, elegilo directo.")}</p>
           </div>
           <ul className="idle-covers">
             {unplayed.map((game) => (
@@ -63,7 +64,7 @@ function LibraryPanel({ library, pool, onPick }) {
       {topPlayed.length > 0 && (
         <section className="idle-panel__block idle-panel__block--side" aria-labelledby="idle-top">
           <div className="idle-panel__heading">
-            <h2 id="idle-top">Lo que más jugaste</h2>
+            <h2 id="idle-top">{t("Lo que más jugaste")}</h2>
           </div>
           <ol className="idle-top">
             {topPlayed.map((game) => (
@@ -85,15 +86,15 @@ function LibraryPanel({ library, pool, onPick }) {
 function DemoPanel({ onLogin, onGuest }) {
   const [profileLink, setProfileLink] = useState("");
   const steps = [
-    ["Pegá tu perfil de Steam", "O iniciá sesión: Steam confirma quién sos sin pedirte la contraseña."],
-    ["Filtrá lo que quieras", "Sin estrenar, poco jugados, favoritos, por género o sumando la biblioteca de tu familia."],
-    ["Girá y decidí", "Te mostramos cuánto dura, qué opina la comunidad y cuántos logros te faltan."],
+    [t("Pegá tu perfil de Steam"), t("O iniciá sesión: Steam confirma quién sos sin pedirte la contraseña.")],
+    [t("Filtrá lo que quieras"), t("Sin estrenar, poco jugados, favoritos, por género o sumando la biblioteca de tu familia.")],
+    [t("Girá y decidí"), t("Te mostramos cuánto dura, qué opina la comunidad y cuántos logros te faltan.")],
   ];
   return (
     <div className="idle-panel">
       <section className="idle-panel__block" aria-labelledby="idle-how">
         <div className="idle-panel__heading">
-          <h2 id="idle-how">Cómo funciona</h2>
+          <h2 id="idle-how">{t("Cómo funciona")}</h2>
         </div>
         <ol className="idle-steps">
           {steps.map(([title, text], index) => (
@@ -106,8 +107,8 @@ function DemoPanel({ onLogin, onGuest }) {
         </ol>
       </section>
       <section className="idle-panel__block idle-panel__block--side idle-cta" aria-labelledby="idle-cta">
-        <h2 id="idle-cta">Usá tu propia biblioteca</h2>
-        <p className="hint">Ahora estás girando con 5 juegos de ejemplo. Pegá el link de tu perfil (tiene que ser público) y entran todos los tuyos.</p>
+        <h2 id="idle-cta">{t("Usá tu propia biblioteca")}</h2>
+        <p className="hint">{t("Ahora estás girando con 5 juegos de ejemplo. Pegá el link de tu perfil (tiene que ser público) y entran todos los tuyos.")}</p>
         {onGuest && (
           <form
             className="idle-guest"
@@ -117,7 +118,7 @@ function DemoPanel({ onLogin, onGuest }) {
             }}
           >
             <label className="visually-hidden" htmlFor="guest-profile">
-              Link de tu perfil de Steam
+              {t("Link de tu perfil de Steam")}
             </label>
             <input
               id="guest-profile"
@@ -129,13 +130,13 @@ function DemoPanel({ onLogin, onGuest }) {
               inputMode="url"
             />
             <button type="submit" className="button button--primary" disabled={!profileLink.trim()}>
-              Girar con mi biblioteca
+              {t("Girar con mi biblioteca")}
             </button>
           </form>
         )}
         {onLogin && (
           <>
-            <p className="idle-cta__divider">o, para guardar favoritos y estados</p>
+            <p className="idle-cta__divider">{t("o, para guardar favoritos y estados")}</p>
             <SteamLoginButton onClick={onLogin} />
           </>
         )}
@@ -147,7 +148,7 @@ function DemoPanel({ onLogin, onGuest }) {
 function formatHours(minutes) {
   const hours = minutes / 60;
   if (hours < 1) return `${minutes} min`;
-  return `${Math.round(hours).toLocaleString("es-AR")} h`;
+  return `${formatNumber(Math.round(hours))} h`;
 }
 
 function shuffle(items) {

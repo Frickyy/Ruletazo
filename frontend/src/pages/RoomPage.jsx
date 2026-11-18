@@ -3,6 +3,7 @@ import Reel from "../components/Reel.jsx";
 import SteamLoginButton from "../components/SteamLoginButton.jsx";
 import { unlockAudio } from "../services/reelSound.js";
 import { fetchRoom, joinRoom, setRoomVeto, spinRoom } from "../services/roomService.js";
+import { formatNumber, t } from "../i18n/index.js";
 import "./RoomPage.css";
 
 const POLL_MS = 2000;
@@ -47,7 +48,7 @@ function RoomPage({ code, viewer, onLogin, onBack }) {
         const next = await fetchRoom(code);
         if (!cancelled) applyRoom(next);
       } catch (err) {
-        if (!cancelled) setError(err.response?.data?.detail ?? "No se pudo cargar la sala.");
+        if (!cancelled) setError(err.response?.data?.detail ?? t("No se pudo cargar la sala."));
       }
     }
     poll();
@@ -73,9 +74,9 @@ function RoomPage({ code, viewer, onLogin, onBack }) {
 
   useEffect(() => setVisible(PAGE_SIZE), [search]);
 
-  if (!code) return <RoomMessage title="Sala" text="Ese link de sala no es válido." onBack={onBack} />;
-  if (error && !room) return <RoomMessage title="Sala" text={error} onBack={onBack} />;
-  if (!room) return <p className="hint">Cargando la sala…</p>;
+  if (!code) return <RoomMessage title={t("Sala")} text={t("Ese link de sala no es válido.")} onBack={onBack} />;
+  if (error && !room) return <RoomMessage title={t("Sala")} text={error} onBack={onBack} />;
+  if (!room) return <p className="hint">{t("Cargando la sala…")}</p>;
 
   const names = Object.fromEntries(room.members.map((member) => [member.steam_id, member.name]));
   const host = room.members.find((member) => member.steam_id === room.host_steam_id);
@@ -90,7 +91,7 @@ function RoomPage({ code, viewer, onLogin, onBack }) {
     try {
       applyRoom(await action());
     } catch (err) {
-      setActionError(err.response?.data?.detail ?? "No se pudo completar. Probá de nuevo.");
+      setActionError(err.response?.data?.detail ?? t("No se pudo completar. Probá de nuevo."));
     } finally {
       setBusy(false);
     }
@@ -103,7 +104,7 @@ function RoomPage({ code, viewer, onLogin, onBack }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      window.prompt("Copiá el link de la sala:", url);
+      window.prompt(t("Copiá el link de la sala:"), url);
     }
   }
 
@@ -112,44 +113,46 @@ function RoomPage({ code, viewer, onLogin, onBack }) {
       <header className="room__hero">
         <div>
           <p className="eyebrow">
-            Sala <span className="mono">{room.code}</span>
+            {t("Sala")} <span className="mono">{room.code}</span>
           </p>
-          <h1 id="room-title">¿Qué jugamos juntos?</h1>
+          <h1 id="room-title">{t("¿Qué jugamos juntos?")}</h1>
           <p className="room__lead">
-            Vetá los juegos que no querés. {host ? `${host.name} gira` : "Quien armó la sala gira"} y sale uno de los que nadie vetó.
+            {host
+              ? t("Vetá los juegos que no querés. {name} gira y sale uno de los que nadie vetó.", { name: host.name })
+              : t("Vetá los juegos que no querés. Quien armó la sala gira y sale uno de los que nadie vetó.")}
           </p>
         </div>
         <div className="room__share">
           <button type="button" className="button" onClick={copyLink}>
-            {copied ? "¡Link copiado!" : "Copiar link de la sala"}
+            {copied ? t("¡Link copiado!") : t("Copiar link de la sala")}
           </button>
         </div>
       </header>
 
-      <ul className="room__members" aria-label="Personas en la sala">
+      <ul className="room__members" aria-label={t("Personas en la sala")}>
         {room.members.map((member) => (
           <li key={member.steam_id} className="room__member">
             {member.avatar ? <img src={member.avatar} alt="" /> : <span className="room__avatar" aria-hidden="true" />}
             <span>{member.name}</span>
-            {member.steam_id === room.host_steam_id && <span className="tag">arma</span>}
+            {member.steam_id === room.host_steam_id && <span className="tag">{t("arma")}</span>}
           </li>
         ))}
       </ul>
 
       <Reel pool={pool} spin={spin} onSettled={() => setSettledId(spin?.id)} />
       <p className="visually-hidden" aria-live="polite">
-        {isSpinning ? "Girando la ruleta…" : winner ? `Salió ${winner.name}` : ""}
+        {isSpinning ? t("Girando la ruleta…") : winner ? t("Salió {name}", { name: winner.name }) : ""}
       </p>
 
       <div className="room__controls">
         {!viewer ? (
           <>
-            <p className="hint">Iniciá sesión con Steam para entrar a la sala y vetar juegos.</p>
+            <p className="hint">{t("Iniciá sesión con Steam para entrar a la sala y vetar juegos.")}</p>
             <SteamLoginButton onClick={onLogin} />
           </>
         ) : !room.is_member ? (
           <button type="button" className="button button--primary room__main" onClick={() => run(() => joinRoom(room.code))} disabled={busy}>
-            Entrar a la sala
+            {t("Entrar a la sala")}
           </button>
         ) : room.is_host ? (
           <button
@@ -161,13 +164,13 @@ function RoomPage({ code, viewer, onLogin, onBack }) {
             }}
             disabled={busy || isSpinning || available === 0}
           >
-            {isSpinning ? "Girando…" : "Girar para todos"}
+            {isSpinning ? t("Girando…") : t("Girar para todos")}
           </button>
         ) : (
-          <p className="hint">Estás adentro. Cuando {host?.name ?? "quien armó la sala"} gire, lo ves acá al mismo tiempo.</p>
+          <p className="hint">{t("Estás adentro. Cuando {name} gire, lo ves acá al mismo tiempo.", { name: host?.name ?? t("quien armó la sala") })}</p>
         )}
         <p className="room__count mono">
-          {available.toLocaleString("es-AR")} de {pool.length.toLocaleString("es-AR")} juegos en juego
+          {t("{available} de {total} juegos en juego", { available: formatNumber(available), total: formatNumber(pool.length) })}
         </p>
       </div>
 
@@ -181,14 +184,14 @@ function RoomPage({ code, viewer, onLogin, onBack }) {
         <div className="room__winner">
           <img src={winner.image} alt="" />
           <div>
-            <p className="eyebrow">Salió</p>
+            <p className="eyebrow">{t("Salió")}</p>
             <h2>{winner.name}</h2>
             <div className="room__winner-actions">
               <a className="button button--primary" href={`steam://run/${winner.appid}`}>
-                ▶ Jugar ahora
+                ▶ {t("Jugar ahora")}
               </a>
               <a className="button" href={`https://store.steampowered.com/app/${winner.appid}/`} target="_blank" rel="noopener noreferrer">
-                Ver en Steam ↗
+                {t("Ver en Steam")} ↗
               </a>
             </div>
           </div>
@@ -197,12 +200,12 @@ function RoomPage({ code, viewer, onLogin, onBack }) {
 
       <section className="room__pool" aria-labelledby="room-pool">
         <div className="room__pool-heading">
-          <h2 id="room-pool">Juegos de la sala</h2>
+          <h2 id="room-pool">{t("Juegos de la sala")}</h2>
           <input
             className="text-input"
             type="search"
-            placeholder="Buscar un juego"
-            aria-label="Buscar un juego de la sala"
+            placeholder={t("Buscar un juego")}
+            aria-label={t("Buscar un juego de la sala")}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
@@ -216,7 +219,7 @@ function RoomPage({ code, viewer, onLogin, onBack }) {
                 <img src={game.image} alt="" loading="lazy" />
                 <div className="room-game__body">
                   <strong>{game.name}</strong>
-                  <small className="muted">{voters.length ? `Vetado por ${voters.map((id) => names[id] ?? "alguien").join(", ")}` : " "}</small>
+                  <small className="muted">{voters.length ? t("Vetado por {names}", { names: voters.map((id) => names[id] ?? t("alguien")).join(", ") }) : " "}</small>
                   {room.is_member && (
                     <button
                       type="button"
@@ -225,7 +228,7 @@ function RoomPage({ code, viewer, onLogin, onBack }) {
                       onClick={() => run(() => setRoomVeto(room.code, game.appid, !mine))}
                       disabled={busy || isSpinning}
                     >
-                      {mine ? "Quitar mi veto" : "Vetar"}
+                      {mine ? t("Quitar mi veto") : t("Vetar")}
                     </button>
                   )}
                 </div>
@@ -235,10 +238,10 @@ function RoomPage({ code, viewer, onLogin, onBack }) {
         </ul>
         {filtered.length > visible && (
           <button type="button" className="button room__more" onClick={() => setVisible((count) => count + PAGE_SIZE)}>
-            Ver más ({(filtered.length - visible).toLocaleString("es-AR")})
+            {t("Ver más")} ({formatNumber(filtered.length - visible)})
           </button>
         )}
-        {filtered.length === 0 && <p className="hint">Ningún juego de la sala coincide con esa búsqueda.</p>}
+        {filtered.length === 0 && <p className="hint">{t("Ningún juego de la sala coincide con esa búsqueda.")}</p>}
       </section>
     </section>
   );
@@ -250,7 +253,7 @@ function RoomMessage({ title, text, onBack }) {
       <h1>{title}</h1>
       <p className="hint">{text}</p>
       <button type="button" className="button" onClick={onBack}>
-        Ir a la ruleta
+        {t("Ir a la ruleta")}
       </button>
     </section>
   );

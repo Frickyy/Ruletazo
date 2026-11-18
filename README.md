@@ -36,6 +36,9 @@ Duración (según quienes lo terminaron en Ruletazo), puntaje de la comunidad, *
 ### Foro
 Buscador de cualquier juego de Steam, reseñas con puntaje del 1 al 10 y discusiones con respuestas, con formato básico (`**negrita**`, `||spoiler||` y links). Los mensajes propios se pueden **editar**. Cualquiera con sesión puede **denunciar** un mensaje; los **moderadores** (`ADMIN_STEAM_IDS`) ven las denuncias y pueden borrar cualquier mensaje.
 
+### Español e inglés
+Botón **ES / EN** en la barra de arriba. La primera vez se elige según el idioma del navegador y después se recuerda. Los textos se escriben en español en el código y pasan por `t()` (`frontend/src/i18n/`); `en.js` tiene la traducción y un test avisa si falta alguna. Los mensajes de error del backend se traducen en el frontend.
+
 ### Instalable
 En el celular se puede agregar a la pantalla de inicio y se abre como una app (PWA).
 
@@ -177,6 +180,7 @@ Cuando alguien marca un juego como *Terminado*, se guardan sus horas en Steam en
 - **HowLongToBeat** no tiene una API oficial: se busca por nombre y, si el sitio cambia, la duración puede faltar.
 - **Reseñas**: Steam limita los pedidos de reseñas; si se pasa, se reintenta más tarde y mientras tanto la ficha sale sin "lo bueno y lo malo".
 - **Contenido +18**: se detecta con los descriptores de contenido de la tienda. Hasta que un juego tiene esos datos, se usa una aproximación por el nombre.
+- **Inglés**: las sinopsis de los juegos y las frases de reseñas vienen de Steam en español, así que en inglés esas partes siguen en español.
 - **Logros**: el filtro *Casi al 100%* necesita que tus logros sean públicos en Steam; si son privados, esos juegos cuentan como "sin logros".
 - **Límite por visitante y rate limits**: viven en memoria, así que valen para un solo proceso del backend.
 

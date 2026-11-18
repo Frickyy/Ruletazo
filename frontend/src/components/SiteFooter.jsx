@@ -1,3 +1,4 @@
+import { t } from "../i18n/index.js";
 import "./SiteFooter.css";
 
 /**
@@ -12,8 +13,8 @@ function SiteFooter({ config, onNavigate }) {
         {supportLinks.length > 0 && (
           <div className="site-footer__support" id="apoyar">
             <div className="site-footer__support-text">
-              <strong>¿Te sirve la ruleta?</strong>
-              <p>Es gratis y sin publicidad. Si querés, invitame un cafecito para ayudar a mantenerla.</p>
+              <strong>{t("¿Te sirve la ruleta?")}</strong>
+              <p>{t("Es gratis y sin publicidad. Si querés, invitame un cafecito para ayudar a mantenerla.")}</p>
             </div>
             <div className="site-footer__support-links">
               {supportLinks.map((link) => (
@@ -25,13 +26,12 @@ function SiteFooter({ config, onNavigate }) {
             </div>
           </div>
         )}
-        <nav className="site-footer__links" aria-label="Legales">
-          <a href="#/privacidad" onClick={(event) => { event.preventDefault(); onNavigate?.("privacy"); }}>Privacidad</a>
-          <a href="#/terminos" onClick={(event) => { event.preventDefault(); onNavigate?.("terms"); }}>Términos</a>
+        <nav className="site-footer__links" aria-label={t("Legales")}>
+          <a href="#/privacidad" onClick={(event) => { event.preventDefault(); onNavigate?.("privacy"); }}>{t("Privacidad")}</a>
+          <a href="#/terminos" onClick={(event) => { event.preventDefault(); onNavigate?.("terms"); }}>{t("Términos")}</a>
         </nav>
         <p className="site-footer__disclaimer">
-          Proyecto independiente, sin relación con Valve Corporation. Steam y el logo de Steam son marcas registradas de Valve
-          Corporation. Datos de juegos con la Steam Web API.
+          {t("Proyecto independiente, sin relación con Valve Corporation. Steam y el logo de Steam son marcas registradas de Valve Corporation. Datos de juegos con la Steam Web API.")}
         </p>
       </div>
     </footer>

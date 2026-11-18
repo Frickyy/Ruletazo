@@ -24,6 +24,7 @@ import {
 } from "../services/libraryFilters.js";
 import { unlockAudio } from "../services/reelSound.js";
 import Reel from "../components/Reel.jsx";
+import { formatNumber, t } from "../i18n/index.js";
 import "../components/GameCard.css";
 import "./RoulettePage.css";
 
@@ -155,14 +156,14 @@ function RoulettePage({
     if (isSpinning || libraryLoading) return;
     const candidates = exclude ? spinnable.filter((game) => game.appid !== exclude.appid) : spinnable;
     if (candidates.length === 0) {
-      setNotice({ text: "No quedan otros juegos con estos filtros." });
+      setNotice({ text: t("No quedan otros juegos con estos filtros.") });
       return;
     }
     setNotice(null);
     if (exclude && steamId) {
       setSkipped((current) => new Set(current).add(exclude.appid));
       setNotice({
-        text: `${exclude.name} no vuelve a salir por hoy.`,
+        text: t("{name} no vuelve a salir por hoy.", { name: exclude.name }),
         undo: () => {
           setSkipped((current) => {
             const next = new Set(current);
@@ -204,7 +205,7 @@ function RoulettePage({
     fetchGameDetails({ steamId, friendSteamId, appid: winner.appid })
       .then((game) => setDetails({ spinId, game, error: null }))
       .catch((err) =>
-        setDetails({ spinId, game: null, error: err.response?.data?.detail ?? "No se pudo cargar la ficha del juego." }),
+        setDetails({ spinId, game: null, error: err.response?.data?.detail ?? t("No se pudo cargar la ficha del juego.") }),
       );
   }
 
@@ -226,7 +227,7 @@ function RoulettePage({
     try {
       await setGameState(target.appid, state);
     } catch {
-      setNotice({ text: "No se pudo guardar el estado. Probá de nuevo." });
+      setNotice({ text: t("No se pudo guardar el estado. Probá de nuevo.") });
       return;
     }
     updateGame(target.appid, { state });
@@ -239,7 +240,7 @@ function RoulettePage({
     try {
       await hideGame(target.appid);
     } catch {
-      setNotice({ text: "No se pudo ocultar el juego. Probá de nuevo." });
+      setNotice({ text: t("No se pudo ocultar el juego. Probá de nuevo.") });
       return;
     }
     updateGame(target.appid, { is_hidden: true });
@@ -247,11 +248,11 @@ function RoulettePage({
     setDetails(null);
     setLastCard(null);
     setNotice({
-      text: `Listo: ${target.name} no va a volver a salir. Podés recuperarlo desde Biblioteca → Ocultos.`,
+      text: t("Listo: {name} no va a volver a salir. Podés recuperarlo desde Biblioteca → Ocultos.", { name: target.name }),
       undo: async () => {
         await unhideGame(target.appid);
         updateGame(target.appid, { is_hidden: false });
-        setNotice({ text: `${target.name} vuelve a estar en la ruleta.` });
+        setNotice({ text: t("{name} vuelve a estar en la ruleta.", { name: target.name }) });
       },
     });
   }
@@ -261,14 +262,14 @@ function RoulettePage({
     try {
       await onCreateRoom(spinnable);
     } catch (err) {
-      setNotice({ text: err.response?.data?.detail ?? "No se pudo armar la sala. Probá de nuevo." });
+      setNotice({ text: err.response?.data?.detail ?? t("No se pudo armar la sala. Probá de nuevo.") });
     } finally {
       setCreatingRoom(false);
     }
   }
 
   let status = null;
-  if (libraryLoading) status = <p className="hint roulette__hint">Cargando tu biblioteca…</p>;
+  if (libraryLoading) status = <p className="hint roulette__hint">{t("Cargando tu biblioteca…")}</p>;
   else if (steamId && libraryStatus === "error") {
     status = (
       <p className="error-text roulette__hint">
@@ -277,7 +278,7 @@ function RoulettePage({
           <>
             {" "}
             <button type="button" className="text-button" onClick={() => onGuestChange?.("")}>
-              Probar con otro perfil
+              {t("Probar con otro perfil")}
             </button>
           </>
         )}
@@ -288,23 +289,23 @@ function RoulettePage({
   else if (collection === "near_complete" && !trackAchievements && pool.length === 0) {
     status = (
       <p className="hint roulette__hint">
-        “Casi al 100%” usa tu progreso de logros, que solo se pide a Steam si lo activás.{" "}
+        {t("“Casi al 100%” usa tu progreso de logros, que solo se pide a Steam si lo activás.")}{" "}
         <button type="button" className="text-button" onClick={onOpenProfile}>
-          Activarlo en tu perfil
+          {t("Activarlo en tu perfil")}
         </button>
       </p>
     );
   } else if (pool.length > 0 && spinnable.length === 0) {
     status = (
       <p className="hint roulette__hint">
-        Ya descartaste todos los juegos que cumplen estos filtros.{" "}
+        {t("Ya descartaste todos los juegos que cumplen estos filtros.")}{" "}
         <button type="button" className="text-button" onClick={() => setSkipped(new Set())}>
-          Volver a incluirlos
+          {t("Volver a incluirlos")}
         </button>
       </p>
     );
   } else if (pool.length === 0) status = <p className="hint roulette__hint">{emptyPoolMessage(duration)}</p>;
-  else if (isLoadingDetails && !lastCard) status = <p className="hint roulette__hint">Cargando la ficha de {spin.winner.name}…</p>;
+  else if (isLoadingDetails && !lastCard) status = <p className="hint roulette__hint">{t("Cargando la ficha de {name}…", { name: spin.winner.name })}</p>;
   else if (detailsError) status = <p className="error-text roulette__hint">{detailsError}</p>;
 
   return (
@@ -312,28 +313,32 @@ function RoulettePage({
       <header className="roulette__hero">
         <div className="roulette__title">
           <p className="eyebrow">
-            {guest ? `La biblioteca de ${guest.name || "este perfil"}, a la suerte` : steamId ? "Tu biblioteca, a la suerte" : "Biblioteca de ejemplo"}
+            {guest
+              ? t("La biblioteca de {name}, a la suerte", { name: guest.name || t("este perfil") })
+              : steamId
+                ? t("Tu biblioteca, a la suerte")
+                : t("Biblioteca de ejemplo")}
           </p>
-          <h1 id="roulette-title">¿Qué jugamos hoy?</h1>
+          <h1 id="roulette-title">{t("¿Qué jugamos hoy?")}</h1>
           <p className="roulette__lead">
             {steamId
-              ? "Girá la ruleta: el juego que frene en el centro es el que te toca."
-              : "Probá la ruleta con 5 juegos de ejemplo, o pegá el link de tu perfil de Steam para girar con tu biblioteca."}
+              ? t("Girá la ruleta: el juego que frene en el centro es el que te toca.")
+              : t("Probá la ruleta con 5 juegos de ejemplo, o pegá el link de tu perfil de Steam para girar con tu biblioteca.")}
           </p>
         </div>
         {games.length > 0 && (
           <dl className="roulette__stats">
             <div>
-              <dt>juegos</dt>
-              <dd>{games.length.toLocaleString("es-AR")}</dd>
+              <dt>{t("juegos")}</dt>
+              <dd>{formatNumber(games.length)}</dd>
             </div>
             <div>
-              <dt>sin estrenar</dt>
-              <dd>{unplayedCount.toLocaleString("es-AR")}</dd>
+              <dt>{t("sin estrenar")}</dt>
+              <dd>{formatNumber(unplayedCount)}</dd>
             </div>
             <div className="roulette__stat--accent">
-              <dt>en la ruleta</dt>
-              <dd>{pool.length.toLocaleString("es-AR")}</dd>
+              <dt>{t("en la ruleta")}</dt>
+              <dd>{formatNumber(pool.length)}</dd>
             </div>
           </dl>
         )}
@@ -341,7 +346,7 @@ function RoulettePage({
 
       <Reel pool={pool} spin={spin} onSettled={() => setSettledSpinId(spin?.id)} sound={sound} />
       <p className="visually-hidden" aria-live="polite">
-        {isSpinning ? "Girando la ruleta…" : shownGame ? `Te tocó ${shownGame.name}` : ""}
+        {isSpinning ? t("Girando la ruleta…") : shownGame ? t("Te tocó {name}", { name: shownGame.name }) : ""}
       </p>
 
       {/* Controles en una grilla de 4 columnas, todo al mismo alto:
@@ -354,10 +359,10 @@ function RoulettePage({
             onClick={() => handleSpin()}
             disabled={!canSpin}
             aria-keyshortcuts="Space"
-            title="También con la barra espaciadora"
+            title={t("También con la barra espaciadora")}
           >
-            {isSpinning ? "Girando…" : "Girar la ruleta"}
-            <kbd className="roulette__kbd" aria-hidden="true">espacio</kbd>
+            {isSpinning ? t("Girando…") : t("Girar la ruleta")}
+            <kbd className="roulette__kbd" aria-hidden="true">{t("espacio")}</kbd>
           </button>
           <button
             type="button"
@@ -367,8 +372,8 @@ function RoulettePage({
               unlockAudio();
               setSound(!sound);
             }}
-            title={sound ? "Silenciar el rodillo" : "Activar el sonido del rodillo"}
-            aria-label={sound ? "Silenciar el rodillo" : "Activar el sonido del rodillo"}
+            title={sound ? t("Silenciar el rodillo") : t("Activar el sonido del rodillo")}
+            aria-label={sound ? t("Silenciar el rodillo") : t("Activar el sonido del rodillo")}
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" />
@@ -377,17 +382,17 @@ function RoulettePage({
           </button>
         </div>
 
-        <div className="segmented roulette__wide" role="group" aria-label="Horas jugadas">
+        <div className="segmented roulette__wide" role="group" aria-label={t("Horas jugadas")}>
           {PLAYTIME_OPTIONS.filter((option) => steamId || option.id !== "stale").map((option) => (
             <button
               key={option.id}
               type="button"
-              title={option.title}
+              title={option.title ? t(option.title) : undefined}
               aria-pressed={playtimeFilter === option.id}
               onClick={() => onPlaytimeFilterChange?.(option.id)}
               disabled={isSpinning}
             >
-              {option.label}
+              {t(option.label)}
             </button>
           ))}
         </div>
@@ -397,24 +402,24 @@ function RoulettePage({
             {guest ? (
               <GuestBar guest={guest} onChange={() => onGuestChange?.("")} onLogin={onLogin} />
             ) : (
-            <div className="segmented roulette__collection" role="group" aria-label="Colección">
+            <div className="segmented roulette__collection" role="group" aria-label={t("Colección")}>
               <button type="button" aria-pressed={collection === "all"} onClick={() => setCollection("all")} disabled={isSpinning}>
-                Todos
+                {t("Todos")}
               </button>
               <button type="button" aria-pressed={collection === "favorites"} onClick={() => setCollection("favorites")} disabled={isSpinning}>
-                Favoritos
+                {t("Favoritos")}
               </button>
               <button type="button" aria-pressed={collection === "playing"} onClick={() => setCollection("playing")} disabled={isSpinning}>
-                Jugando
+                {t("Jugando")}
               </button>
               <button
                 type="button"
                 aria-pressed={collection === "near_complete"}
                 onClick={() => setCollection("near_complete")}
                 disabled={isSpinning}
-                title="Te falta poco para tener todos los logros (80% o más)"
+                title={t("Te falta poco para tener todos los logros (80% o más)")}
               >
-                Casi al 100%
+                {t("Casi al 100%")}
               </button>
             </div>
             )}
@@ -423,18 +428,18 @@ function RoulettePage({
               className={`select${durationEnabled ? "" : " roulette__mode--wide"}`}
               value={mode}
               onChange={(event) => setMode(event.target.value)}
-              aria-label="Modo de juego"
+              aria-label={t("Modo de juego")}
               disabled={isSpinning}
             >
               {MODE_OPTIONS.map((option) => (
                 <option key={option.id} value={option.id}>
-                  {option.label}
+                  {t(option.label)}
                 </option>
               ))}
             </select>
 
             {durationEnabled && (
-              <select className="select" value={duration} onChange={(event) => setDuration(event.target.value)} aria-label="Duración" disabled={isSpinning}>
+              <select className="select" value={duration} onChange={(event) => setDuration(event.target.value)} aria-label={t("Duración")} disabled={isSpinning}>
                 {DURATION_OPTIONS.map((option) => (
                   <option key={option.id} value={option.id}>
                     {option.label}
@@ -448,44 +453,44 @@ function RoulettePage({
               className="select roulette__genre"
               value={genre}
               onChange={(event) => setGenre(event.target.value)}
-              aria-label="Filtrar por género"
+              aria-label={t("Filtrar por género")}
               disabled={isSpinning || genres.length === 0}
             >
-              <option value="">{genres.length ? "Todos los géneros" : "Géneros: cargando…"}</option>
+              <option value="">{genres.length ? t("Todos los géneros") : t("Géneros: cargando…")}</option>
               {genres.map((genreOption) => (
                 <option key={genreOption} value={genreOption}>
-                  {genreOption}
+                  {t(genreOption)}
                 </option>
               ))}
             </select>
 
-            <div className="roulette__toggles" role="group" aria-label="Opciones">
-              <Toggle checked={hideAdult} onChange={onHideAdultChange} disabled={isSpinning} label="Ocultar +18" />
+            <div className="roulette__toggles" role="group" aria-label={t("Opciones")}>
+              <Toggle checked={hideAdult} onChange={onHideAdultChange} disabled={isSpinning} label={t("Ocultar +18")} />
               {isLoggedIn && (
                 <Toggle
                   checked={includeFinished}
                   onChange={setIncludeFinished}
                   disabled={isSpinning}
-                  label="Incluir terminados"
-                  title="Por defecto los juegos marcados como terminados no salen"
+                  label={t("Incluir terminados")}
+                  title={t("Por defecto los juegos marcados como terminados no salen")}
                 />
               )}
-              {hasFamily && <Toggle checked={includeFamily} onChange={onIncludeFamilyChange} disabled={isSpinning} label="Incluir Familia" />}
+              {hasFamily && <Toggle checked={includeFamily} onChange={onIncludeFamilyChange} disabled={isSpinning} label={t("Incluir Familia")} />}
               {hasFamily && includeFamily && (
                 <Toggle
                   checked={inCommon}
                   onChange={setInCommon}
                   disabled={isSpinning}
-                  label="En común con la familia"
-                  title="Solo los juegos que tenés vos y alguien de tu familia: para jugar juntos"
+                  label={t("En común con la familia")}
+                  title={t("Solo los juegos que tenés vos y alguien de tu familia: para jugar juntos")}
                 />
               )}
               <Toggle
                 checked={smart}
                 onChange={setSmart}
                 disabled={isSpinning}
-                label="Ruleta inteligente"
-                title="Salen más seguido los sin estrenar, los cortos, los bien reseñados, tus favoritos y los que estás jugando"
+                label={t("Ruleta inteligente")}
+                title={t("Salen más seguido los sin estrenar, los cortos, los bien reseñados, tus favoritos y los que estás jugando")}
               />
               {onCreateRoom && (
                 <button
@@ -493,9 +498,9 @@ function RoulettePage({
                   className="toggle toggle--action"
                   onClick={handleCreateRoom}
                   disabled={isSpinning || creatingRoom || spinnable.length < 2}
-                  title="Armá una sala con estos juegos: tus amigos entran con un link, vetan y la ruleta gira para todos"
+                  title={t("Armá una sala con estos juegos: tus amigos entran con un link, vetan y la ruleta gira para todos")}
                 >
-                  {creatingRoom ? "Armando sala…" : "Jugar en grupo"}
+                  {creatingRoom ? t("Armando sala…") : t("Jugar en grupo")}
                 </button>
               )}
             </div>
@@ -510,7 +515,7 @@ function RoulettePage({
           {notice.text}
           {notice.undo && (
             <button type="button" className="text-button" onClick={notice.undo}>
-              Deshacer
+              {t("Deshacer")}
             </button>
           )}
         </p>
@@ -555,14 +560,14 @@ function RoulettePage({
 /** Sin sesión, girando con una biblioteca pública: de quién es, cambiarla o iniciar sesión. */
 function GuestBar({ guest, onChange, onLogin }) {
   return (
-    <div className="roulette__collection roulette__guest" role="group" aria-label="Biblioteca en uso">
+    <div className="roulette__collection roulette__guest" role="group" aria-label={t("Biblioteca en uso")}>
       {guest.avatar ? <img src={guest.avatar} alt="" /> : <span className="roulette__guest-avatar" aria-hidden="true" />}
-      <span className="roulette__guest-name">{guest.name || "Perfil de Steam"}</span>
+      <span className="roulette__guest-name">{guest.name || t("Perfil de Steam")}</span>
       <button type="button" className="text-button" onClick={onChange}>
-        Cambiar
+        {t("Cambiar")}
       </button>
-      <button type="button" className="text-button" onClick={onLogin} title="Para guardar favoritos, estados y ocultos">
-        Iniciar sesión
+      <button type="button" className="text-button" onClick={onLogin} title={t("Para guardar favoritos, estados y ocultos")}>
+        {t("Iniciar sesión")}
       </button>
     </div>
   );
@@ -620,9 +625,9 @@ function useStoredFlag(key, initial) {
 
 function emptyPoolMessage(duration) {
   if (duration !== "any") {
-    return "No hay juegos con esa duración entre los filtros elegidos. Los juegos que todavía no tienen duración no entran.";
+    return t("No hay juegos con esa duración entre los filtros elegidos. Los juegos que todavía no tienen duración no entran.");
   }
-  return "No hay juegos que cumplan esos filtros. Probá con otros.";
+  return t("No hay juegos que cumplan esos filtros. Probá con otros.");
 }
 
 function toReelGame(game) {

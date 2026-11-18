@@ -6,6 +6,8 @@
  * imagen no carga, se dibuja un recuadro vacío en su lugar en vez de fallar.
  */
 
+import { t } from "../i18n/index.js";
+
 const WIDTH = 1080;
 const HEIGHT = 1350;
 const PAD = 72;
@@ -39,9 +41,9 @@ export async function renderYearCard(profile) {
   ctx.fillText("RULETAZO", PAD, PAD + 24);
   ctx.fillStyle = TEXT;
   ctx.font = `700 92px ${DISPLAY}`;
-  ctx.fillText(`Mi ${year}`, PAD, PAD + 140);
+  ctx.fillText(t("Mi {year}", { year }), PAD, PAD + 140);
   ctx.font = `700 92px ${DISPLAY}`;
-  ctx.fillText("en juegos", PAD, PAD + 240);
+  ctx.fillText(t("en juegos"), PAD, PAD + 240);
 
   const avatar = await loadImage(profile.avatar);
   const avatarY = PAD + 300;
@@ -59,9 +61,9 @@ export async function renderYearCard(profile) {
 
   // Números
   const stats = [
-    [String(profile.summary?.finished_this_year ?? 0), `terminados en ${year}`],
-    [String(profile.summary?.counts?.playing ?? 0), "jugando ahora"],
-    [String(profile.backlog?.unplayed ?? 0), "sin estrenar"],
+    [String(profile.summary?.finished_this_year ?? 0), t("terminados en {year}", { year })],
+    [String(profile.summary?.counts?.playing ?? 0), t("jugando ahora")],
+    [String(profile.backlog?.unplayed ?? 0), t("sin estrenar")],
   ];
   const statsY = avatarY + 130;
   const gap = 24;
@@ -82,7 +84,7 @@ export async function renderYearCard(profile) {
   const coversY = statsY + 230;
   ctx.fillStyle = MUTED;
   ctx.font = `600 28px ${BODY}`;
-  ctx.fillText(profile.finished?.length ? "Lo último que terminé" : "Lo que estoy jugando", PAD, coversY);
+  ctx.fillText(profile.finished?.length ? t("Lo último que terminé") : t("Lo que estoy jugando"), PAD, coversY);
   const coverWidth = (WIDTH - PAD * 2 - gap) / 2;
   const coverHeight = Math.round((coverWidth * 215) / 460);
   const covers = await Promise.all(games.map((game) => loadImage(game.header_image)));
@@ -105,7 +107,7 @@ export async function renderYearCard(profile) {
   if (games.length === 0) {
     ctx.fillStyle = MUTED;
     ctx.font = `500 30px ${BODY}`;
-    ctx.fillText("Todavía no marqué juegos como terminados.", PAD, coversY + 70);
+    ctx.fillText(t("Todavía no marqué juegos como terminados."), PAD, coversY + 70);
   }
 
   // Pie
@@ -113,14 +115,14 @@ export async function renderYearCard(profile) {
   const done = challenges.filter((item) => item.progress >= item.goal).length;
   ctx.fillStyle = MUTED;
   ctx.font = `500 26px ${BODY}`;
-  if (challenges.length) ctx.fillText(`Desafíos del mes: ${done} de ${challenges.length}`, PAD, HEIGHT - PAD);
+  if (challenges.length) ctx.fillText(t("Desafíos del mes: {done} de {total}", { done, total: challenges.length }), PAD, HEIGHT - PAD);
   ctx.fillStyle = ACCENT;
   ctx.font = `700 26px ${DISPLAY}`;
-  const tagline = "¿Qué jugamos hoy?";
+  const tagline = t("¿Qué jugamos hoy?");
   ctx.fillText(tagline, WIDTH - PAD - ctx.measureText(tagline).width, HEIGHT - PAD);
 
   return new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("No se pudo generar la imagen."))), "image/png");
+    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error(t("No se pudo generar la imagen.")))), "image/png");
   });
 }
 
@@ -131,7 +133,7 @@ export async function shareYearCard(profile) {
   const file = new File([blob], `ruletazo-${year}.png`, { type: "image/png" });
   if (navigator.canShare?.({ files: [file] })) {
     try {
-      await navigator.share({ files: [file], title: `Mi ${year} en juegos` });
+      await navigator.share({ files: [file], title: t("Mi {year} en juegos", { year }) });
       return;
     } catch (err) {
       if (err?.name === "AbortError") return;

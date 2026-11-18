@@ -20,7 +20,8 @@ import {
   saveForumReview,
   searchForumGames,
 } from "../services/forumService.js";
-import FormattedText, { FORMAT_HELP } from "../components/FormattedText.jsx";
+import FormattedText, { formatHelp } from "../components/FormattedText.jsx";
+import { locale, t, tk } from "../i18n/index.js";
 import SteamLoginButton from "../components/SteamLoginButton.jsx";
 import SupporterBadge from "../components/SupporterBadge.jsx";
 import "./ForumPage.css";
@@ -69,7 +70,7 @@ function ForumHome({ onTargetChange, viewer }) {
     try {
       setResults(await searchForumGames(term));
     } catch (err) {
-      setSearchError(forumErrorMessage(err, "No se pudo buscar."));
+      setSearchError(forumErrorMessage(err, t("No se pudo buscar.")));
       setResults(null);
     } finally {
       setSearching(false);
@@ -79,29 +80,29 @@ function ForumHome({ onTargetChange, viewer }) {
   return (
     <section className="forum" aria-labelledby="forum-title">
       <div className="forum__heading">
-        <p className="eyebrow">Foro</p>
-        <h1 id="forum-title">Hablemos de juegos</h1>
-        <p className="hint">Buscá cualquier juego de Steam para reseñarlo con un puntaje del 1 al 10 o abrir una discusión.</p>
+        <p className="eyebrow">{t("Foro")}</p>
+        <h1 id="forum-title">{t("Hablemos de juegos")}</h1>
+        <p className="hint">{t("Buscá cualquier juego de Steam para reseñarlo con un puntaje del 1 al 10 o abrir una discusión.")}</p>
       </div>
 
       <form className="forum-search" role="search" onSubmit={handleSearch}>
-        <label htmlFor="forum-search" className="visually-hidden">Buscar un juego</label>
+        <label htmlFor="forum-search" className="visually-hidden">{t("Buscar un juego")}</label>
         <input
           id="forum-search"
           className="text-input"
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Buscar un juego: Hollow Knight, Portal 2…"
+          placeholder={t("Buscar un juego: Hollow Knight, Portal 2…")}
           autoComplete="off"
         />
         <button type="submit" className="button button--primary" disabled={searching || query.trim().length < 2}>
-          {searching ? "Buscando…" : "Buscar"}
+          {searching ? t("Buscando…") : t("Buscar")}
         </button>
       </form>
 
       {searchError && <p className="error-text">{searchError}</p>}
-      {results && results.length === 0 && <p className="hint">No encontramos juegos con ese nombre.</p>}
+      {results && results.length === 0 && <p className="hint">{t("No encontramos juegos con ese nombre.")}</p>}
       {results && results.length > 0 && (
         <ul className="forum-results">
           {results.map((game) => (
@@ -119,9 +120,9 @@ function ForumHome({ onTargetChange, viewer }) {
       {viewer?.is_moderator && <ModerationPanel onTargetChange={onTargetChange} />}
 
       <section className="forum-section" aria-labelledby="forum-recent">
-        <h2 id="forum-recent">Actividad reciente</h2>
+        <h2 id="forum-recent">{t("Actividad reciente")}</h2>
         {activity.length === 0 ? (
-          <p className="hint">Todavía no hay mensajes. Buscá un juego y sé el primero en reseñarlo.</p>
+          <p className="hint">{t("Todavía no hay mensajes. Buscá un juego y sé el primero en reseñarlo.")}</p>
         ) : (
           <ul className="forum-list">
             {activity.map((item) => (
@@ -138,12 +139,12 @@ function ForumHome({ onTargetChange, viewer }) {
                   }
                 >
                   {item.kind === "review" ? (
-                    <span className="score-badge" aria-label={`Puntaje ${item.score} de 10`}>{item.score}</span>
+                    <span className="score-badge" aria-label={t("Puntaje {score} de 10", { score: item.score })}>{item.score}</span>
                   ) : (
                     <span className="score-badge score-badge--thread" aria-hidden="true">#</span>
                   )}
                   <span className="forum-list__text">
-                    <strong>{item.kind === "review" ? `Reseña de ${item.game_name}` : item.title}</strong>
+                    <strong>{item.kind === "review" ? t("Reseña de {name}", { name: item.game_name }) : item.title}</strong>
                     <span className="muted">
                       {item.kind === "thread" && `${item.game_name} · `}
                       {item.author.name} · {timeAgo(item.at)}
@@ -183,7 +184,7 @@ function ForumGameView({ target, onTargetChange, viewer, onLogin }) {
       setThreads(nextThreads);
       setGameError("");
     } catch (err) {
-      setGameError(forumErrorMessage(err, "No se pudo cargar el foro de este juego."));
+      setGameError(forumErrorMessage(err, t("No se pudo cargar el foro de este juego.")));
     }
   }
 
@@ -193,36 +194,36 @@ function ForumGameView({ target, onTargetChange, viewer, onLogin }) {
   }, [appid, viewer?.steam_id]);
 
   const myReview = reviews.find((review) => review.is_mine);
-  const name = game?.name ?? target.name ?? "Juego";
+  const name = game?.name ?? target.name ?? t("Juego");
 
   return (
     <section className="forum" aria-labelledby="forum-game-title">
       <button type="button" className="text-button forum__back" onClick={() => onTargetChange(null)}>
-        ← Foro
+        ← {t("Foro")}
       </button>
 
       <header className="forum-game">
-        <img className="forum-game__cover" src={`https://cdn.cloudflare.steamstatic.com/steam/apps/${appid}/header.jpg`} alt={`Portada de ${name}`} />
+        <img className="forum-game__cover" src={`https://cdn.cloudflare.steamstatic.com/steam/apps/${appid}/header.jpg`} alt={t("Portada de {name}", { name })} />
         <div className="forum-game__info">
           <h1 id="forum-game-title">{name}</h1>
           {game && (
             <dl className="forum-game__stats">
               <div>
-                <dt>Puntaje de la comunidad</dt>
+                <dt>{t("Puntaje de la comunidad")}</dt>
                 <dd className="mono">{game.average_score != null ? `${game.average_score} / 10` : "—"}</dd>
               </div>
               <div>
-                <dt>Reseñas</dt>
+                <dt>{t("Reseñas")}</dt>
                 <dd className="mono">{game.review_count}</dd>
               </div>
               <div>
-                <dt>Discusiones</dt>
+                <dt>{t("Discusiones")}</dt>
                 <dd className="mono">{game.thread_count}</dd>
               </div>
             </dl>
           )}
           <a className="text-button forum-game__store" href={`https://store.steampowered.com/app/${appid}/`} target="_blank" rel="noopener noreferrer">
-            Ver en Steam ↗
+            {t("Ver en Steam")} ↗
           </a>
           <AffiliateStores name={name} />
         </div>
@@ -230,12 +231,12 @@ function ForumGameView({ target, onTargetChange, viewer, onLogin }) {
 
       {gameError && <p className="error-text">{gameError}</p>}
 
-      <div className="segmented forum-tabs" role="group" aria-label="Sección del foro">
+      <div className="segmented forum-tabs" role="group" aria-label={t("Sección del foro")}>
         <button type="button" aria-pressed={tab === "reviews"} onClick={() => setTab("reviews")}>
-          Reseñas ({reviews.length})
+          {t("Reseñas")} ({reviews.length})
         </button>
         <button type="button" aria-pressed={tab === "threads"} onClick={() => setTab("threads")}>
-          Discusiones ({threads.length})
+          {t("Discusiones")} ({threads.length})
         </button>
       </div>
 
@@ -244,15 +245,15 @@ function ForumGameView({ target, onTargetChange, viewer, onLogin }) {
           {viewer ? (
             <ReviewForm appid={appid} existing={myReview} onSaved={reload} />
           ) : (
-            <LoginPrompt onLogin={onLogin} action="reseñar este juego" />
+            <LoginPrompt onLogin={onLogin} message={t("Iniciá sesión con Steam para reseñar este juego.")} />
           )}
           {reviews.length === 0 ? (
-            <p className="hint">Todavía nadie reseñó {name}.</p>
+            <p className="hint">{t("Todavía nadie reseñó {name}.", { name })}</p>
           ) : (
             <ul className="forum-posts">
               {reviews.map((review) => (
                 <li key={review.id} className="forum-post">
-                  <span className="score-badge score-badge--large" aria-label={`Puntaje ${review.score} de 10`}>{review.score}</span>
+                  <span className="score-badge score-badge--large" aria-label={t("Puntaje {score} de 10", { score: review.score })}>{review.score}</span>
                   <div className="forum-post__content">
                     <AuthorLine author={review.author} at={review.updated_at} />
                     <FormattedText className="forum-post__body" text={review.body} />
@@ -281,10 +282,10 @@ function ForumGameView({ target, onTargetChange, viewer, onLogin }) {
               onCreated={(thread) => onTargetChange({ appid, name, threadId: thread.id })}
             />
           ) : (
-            <LoginPrompt onLogin={onLogin} action="abrir una discusión" />
+            <LoginPrompt onLogin={onLogin} message={t("Iniciá sesión con Steam para abrir una discusión.")} />
           )}
           {threads.length === 0 ? (
-            <p className="hint">No hay discusiones sobre {name} todavía.</p>
+            <p className="hint">{t("No hay discusiones sobre {name} todavía.", { name })}</p>
           ) : (
             <ul className="forum-list">
               {threads.map((thread) => (
@@ -294,7 +295,7 @@ function ForumGameView({ target, onTargetChange, viewer, onLogin }) {
                     <span className="forum-list__text">
                       <strong>{thread.title}</strong>
                       <span className="muted">
-                        {thread.author.name} · {thread.reply_count} {thread.reply_count === 1 ? "respuesta" : "respuestas"} · {timeAgo(thread.last_activity_at)}
+                        {thread.author.name} · {repliesLabel(thread.reply_count)} · {timeAgo(thread.last_activity_at)}
                       </span>
                     </span>
                   </button>
@@ -322,7 +323,7 @@ function ReviewForm({ appid, existing, onSaved }) {
   async function handleSubmit(event) {
     event.preventDefault();
     if (!score || !body.trim()) {
-      setError("Elegí un puntaje y escribí tu reseña.");
+      setError(t("Elegí un puntaje y escribí tu reseña."));
       return;
     }
     setSaving(true);
@@ -351,16 +352,16 @@ function ReviewForm({ appid, existing, onSaved }) {
 
   return (
     <form className="forum-form" onSubmit={handleSubmit}>
-      <h2>{existing ? "Tu reseña" : "Escribí tu reseña"}</h2>
+      <h2>{existing ? t("Tu reseña") : t("Escribí tu reseña")}</h2>
       <fieldset className="score-picker">
-        <legend>Puntaje</legend>
+        <legend>{t("Puntaje")}</legend>
         {SCORES.map((value) => (
           <button
             key={value}
             type="button"
             className="score-picker__option"
             aria-pressed={score === value}
-            aria-label={`${value} de 10`}
+            aria-label={t("{score} de 10", { score: value })}
             onClick={() => setScore(value)}
           >
             {value}
@@ -368,18 +369,18 @@ function ReviewForm({ appid, existing, onSaved }) {
         ))}
       </fieldset>
       <label className="forum-form__field">
-        <span>Reseña</span>
-        <textarea className="text-input textarea" rows={4} maxLength={5000} value={body} onChange={(event) => setBody(event.target.value)} placeholder="¿Qué te pareció? ¿Lo recomendarías?" />
-        <span className="format-help">{FORMAT_HELP}</span>
+        <span>{t("Reseña")}</span>
+        <textarea className="text-input textarea" rows={4} maxLength={5000} value={body} onChange={(event) => setBody(event.target.value)} placeholder={t("¿Qué te pareció? ¿Lo recomendarías?")} />
+        <span className="format-help">{formatHelp()}</span>
       </label>
       {error && <p className="error-text">{error}</p>}
       <div className="forum-form__actions">
         <button type="submit" className="button button--primary" disabled={saving}>
-          {saving ? "Guardando…" : existing ? "Actualizar reseña" : "Publicar reseña"}
+          {saving ? t("Guardando…") : existing ? t("Actualizar reseña") : t("Publicar reseña")}
         </button>
         {existing && (
           <button type="button" className="button" onClick={handleDelete} disabled={saving}>
-            Borrar
+            {t("Borrar")}
           </button>
         )}
       </div>
@@ -397,7 +398,7 @@ function ThreadForm({ appid, onCreated }) {
   if (!open) {
     return (
       <button type="button" className="button button--primary forum-new-thread" onClick={() => setOpen(true)}>
-        Nueva discusión
+        {t("Nueva discusión")}
       </button>
     );
   }
@@ -417,23 +418,23 @@ function ThreadForm({ appid, onCreated }) {
 
   return (
     <form className="forum-form" onSubmit={handleSubmit}>
-      <h2>Nueva discusión</h2>
+      <h2>{t("Nueva discusión")}</h2>
       <label className="forum-form__field">
-        <span>Título</span>
-        <input className="text-input" value={title} onChange={(event) => setTitle(event.target.value)} maxLength={120} placeholder="Ej.: ¿Conviene jugarlo en difícil?" />
+        <span>{t("Título")}</span>
+        <input className="text-input" value={title} onChange={(event) => setTitle(event.target.value)} maxLength={120} placeholder={t("Ej.: ¿Conviene jugarlo en difícil?")} />
       </label>
       <label className="forum-form__field">
-        <span>Mensaje</span>
+        <span>{t("Mensaje")}</span>
         <textarea className="text-input textarea" rows={4} maxLength={5000} value={body} onChange={(event) => setBody(event.target.value)} />
-        <span className="format-help">{FORMAT_HELP}</span>
+        <span className="format-help">{formatHelp()}</span>
       </label>
       {error && <p className="error-text">{error}</p>}
       <div className="forum-form__actions">
         <button type="submit" className="button button--primary" disabled={saving || title.trim().length < 3 || !body.trim()}>
-          {saving ? "Publicando…" : "Publicar"}
+          {saving ? t("Publicando…") : t("Publicar")}
         </button>
         <button type="button" className="button" onClick={() => setOpen(false)} disabled={saving}>
-          Cancelar
+          {t("Cancelar")}
         </button>
       </div>
     </form>
@@ -455,7 +456,7 @@ function ForumThreadView({ target, onTargetChange, viewer, onLogin }) {
       setThread(await fetchForumThread(target.threadId));
       setError("");
     } catch (err) {
-      setError(forumErrorMessage(err, "No se pudo cargar la discusión."));
+      setError(forumErrorMessage(err, t("No se pudo cargar la discusión.")));
     }
   }
 
@@ -501,7 +502,7 @@ function ForumThreadView({ target, onTargetChange, viewer, onLogin }) {
   return (
     <section className="forum" aria-labelledby="forum-thread-title">
       <button type="button" className="text-button forum__back" onClick={backToGame}>
-        ← {thread?.game_name ?? target.name ?? "Volver"}
+        ← {thread?.game_name ?? target.name ?? t("Volver")}
       </button>
 
       {error && <p className="error-text">{error}</p>}
@@ -530,7 +531,7 @@ function ForumThreadView({ target, onTargetChange, viewer, onLogin }) {
                   id={thread.id}
                   isMine={thread.is_mine}
                   viewer={viewer}
-                  deleteLabel="Borrar discusión"
+                  deleteLabel={t("Borrar discusión")}
                   onDelete={handleDeleteThread}
                   onEdit={() => setEditingThread(true)}
                 />
@@ -538,8 +539,8 @@ function ForumThreadView({ target, onTargetChange, viewer, onLogin }) {
             )}
           </article>
 
-          <section className="forum-section" aria-label="Respuestas">
-            <h2>{thread.posts.length} {thread.posts.length === 1 ? "respuesta" : "respuestas"}</h2>
+          <section className="forum-section" aria-label={t("Respuestas")}>
+            <h2>{repliesLabel(thread.posts.length)}</h2>
             <ul className="forum-posts">
               {thread.posts.map((post) => (
                 <li key={post.id} className="forum-post">
@@ -576,18 +577,18 @@ function ForumThreadView({ target, onTargetChange, viewer, onLogin }) {
             {viewer ? (
               <form className="forum-form" onSubmit={handleReply}>
                 <label className="forum-form__field">
-                  <span>Tu respuesta</span>
+                  <span>{t("Tu respuesta")}</span>
                   <textarea className="text-input textarea" rows={3} maxLength={5000} value={reply} onChange={(event) => setReply(event.target.value)} />
-                  <span className="format-help">{FORMAT_HELP}</span>
+                  <span className="format-help">{formatHelp()}</span>
                 </label>
                 <div className="forum-form__actions">
                   <button type="submit" className="button button--primary" disabled={sending || !reply.trim()}>
-                    {sending ? "Enviando…" : "Responder"}
+                    {sending ? t("Enviando…") : t("Responder")}
                   </button>
                 </div>
               </form>
             ) : (
-              <LoginPrompt onLogin={onLogin} action="responder" />
+              <LoginPrompt onLogin={onLogin} message={t("Iniciá sesión con Steam para responder.")} />
             )}
           </section>
         </>
@@ -598,7 +599,7 @@ function ForumThreadView({ target, onTargetChange, viewer, onLogin }) {
 
 // ---------- Moderación ----------
 
-const KIND_LABELS = { review: "Reseña", thread: "Discusión", post: "Respuesta" };
+const KIND_LABELS = { review: tk("Reseña"), thread: tk("Discusión"), post: tk("Respuesta") };
 
 /** Denuncias pendientes, solo para moderadores (ADMIN_STEAM_IDS en el backend). */
 function ModerationPanel({ onTargetChange }) {
@@ -610,7 +611,7 @@ function ModerationPanel({ onTargetChange }) {
       setReports(await fetchForumReports());
       setError("");
     } catch (err) {
-      setError(forumErrorMessage(err, "No se pudieron cargar las denuncias."));
+      setError(forumErrorMessage(err, t("No se pudieron cargar las denuncias.")));
     }
   }
 
@@ -644,31 +645,32 @@ function ModerationPanel({ onTargetChange }) {
 
   return (
     <section className="forum-section moderation" aria-labelledby="moderation-title">
-      <h2 id="moderation-title">Denuncias {reports?.length ? `(${reports.length})` : ""}</h2>
+      <h2 id="moderation-title">{t("Denuncias")} {reports?.length ? `(${reports.length})` : ""}</h2>
       {error && <p className="error-text">{error}</p>}
-      {reports && reports.length === 0 && <p className="hint">No hay denuncias pendientes.</p>}
+      {reports && reports.length === 0 && <p className="hint">{t("No hay denuncias pendientes.")}</p>}
       {reports && reports.length > 0 && (
         <ul className="moderation__list">
           {reports.map((report) => (
             <li key={`${report.kind}-${report.target_id}`} className="moderation__item">
               <p className="moderation__meta">
-                <span className="tag">{KIND_LABELS[report.kind]}</span>
-                <strong>{report.author.name || "Jugador de Steam"}</strong>
+                <span className="tag">{t(KIND_LABELS[report.kind])}</span>
+                <strong>{report.author.name || t("Jugador de Steam")}</strong>
                 <span className="muted">
-                  en {report.game_name || "un juego"} · {report.report_count} {report.report_count === 1 ? "denuncia" : "denuncias"}
+                  {t("en {name}", { name: report.game_name || t("un juego") })} ·{" "}
+                  {report.report_count === 1 ? t("1 denuncia") : t("{count} denuncias", { count: report.report_count })}
                 </span>
               </p>
               <p className="moderation__excerpt">{report.excerpt}</p>
-              {report.reasons.length > 0 && <p className="muted moderation__reasons">Motivos: {report.reasons.join(" · ")}</p>}
+              {report.reasons.length > 0 && <p className="muted moderation__reasons">{t("Motivos:")} {report.reasons.join(" · ")}</p>}
               <div className="moderation__actions">
                 <button type="button" className="text-button" onClick={() => open(report)}>
-                  Ver en el foro
+                  {t("Ver en el foro")}
                 </button>
                 <button type="button" className="text-button moderation__delete" onClick={() => act(() => remove(report))}>
-                  Borrar mensaje
+                  {t("Borrar mensaje")}
                 </button>
                 <button type="button" className="text-button" onClick={() => act(() => dismissForumReports(report.kind, report.target_id))}>
-                  Descartar denuncia
+                  {t("Descartar denuncia")}
                 </button>
               </div>
             </li>
@@ -683,7 +685,7 @@ function ModerationPanel({ onTargetChange }) {
  * Acciones de un mensaje: "Borrar" (autor o moderador, si se pasa `onDelete`) y "Denunciar"
  * (cualquiera con sesión, menos el autor). La denuncia pide un motivo opcional.
  */
-function MessageActions({ kind, id, isMine, viewer, onDelete, onEdit, deleteLabel = "Borrar" }) {
+function MessageActions({ kind, id, isMine, viewer, onDelete, onEdit, deleteLabel }) {
   const [reporting, setReporting] = useState(false);
   const [reason, setReason] = useState("");
   const [state, setState] = useState(""); // "" | "sending" | "sent" | mensaje de error
@@ -709,20 +711,20 @@ function MessageActions({ kind, id, isMine, viewer, onDelete, onEdit, deleteLabe
     <div className="message-actions">
       {canEdit && (
         <button type="button" className="text-button" onClick={onEdit}>
-          Editar
+          {t("Editar")}
         </button>
       )}
       {canDelete && (
         <button type="button" className="text-button" onClick={onDelete}>
-          {deleteLabel}
+          {deleteLabel ?? t("Borrar")}
         </button>
       )}
       {canReport && state !== "sent" && !reporting && (
         <button type="button" className="text-button message-actions__report" onClick={() => setReporting(true)}>
-          Denunciar
+          {t("Denunciar")}
         </button>
       )}
-      {state === "sent" && <span className="muted">Gracias, un moderador lo va a revisar.</span>}
+      {state === "sent" && <span className="muted">{t("Gracias, un moderador lo va a revisar.")}</span>}
       {reporting && (
         <form className="message-actions__form" onSubmit={submitReport}>
           <input
@@ -730,14 +732,14 @@ function MessageActions({ kind, id, isMine, viewer, onDelete, onEdit, deleteLabe
             value={reason}
             onChange={(event) => setReason(event.target.value)}
             maxLength={300}
-            placeholder="Motivo (opcional)"
-            aria-label="Motivo de la denuncia"
+            placeholder={t("Motivo (opcional)")}
+            aria-label={t("Motivo de la denuncia")}
           />
           <button type="submit" className="button" disabled={state === "sending"}>
-            Enviar
+            {t("Enviar")}
           </button>
           <button type="button" className="text-button" onClick={() => setReporting(false)}>
-            Cancelar
+            {t("Cancelar")}
           </button>
         </form>
       )}
@@ -750,12 +752,12 @@ function MessageActions({ kind, id, isMine, viewer, onDelete, onEdit, deleteLabe
 
 function AuthorLine({ author, at, editedAt }) {
   const { onOpenProfile } = useContext(ForumContext);
-  const name = author.name || "Jugador de Steam";
+  const name = author.name || t("Jugador de Steam");
   return (
     <p className="author-line">
       {author.avatar ? <img src={author.avatar} alt="" /> : <span className="author-line__avatar" aria-hidden="true" />}
       {onOpenProfile && author.steam_id ? (
-        <button type="button" className="author-line__name" onClick={() => onOpenProfile(author.steam_id)} title="Ver perfil">
+        <button type="button" className="author-line__name" onClick={() => onOpenProfile(author.steam_id)} title={t("Ver perfil")}>
           {name}
         </button>
       ) : (
@@ -764,8 +766,8 @@ function AuthorLine({ author, at, editedAt }) {
       {author.is_supporter && <SupporterBadge />}
       <span className="muted">{timeAgo(at)}</span>
       {editedAt && (
-        <span className="muted" title={`Editado ${timeAgo(editedAt)}`}>
-          (editado)
+        <span className="muted" title={t("Editado {when}", { when: timeAgo(editedAt) })}>
+          ({t("editado")})
         </span>
       )}
     </p>
@@ -796,32 +798,32 @@ function EditForm({ initialTitle, initialBody, onSave, onCancel }) {
     <form className="forum-form forum-form--edit" onSubmit={handleSubmit}>
       {editsTitle && (
         <label className="forum-form__field">
-          <span>Título</span>
+          <span>{t("Título")}</span>
           <input className="text-input" value={title} onChange={(event) => setTitle(event.target.value)} maxLength={120} />
         </label>
       )}
       <label className="forum-form__field">
-        <span>{editsTitle ? "Mensaje" : "Respuesta"}</span>
+        <span>{editsTitle ? t("Mensaje") : t("Respuesta")}</span>
         <textarea className="text-input textarea" rows={4} maxLength={5000} value={body} onChange={(event) => setBody(event.target.value)} />
-        <span className="format-help">{FORMAT_HELP}</span>
+        <span className="format-help">{formatHelp()}</span>
       </label>
       {error && <p className="error-text">{error}</p>}
       <div className="forum-form__actions">
         <button type="submit" className="button button--primary" disabled={saving || !body.trim() || (editsTitle && title.trim().length < 3)}>
-          {saving ? "Guardando…" : "Guardar cambios"}
+          {saving ? t("Guardando…") : t("Guardar cambios")}
         </button>
         <button type="button" className="button" onClick={onCancel} disabled={saving}>
-          Cancelar
+          {t("Cancelar")}
         </button>
       </div>
     </form>
   );
 }
 
-function LoginPrompt({ onLogin, action }) {
+function LoginPrompt({ onLogin, message }) {
   return (
     <div className="login-prompt">
-      <p>Iniciá sesión con Steam para {action}.</p>
+      <p>{message}</p>
       <SteamLoginButton onClick={onLogin} />
     </div>
   );
@@ -836,7 +838,7 @@ function AffiliateStores({ name }) {
   if (!affiliateStores?.length || !name) return null;
   return (
     <p className="forum-game__stores">
-      <span className="muted">Buscar en otras tiendas:</span>
+      <span className="muted">{t("Buscar en otras tiendas:")}</span>
       {affiliateStores.map((store) => (
         <a
           key={store.name}
@@ -848,8 +850,8 @@ function AffiliateStores({ name }) {
           {store.name} ↗
         </a>
       ))}
-      <span className="muted forum-game__affiliate-note" title="Si comprás desde estos links, la página puede recibir una comisión sin costo extra para vos.">
-        (links de afiliado)
+      <span className="muted forum-game__affiliate-note" title={t("Si comprás desde estos links, la página puede recibir una comisión sin costo extra para vos.")}>
+        ({t("links de afiliado")})
       </span>
     </p>
   );
@@ -857,14 +859,18 @@ function AffiliateStores({ name }) {
 
 function timeAgo(isoDate) {
   const seconds = Math.max(0, (Date.now() - new Date(isoDate).getTime()) / 1000);
-  if (seconds < 60) return "recién";
+  if (seconds < 60) return t("recién");
   const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `hace ${minutes} min`;
+  if (minutes < 60) return t("hace {n} min", { n: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `hace ${hours} h`;
+  if (hours < 24) return t("hace {n} h", { n: hours });
   const days = Math.floor(hours / 24);
-  if (days < 30) return `hace ${days} ${days === 1 ? "día" : "días"}`;
-  return new Date(isoDate).toLocaleDateString("es-AR");
+  if (days < 30) return days === 1 ? t("hace 1 día") : t("hace {n} días", { n: days });
+  return new Date(isoDate).toLocaleDateString(locale());
+}
+
+function repliesLabel(count) {
+  return count === 1 ? t("1 respuesta") : t("{count} respuestas", { count });
 }
 
 export default ForumPage;
