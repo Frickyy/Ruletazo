@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.rate_limit import background, steam_reads
-from app.core.security import require_steam_id
+from app.core.security import current_steam_id, require_steam_id
 from app.db.session import get_db
 from app.schemas.game import Game
 from app.services import favorites_service, game_details_service, hidden_service, library_service
@@ -84,6 +84,7 @@ async def get_random_game(
     sort_direction: str = Query(default="asc", pattern=_DIRECTION_PATTERN, description="asc o desc."),
     playtime_filter: str = Query(default="all", pattern=_PLAYTIME_PATTERN, description="zero, under2 o all."),
     db: Session = Depends(get_db),
+    viewer: str | None = Depends(current_steam_id),
 ) -> Game:
     """Devuelve un juego aleatorio: de la biblioteca real de `steamid` si se indica, o de una de ejemplo."""
     settings = get_settings()
@@ -95,7 +96,8 @@ async def get_random_game(
 
     game = await _unwrap_steam_errors(
         library_service.get_random_from_library(
-            db, steamid, friend_steamid, collection, genre, search, sort_by, sort_direction, playtime_filter
+            db, steamid, friend_steamid, collection, genre, search, sort_by, sort_direction, playtime_filter,
+            viewer_steam_id=viewer,
         )
     )
     if game is None:
@@ -109,6 +111,7 @@ async def get_game_details(
     steamid: str | None = Query(default=None, description="SteamID64 o vanity URL. Sin él se usa la biblioteca de ejemplo."),
     friend_steamid: str | None = Query(default=None, description="SteamID64/vanity de familiares, separados por coma."),
     db: Session = Depends(get_db),
+    viewer: str | None = Depends(current_steam_id),
 ) -> Game:
     """Ficha completa de un juego de la biblioteca. La ruleta elige el juego en el navegador
     (el que queda en la ventana del rodillo) y después pide sus datos acá."""
@@ -125,7 +128,7 @@ async def get_game_details(
         game.short_description = mock.short_description  # la de ejemplo está en español; la Store la da en inglés
         return game
 
-    game = await _unwrap_steam_errors(library_service.get_game_details(db, steamid, friend_steamid, appid))
+    game = await _unwrap_steam_errors(library_service.get_game_details(db, steamid, friend_steamid, appid, viewer_steam_id=viewer))
     if game is None:
         raise HTTPException(status_code=404, detail="Ese juego no está en la biblioteca.")
     return game
@@ -142,11 +145,14 @@ async def get_library(
     sort_direction: str = Query(default="asc", pattern=_DIRECTION_PATTERN, description="asc o desc."),
     playtime_filter: str = Query(default="all", pattern=_PLAYTIME_PATTERN, description="zero, under2 o all."),
     db: Session = Depends(get_db),
+    viewer: str | None = Depends(current_steam_id),
 ) -> list[Game]:
-    """Devuelve la biblioteca completa de un usuario de Steam (cacheada en SQL), con filtros opcionales."""
+    """Devuelve la biblioteca completa de un usuario de Steam (cacheada en SQL), con filtros opcionales.
+    Favoritos, ocultos, estados y progreso solo vienen si la biblioteca es de quien inició sesión."""
     return await _unwrap_steam_errors(
         library_service.get_filtered_library(
-            db, steamid, friend_steamid, collection, genre, search, sort_by, sort_direction, playtime_filter
+            db, steamid, friend_steamid, collection, genre, search, sort_by, sort_direction, playtime_filter,
+            viewer_steam_id=viewer,
         )
     )
 
