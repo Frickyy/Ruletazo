@@ -2,8 +2,9 @@
  * Componente presentacional: recibe el juego elegido y lo muestra.
  * No sabe de dónde vienen los datos (eso es de `RoulettePage` y `gameService`).
  * `onToggleFavorite` es opcional: sin sesión no se muestra la estrella.
+ * `isDemo`: juego de la biblioteca de ejemplo (sin sesión); no se muestran horas jugadas.
  */
-function GameCard({ game, onToggleFavorite, onOpenForum, achievementProgress, isLoadingAchievements, achievementError }) {
+function GameCard({ game, isDemo = false, onToggleFavorite, onOpenForum, achievementProgress, isLoadingAchievements, achievementError }) {
   const playtimeHours = Math.round(game.playtime_forever_minutes / 60);
   const releaseYear = game.release_date ? game.release_date.slice(0, 4) : "";
   const meta = [game.developer, game.genres.join(", "), releaseYear].filter(Boolean).join(" · ");
@@ -33,6 +34,7 @@ function GameCard({ game, onToggleFavorite, onOpenForum, achievementProgress, is
         <div className="game-card__info">
           <p className="eyebrow">
             Te tocó
+            {isDemo && <span className="game-card__source"> · biblioteca de ejemplo</span>}
             {game.source === "friend" && <span className="game-card__source"> · de tu familia</span>}
             {game.source === "both" && <span className="game-card__source"> · en ambas bibliotecas</span>}
           </p>
@@ -81,10 +83,12 @@ function GameCard({ game, onToggleFavorite, onOpenForum, achievementProgress, is
               <dd className="mono">{formatPrice(game.price_cents)}</dd>
             </div>
           )}
-          <div>
-            <dt>Tu tiempo de juego</dt>
-            <dd className="mono">{playtimeHours} h</dd>
-          </div>
+          {!isDemo && (
+            <div>
+              <dt>{game.source === "friend" ? "Horas de tu familiar" : "Tu tiempo de juego"}</dt>
+              <dd className="mono">{playtimeHours} h</dd>
+            </div>
+          )}
         </dl>
         {(game.review_pros || game.review_cons) && (
           <div className="game-card__verdict">

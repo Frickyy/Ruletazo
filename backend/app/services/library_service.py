@@ -9,13 +9,16 @@ from sqlalchemy.orm import Session
 from app.models.game import CachedGameDetails, CachedLibraryEntry
 from app.schemas.game import Game
 from app.services import favorites_service, game_details_service
-from app.services.steam_client import SteamClient
+from app.services.steam_client import SteamAPIError, SteamClient
 from app.services.store_client import SteamStoreClient, normalize_genres
 
 logger = logging.getLogger(__name__)
 
 # Tiempo que se reutiliza la biblioteca cacheada antes de volver a pedirla a Steam.
 LIBRARY_CACHE_TTL = timedelta(hours=1)
+
+# Como mucho se combinan las bibliotecas de estos familiares.
+MAX_FAMILY_MEMBERS = 5
 
 # Cuántos juegos sin clasificar se enriquecen por cada llamada a classify_library_batch.
 # La Store API de Steam no tiene un límite documentado, pero es prudente ir de a poco.
@@ -64,13 +67,8 @@ async def get_filtered_library(
     for game in games:
         game.source = "you"
 
-    if friend_identifier:
-        friend_identifiers = [identifier.strip() for identifier in friend_identifier.split(",") if identifier.strip()]
-        for current_identifier in friend_identifiers[:5]:
-            friend_games = await get_library(db, current_identifier)
-            for game in friend_games:
-                game.source = "friend"
-            games = _merge_union(games, friend_games)
+    for friend_games in await _family_libraries(db, friend_identifier):
+        games = _merge_union(games, friend_games)
 
     steam_id = await resolve_steam_id(identifier)
     _attach_favorites_and_details(db, games, steam_id)
@@ -128,8 +126,32 @@ async def get_random_from_library(
 
     chosen = random.choice(games)
     details = await game_details_service.get_or_fetch_details(db, chosen.appid, chosen.name)
-    _apply_cached_details(chosen, details)
+    apply_cached_details(chosen, details)
     return chosen
+
+
+def _split_family_ids(friend_identifier: str | None) -> list[str]:
+    if not friend_identifier:
+        return []
+    ids = [identifier.strip() for identifier in friend_identifier.split(",") if identifier.strip()]
+    return ids[:MAX_FAMILY_MEMBERS]
+
+
+async def _family_library(db: Session, identifier: str) -> list[Game]:
+    """Biblioteca de un familiar. Si su perfil es privado o el ID está mal, se omite (con un aviso
+    en el log) en vez de romper la biblioteca propia, que antes respondía 404/403 entera."""
+    try:
+        games = await get_library(db, identifier)
+    except SteamAPIError as exc:
+        logger.warning("Se omite la biblioteca familiar %r: %s", identifier, exc)
+        return []
+    for game in games:
+        game.source = "friend"
+    return games
+
+
+async def _family_libraries(db: Session, friend_identifier: str | None) -> list[list[Game]]:
+    return [await _family_library(db, identifier) for identifier in _split_family_ids(friend_identifier)]
 
 
 def _is_classified(details: CachedGameDetails | None) -> bool:
@@ -150,12 +172,27 @@ async def get_game_details(
     La ruleta "en vivo" elige el juego en el navegador (el que frena en el rodillo) y pide
     su ficha con esto, en vez de que el backend elija uno al azar.
     """
-    games = await get_filtered_library(db, identifier, friend_identifier, collection="all", genre=None)
-    chosen = next((game for game in games if game.appid == appid), None)
+    # Solo se busca ese appid: antes se armaba y ordenaba toda la biblioteca combinada
+    # (con la de cada familiar) para quedarse con un juego.
+    own = next((game for game in await get_library(db, identifier) if game.appid == appid), None)
+    if own is not None:
+        own.source = "you"
+    chosen = own
+    for friend_games in await _family_libraries(db, friend_identifier):
+        friend_game = next((game for game in friend_games if game.appid == appid), None)
+        if friend_game is None:
+            continue
+        if chosen is None:
+            chosen = friend_game
+        elif chosen.source == "you":
+            chosen.source = "both"
     if chosen is None:
         return None
+
+    steam_id = await resolve_steam_id(identifier)
+    chosen.is_favorite = appid in favorites_service.get_favorite_appids(db, steam_id)
     details = await game_details_service.get_or_fetch_details(db, chosen.appid, chosen.name)
-    _apply_cached_details(chosen, details)
+    apply_cached_details(chosen, details)
     return chosen
 
 
@@ -212,7 +249,7 @@ def _attach_favorites_and_details(db: Session, games: list[Game], steam_id: str)
         game.is_favorite = game.appid in favorite_appids
         details = details_map.get(game.appid)
         if details is not None:
-            _apply_cached_details(game, details)
+            apply_cached_details(game, details)
 
 
 async def _ensure_store_metadata(db: Session, games: list[Game]) -> None:
@@ -226,27 +263,27 @@ async def _ensure_store_metadata(db: Session, games: list[Game]) -> None:
         return
 
     async with SteamStoreClient() as client:
-        results = []
-        for offset in range(0, len(pending), 50):
-            batch = pending[offset : offset + 50]
-            details_by_appid = await client.get_app_details_batch([game.appid for game in batch])
-            results.extend((game, details_by_appid.get(game.appid, {})) for game in batch)
-    for game, store_details in results:
+        details_by_appid = await client.get_app_details_batch([game.appid for game in pending])
+    for game in pending:
+        store_details = details_by_appid[game.appid]
+        if store_details.get("fetch_failed"):
+            continue  # se reintenta la próxima vez en lugar de guardar datos vacíos como definitivos
         details = details_map.get(game.appid)
         if details is None:
             details = CachedGameDetails(appid=game.appid)
             db.add(details)
-        details.genres = normalize_genres(store_details["genres"]) or details.genres
-        details.short_description = store_details["short_description"] or details.short_description
-        details.developer = store_details["developer"] or details.developer
-        details.price_cents = store_details["price_cents"]
-        details.release_date = store_details["release_date"]
+        if store_details["store_available"]:
+            details.genres = normalize_genres(store_details["genres"]) or details.genres
+            details.short_description = store_details["short_description"] or details.short_description
+            details.developer = store_details["developer"] or details.developer
+            details.price_cents = store_details["price_cents"]
+            details.release_date = store_details["release_date"]
         details.store_metadata_version = game_details_service.STORE_METADATA_VERSION
         details.fetched_at = datetime.now(timezone.utc)
     db.commit()
 
 
-def _apply_cached_details(game: Game, details: CachedGameDetails) -> None:
+def apply_cached_details(game: Game, details: CachedGameDetails) -> None:
     game.genres = normalize_genres(details.genres)
     game.short_description = details.short_description
     game.developer = details.developer

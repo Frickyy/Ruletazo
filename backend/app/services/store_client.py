@@ -1,5 +1,7 @@
 """Cliente para los endpoints públicos de la Store de Steam (no requieren API key)."""
 
+import asyncio
+import re
 from datetime import datetime
 
 import httpx
@@ -74,45 +76,53 @@ class SteamStoreClient:
         return details.get(appid, _empty_app_details())
 
     async def get_app_details_batch(self, appids: list[int], language: str = "english") -> dict[int, dict]:
-        """Fetch up to 50 app details in one Store API request."""
-        if not appids:
-            return {}
+        """Metadatos de varios juegos.
+
+        /api/appdetails responde 400 si se le pasan varios appids juntos (solo lo acepta con
+        `filters=price_overview`), así que se pide de a uno, con pocos pedidos en paralelo para
+        no chocar con el límite de la Store.
+        """
+        semaphore = asyncio.Semaphore(_STORE_CONCURRENCY)
+
+        async def fetch(appid: int) -> tuple[int, dict]:
+            async with semaphore:
+                return appid, await self._fetch_app_details(appid, language)
+
+        return dict(await asyncio.gather(*(fetch(appid) for appid in appids)))
+
+    async def _fetch_app_details(self, appid: int, language: str) -> dict:
         try:
-            response = await self._client.get(
-                "/api/appdetails",
-                params={"appids": ",".join(str(appid) for appid in appids), "l": language, "cc": "us"},
-            )
+            response = await self._client.get("/api/appdetails", params={"appids": appid, "l": language, "cc": "us"})
             response.raise_for_status()
-        except httpx.HTTPError:
-            return {appid: _empty_app_details() for appid in appids}
+            payload = response.json()
+        except (httpx.HTTPError, ValueError):
+            # Falla de red o rate limit: no es lo mismo que "Steam no tiene ficha", no hay que cachearlo.
+            return {**_empty_app_details(), "fetch_failed": True}
 
-        result = {}
-        for appid in appids:
-            entry = response.json().get(str(appid), {})
-            if not entry.get("success"):
-                result[appid] = _empty_app_details()
-                continue
+        entry = (payload or {}).get(str(appid)) or {}
+        if not entry.get("success"):
+            return _empty_app_details()
 
-            data = entry.get("data", {})
-            genres = normalize_genres([genre["description"] for genre in data.get("genres", [])])
-            price_overview = data.get("price_overview") or {}
-            app_type = data.get("type", "")
-            release_date = _normalize_release_date(data.get("release_date", {}).get("date", ""))
-            result[appid] = {
-                "name": data.get("name", ""),
-                "genres": genres,
-                "short_description": data.get("short_description", ""),
-                "developer": ", ".join(data.get("developers", [])),
-                "price_cents": (
-                    price_overview.get("final")
-                    if not data.get("is_free") and app_type == "game"
-                    else 0 if data.get("is_free") and app_type == "game" else None
-                ),
-                "app_type": app_type,
-                "release_date": release_date,
-                "store_available": True,
-            }
-        return result
+        data = entry.get("data", {})
+        price_overview = data.get("price_overview") or {}
+        app_type = data.get("type", "")
+        is_game = app_type == "game"
+        if not is_game:
+            price_cents = None
+        elif data.get("is_free"):
+            price_cents = 0
+        else:
+            price_cents = price_overview.get("final")
+        return {
+            "name": data.get("name", ""),
+            "genres": normalize_genres([genre["description"] for genre in data.get("genres", [])]),
+            "short_description": data.get("short_description", ""),
+            "developer": ", ".join(data.get("developers", [])),
+            "price_cents": price_cents,
+            "app_type": app_type,
+            "release_date": _normalize_release_date(data.get("release_date", {}).get("date", "")),
+            "store_available": True,
+        }
 
     async def get_reviews(self, appid: int, language: str = "spanish", num_reviews: int = 3) -> dict:
         """Devuelve el resumen de reseñas de Steam + hasta `num_reviews` reseñas de texto destacadas."""
@@ -193,6 +203,15 @@ class SteamStoreClient:
         return parse_search_results(response.json(), limit)
 
 
+# Pedidos simultáneos a /api/appdetails (la Store limita a ~200 cada 5 minutos por IP).
+_STORE_CONCURRENCY = 4
+
+# storesearch devuelve todo como "app", incluidas bandas sonoras y extras: se filtran por nombre.
+_NON_GAME_NAME_RE = re.compile(
+    r"\b(?:soundtrack|ost|original score|artbook|art book|wallpapers?|demo|playtest|dedicated server|sdk)\b",
+    re.IGNORECASE,
+)
+
 # Largo máximo guardado para "lo bueno" / "lo malo": la ficha muestra un extracto.
 HIGHLIGHT_MAX_LENGTH = 600
 
@@ -209,13 +228,18 @@ def pick_highlight(reviews: list[str]) -> str:
 
 
 def parse_search_results(payload: dict, limit: int = 10) -> list[dict]:
-    """Convierte la respuesta de storesearch en [{appid, name, image}] (solo juegos/apps)."""
+    """Convierte la respuesta de storesearch en [{appid, name, image}] (solo juegos, sin bandas sonoras ni extras)."""
     results = []
     for item in payload.get("items", []):
         if item.get("type") != "app" or not item.get("id"):
             continue
+        name = item.get("name", "")
+        if _NON_GAME_NAME_RE.search(name):
+            continue
         appid = int(item["id"])
-        results.append({"appid": appid, "name": item.get("name", ""), "image": steam_header_image(appid)})
+        # tiny_image trae la URL real del asset; header.jpg no existe para algunos juegos nuevos.
+        image = item.get("tiny_image") or steam_header_image(appid)
+        results.append({"appid": appid, "name": name, "image": image})
         if len(results) >= limit:
             break
     return results

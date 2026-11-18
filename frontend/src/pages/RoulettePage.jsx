@@ -16,7 +16,7 @@ const PLAYTIME_OPTIONS = [
  * Al tocar "Girar" se elige el ganador entre los juegos que cumplen los filtros, el rodillo
  * gira hasta él y, en paralelo, se pide su ficha completa al backend.
  */
-function RoulettePage({ steamId, isLoggedIn, friendSteamId, playtimeFilter = "all", onPlaytimeFilterChange, includeFamily, onIncludeFamilyChange, onOpenForum }) {
+function RoulettePage({ steamId, isLoggedIn, friendSteamId, hasFamily, playtimeFilter = "all", onPlaytimeFilterChange, includeFamily, onIncludeFamilyChange, onOpenForum }) {
   const [collection, setCollection] = useState("all");
   const [genre, setGenre] = useState("");
   const [genres, setGenres] = useState([]);
@@ -81,7 +81,8 @@ function RoulettePage({ steamId, isLoggedIn, friendSteamId, playtimeFilter = "al
   const canSpin = !isSpinning && !libraryLoading && pool.length > 0;
 
   useEffect(() => {
-    if (!steamId || !shownGame) {
+    // Los logros son los tuyos: un juego que solo tiene un familiar no tiene progreso propio.
+    if (!steamId || !shownGame || shownGame.source === "friend") {
       setAchievementProgress(null);
       setIsLoadingAchievements(false);
       setAchievementError(false);
@@ -201,10 +202,12 @@ function RoulettePage({ steamId, isLoggedIn, friendSteamId, playtimeFilter = "al
           </select>
         )}
 
-        <label className="checkbox roulette__family">
-          <input type="checkbox" checked={includeFamily} onChange={(event) => onIncludeFamilyChange?.(event.target.checked)} disabled={isSpinning} />
-          Incluir biblioteca de Familia
-        </label>
+        {steamId && hasFamily && (
+          <label className="checkbox roulette__family">
+            <input type="checkbox" checked={includeFamily} onChange={(event) => onIncludeFamilyChange?.(event.target.checked)} disabled={isSpinning} />
+            Incluir biblioteca de Familia
+          </label>
+        )}
       </div>
 
       {status}
@@ -215,6 +218,7 @@ function RoulettePage({ steamId, isLoggedIn, friendSteamId, playtimeFilter = "al
           achievementProgress={achievementProgress}
           isLoadingAchievements={isLoadingAchievements}
           achievementError={achievementError}
+          isDemo={!steamId}
           onToggleFavorite={isLoggedIn ? handleToggleFavorite : undefined}
           onOpenForum={onOpenForum}
         />

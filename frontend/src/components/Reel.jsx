@@ -44,8 +44,10 @@ function Reel({ pool, spin, onSettled }) {
     const visible = current.slice(index - SIDE, index + SIDE + 1);
     const fillers = sample(pool, SPIN_DISTANCE - SIDE - 1);
     const tail = sample(pool, SIDE);
-    const nextStrip = [...visible, ...fillers, spin.winner, ...tail];
     const target = visible.length + fillers.length;
+    // Lo visible y el ganador quedan fijos; el resto se reacomoda para no repetir portadas pegadas.
+    const fixed = new Set([...visible.keys(), target]);
+    const nextStrip = avoidAdjacentRepeats([...visible, ...fillers, spin.winner, ...tail], fixed);
     setAnimating(false);
     setStrip(nextStrip);
     setIndex(SIDE);
@@ -111,7 +113,34 @@ function Reel({ pool, spin, onSettled }) {
 function idleStrip(pool, center = null) {
   const cards = sample(pool, SIDE * 2 + 1);
   if (center && cards.length) cards[SIDE] = center;
-  return cards;
+  return avoidAdjacentRepeats(cards, center ? new Set([SIDE]) : new Set());
+}
+
+/**
+ * Con pocos juegos la tira los repite, y a veces quedaban dos portadas iguales pegadas.
+ * Intercambia cada repetida con otra posición libre que no choque con sus vecinas.
+ * `fixed` son posiciones que no se mueven (lo que ya se ve y el ganador).
+ */
+function avoidAdjacentRepeats(cards, fixed = new Set()) {
+  const result = [...cards];
+  const same = (a, b) => a && b && a.appid === b.appid;
+  const fits = (card, position) => !same(card, result[position - 1]) && !same(card, result[position + 1]);
+  for (let i = 1; i < result.length; i += 1) {
+    if (!same(result[i], result[i - 1])) continue;
+    const toMove = fixed.has(i) ? i - 1 : i;
+    if (fixed.has(toMove)) continue;
+    for (let j = 0; j < result.length; j += 1) {
+      if (j === toMove || fixed.has(j) || same(result[j], result[toMove])) continue;
+      const a = result[toMove];
+      const b = result[j];
+      result[toMove] = b;
+      result[j] = a;
+      if (fits(b, toMove) && fits(a, j)) break;
+      result[toMove] = a;
+      result[j] = b;
+    }
+  }
+  return result;
 }
 
 /** `count` juegos al azar de `pool`; si el pool es más chico, se repiten. */

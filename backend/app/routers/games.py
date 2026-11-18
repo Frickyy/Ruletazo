@@ -8,7 +8,7 @@ from app.core.config import get_settings
 from app.core.security import require_steam_id
 from app.db.session import get_db
 from app.schemas.game import Game
-from app.services import favorites_service, library_service
+from app.services import favorites_service, game_details_service, library_service
 from app.services.steam_client import InvalidSteamIDError, PrivateProfileError, SteamAPIError, SteamClient
 
 router = APIRouter(prefix="/api/games", tags=["games"])
@@ -115,7 +115,13 @@ async def get_game_details(
         mock = next((game for game in _MOCK_LIBRARY if game.appid == appid), None)
         if mock is None:
             raise HTTPException(status_code=404, detail="Ese juego no está en la biblioteca de ejemplo.")
-        return mock
+        # Los juegos de ejemplo son reales: su ficha (HLTB, reseñas, logros) se completa igual que
+        # la de cualquier juego, así la demo no muestra todo vacío.
+        game = mock.model_copy(deep=True)
+        details = await game_details_service.get_or_fetch_details(db, game.appid, game.name)
+        library_service.apply_cached_details(game, details)
+        game.short_description = mock.short_description  # la de ejemplo está en español; la Store la da en inglés
+        return game
 
     game = await _unwrap_steam_errors(library_service.get_game_details(db, steamid, friend_steamid, appid))
     if game is None:

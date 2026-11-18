@@ -4,6 +4,7 @@ import LibraryPage from "./pages/LibraryPage.jsx";
 import ForumPage from "./pages/ForumPage.jsx";
 import SteamIdInput from "./components/SteamIdInput.jsx";
 import { fetchSession, fetchSteamProfile, logoutSession } from "./services/gameService.js";
+import { useHashRoute } from "./routes.js";
 import "./components/SteamIdInput.css";
 import "./App.css";
 
@@ -33,8 +34,7 @@ function App() {
     const legacyId = localStorage.getItem(FRIEND_STEAM_ID_KEY) ?? "";
     return legacyId ? [legacyId] : [""];
   });
-  const [activeView, setActiveView] = useState("roulette");
-  const [forumTarget, setForumTarget] = useState(null);
+  const [{ view: activeView, forumTarget }, navigate] = useHashRoute();
   const [authMessage, setAuthMessage] = useState("");
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [includeFamily, setIncludeFamily] = useState(() => localStorage.getItem("steamRoulette.includeFamily") !== "false");
@@ -45,7 +45,7 @@ function App() {
     const params = new URLSearchParams(window.location.search);
     if (params.get("auth_error")) setAuthMessage("No se pudo iniciar sesión con Steam. Probá nuevamente.");
     if (params.get("auth_error") || params.get("login")) {
-      window.history.replaceState({}, document.title, window.location.pathname);
+      window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
     }
     fetchSession()
       .then((session) => {
@@ -70,9 +70,17 @@ function App() {
 
   const [familyProfiles, setFamilyProfiles] = useState([]);
 
+  // Se espera a que se deje de escribir: si no, cada tecla pedía un perfil a la Steam API.
   useEffect(() => {
-    Promise.all(familyIdsValue.map((id) => fetchSteamProfile(id).then((profile) => ({ id, profile })).catch(() => ({ id, profile: null }))))
-      .then(setFamilyProfiles);
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      Promise.all(familyIdsValue.map((id) => fetchSteamProfile(id).then((profile) => ({ id, profile })).catch(() => ({ id, profile: null }))))
+        .then((profiles) => { if (!cancelled) setFamilyProfiles(profiles); });
+    }, 600);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [familyIdsStorageValue]);
 
   function updateFamilyId(index, value) {
@@ -102,10 +110,16 @@ function App() {
     }
   }
 
-  function openForum(target = null) {
-    setForumTarget(target);
-    setActiveView("forum");
+  function setActiveView(view) {
+    navigate(view);
     window.scrollTo({ top: 0 });
+  }
+
+  function openForum(target = null) {
+    const onlyTabChanged =
+      activeView === "forum" && target?.appid === forumTarget?.appid && !target?.threadId && !forumTarget?.threadId;
+    navigate("forum", target);
+    if (!onlyTabChanged) window.scrollTo({ top: 0 });
   }
 
   const friendSteamId = includeFamily ? familyIdsStorageValue : "";
@@ -176,6 +190,7 @@ function App() {
             steamId={steamId}
             isLoggedIn={isLoggedIn}
             friendSteamId={friendSteamId}
+            hasFamily={familyIdsValue.length > 0}
             playtimeFilter={playtimeFilter}
             onPlaytimeFilterChange={setPlaytimeFilter}
             includeFamily={includeFamily}
@@ -185,7 +200,7 @@ function App() {
         )}
 
         {activeView === "forum" && (
-          <ForumPage target={forumTarget} onTargetChange={setForumTarget} viewer={profile} onLogin={handleSteamLogin} />
+          <ForumPage target={forumTarget} onTargetChange={openForum} viewer={profile} onLogin={handleSteamLogin} />
         )}
 
         {activeView === "library" && (
