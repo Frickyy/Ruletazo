@@ -1,32 +1,11 @@
 .steam-id-input {
   display: flex;
+  flex: 1 1 280px;
   flex-direction: column;
-  align-items: flex-start;
   gap: 0.4rem;
-  width: 100%;
-  max-width: 360px;
 }
 
 .steam-id-input label {
-  font-size: 0.85rem;
-  color: #d9c1c5;
-}
-
-.steam-id-input__field {
-  width: 100%;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 177, 200, 0.2);
-  border-radius: 10px;
-  color: #f5dde2;
-  font-size: 1rem;
-  padding: 0.6rem 0.8rem;
-}
-
-.steam-id-input__field:focus {
-  outline: none;
-  border-color: #ffb1c8;
-}
-
-.steam-id-input__field::placeholder {
-  color: #a98d95;
+  color: var(--muted);
+  font-size: 0.8125rem;
 }

@@ -12,7 +12,7 @@ import "./LibraryPage.css";
 // Cuántos juegos sin clasificar se piden por tanda al backend (ver services/library_service.py).
 const CLASSIFY_BATCH_SIZE = 10;
 
-function LibraryPage({ steamId, friendSteamId, playtimeFilter = "all" }) {
+function LibraryPage({ steamId, friendSteamId, playtimeFilter = "all", includeFamily, onIncludeFamilyChange, onManageFamily }) {
   const [games, setGames] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -124,32 +124,55 @@ function LibraryPage({ steamId, friendSteamId, playtimeFilter = "all" }) {
   }
 
   if (!steamId) {
-    return <p className="roulette-page__hint">Iniciá sesión con Steam para ver tu biblioteca.</p>;
+    return (
+      <section className="library-page">
+        <h1>Biblioteca</h1>
+        <p className="hint">Iniciá sesión con Steam para ver tu biblioteca.</p>
+      </section>
+    );
   }
 
+  const isClassificationPending = status && status.total > 0 && status.classified < status.total;
+
   return (
-    <section className="library-page">
-      <div className="roulette-page__filters">
-        <div className="collection-toggle">
-          <button type="button" className={collection === "all" ? "active" : ""} onClick={() => setCollection("all")}>
+    <section className="library-page" aria-labelledby="library-title">
+      <div className="library-page__heading">
+        <h1 id="library-title">Biblioteca</h1>
+        {!isLoading && <p className="library-page__count mono">{games.length} juegos</p>}
+      </div>
+
+      <div className="library-page__tools">
+        <form
+          className="library-page__search"
+          role="search"
+          onSubmit={(event) => {
+            event.preventDefault();
+            setSearch(searchDraft.trim());
+          }}
+        >
+          <label htmlFor="library-search" className="visually-hidden">Buscar por nombre</label>
+          <input
+            id="library-search"
+            className="text-input"
+            type="search"
+            value={searchDraft}
+            onChange={(event) => setSearchDraft(event.target.value)}
+            placeholder="Buscar por nombre y Enter"
+          />
+          <button type="submit" className="button">Buscar</button>
+        </form>
+
+        <div className="segmented" role="group" aria-label="Colección">
+          <button type="button" aria-pressed={collection === "all"} onClick={() => setCollection("all")}>
             Todos
           </button>
-          <button
-            type="button"
-            className={collection === "favorites" ? "active" : ""}
-            onClick={() => setCollection("favorites")}
-          >
+          <button type="button" aria-pressed={collection === "favorites"} onClick={() => setCollection("favorites")}>
             Favoritos
           </button>
         </div>
 
         {genres.length > 0 && (
-          <select
-            className="genre-select"
-            value={genre}
-            onChange={(event) => setGenre(event.target.value)}
-            aria-label="Filtrar por género"
-          >
+          <select className="select" value={genre} onChange={(event) => setGenre(event.target.value)} aria-label="Filtrar por género">
             <option value="">Todos los géneros</option>
             {genres.map((genreOption) => (
               <option key={genreOption} value={genreOption}>
@@ -158,89 +181,82 @@ function LibraryPage({ steamId, friendSteamId, playtimeFilter = "all" }) {
             ))}
           </select>
         )}
-      </div>
 
-      <div className="library-page__tools">
-        <form
-          className="library-page__search"
-          onSubmit={(event) => {
-            event.preventDefault();
-            setSearch(searchDraft.trim());
-          }}
-        >
-          <label htmlFor="library-search">Buscar por nombre</label>
-          <div className="library-page__search-row">
-            <input
-              id="library-search"
-              type="search"
-              value={searchDraft}
-              onChange={(event) => setSearchDraft(event.target.value)}
-              placeholder="Escribí y presioná Enter"
-            />
-            <button type="submit">Buscar</button>
-          </div>
-        </form>
-        <label className="library-page__sort">
-          Ordenar por
-          <select value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
+        <div className="library-page__sort">
+          <select className="select" value={sortBy} onChange={(event) => setSortBy(event.target.value)} aria-label="Ordenar por">
             <option value="name">Nombre</option>
             <option value="price">Precio</option>
             <option value="release_date">Fecha de salida</option>
           </select>
-        </label>
-        <button
-          type="button"
-          className="library-page__direction"
-          onClick={() => setSortDirection((direction) => (direction === "asc" ? "desc" : "asc"))}
-          title={sortDirection === "asc" ? "Orden ascendente" : "Orden descendente"}
-        >
-          {sortDirection === "asc" ? "A → Z / menor → mayor" : "Z → A / mayor → menor"}
-        </button>
+          <button
+            type="button"
+            className="button"
+            onClick={() => setSortDirection((direction) => (direction === "asc" ? "desc" : "asc"))}
+            aria-label={sortDirection === "asc" ? "Orden ascendente, cambiar a descendente" : "Orden descendente, cambiar a ascendente"}
+          >
+            {sortDirection === "asc" ? "↑ Asc" : "↓ Desc"}
+          </button>
+        </div>
+
+        <div className="library-page__family">
+          <label className="checkbox">
+            <input type="checkbox" checked={includeFamily} onChange={(event) => onIncludeFamilyChange?.(event.target.checked)} />
+            Incluir Familia
+          </label>
+          <button type="button" className="text-button" onClick={onManageFamily}>
+            Administrar
+          </button>
+        </div>
       </div>
 
-      {status && status.total > 0 && status.classified < status.total && (
+      {isClassificationPending && (
         <div className="library-page__classify">
           <p>
-            Clasificados {status.classified} / {status.total} juegos (género, reseñas, HowLongToBeat, logros).
-            Esto pega contra la Store de Steam de a un juego por vez, así que puede tardar.
+            <span className="mono">{status.classified}/{status.total}</span> juegos clasificados (género, reseñas, HowLongToBeat y logros).
+            Se consulta la tienda de Steam de a un juego, así que puede tardar.
           </p>
-          <button type="button" onClick={handleClassifyMore} disabled={isClassifying}>
-            {isClassifying ? "Clasificando automáticamente…" : "Clasificar toda la biblioteca"}
-          </button>
-          {isClassifying && (
-            <button type="button" className="library-page__stop" onClick={handleStopClassification}>
-              Detener después de esta tanda
+          <div className="library-page__classify-actions">
+            <button type="button" className="button button--primary" onClick={handleClassifyMore} disabled={isClassifying}>
+              {isClassifying ? "Clasificando…" : "Clasificar toda la biblioteca"}
             </button>
-          )}
+            {isClassifying && (
+              <button type="button" className="button" onClick={handleStopClassification}>
+                Detener después de esta tanda
+              </button>
+            )}
+          </div>
         </div>
       )}
 
-      {error && <p className="roulette-page__error">{error}</p>}
-      {isLoading && <p className="roulette-page__hint">Cargando biblioteca…</p>}
+      {sortBy !== "name" && isLoading && (
+        <p className="hint">Ordenar por precio o fecha consulta la tienda de Steam la primera vez: puede tardar un par de minutos.</p>
+      )}
+      {error && <p className="error-text">{error}</p>}
+      {isLoading && <p className="hint">Cargando biblioteca…</p>}
 
       <ul className="library-page__list">
         {games.map((game) => (
           <li key={game.appid} className="library-row">
-            <img className="library-row__image" src={game.header_image} alt={`Portada de ${game.name}`} />
+            <img className="library-row__image" src={game.header_image} alt="" loading="lazy" />
             <div className="library-row__body">
               <p className="library-row__name">
                 {game.name}
-                {game.source === "friend" && <span className="game-card__source"> de familia</span>}
-                {game.source === "both" && <span className="game-card__source"> en ambas</span>}
+                {game.source === "friend" && <span className="tag">Familia</span>}
+                {game.source === "both" && <span className="tag">Ambas</span>}
               </p>
               {game.genres.length > 0 && <p className="library-row__genres">{game.genres.join(" · ")}</p>}
-              <p className="library-row__meta">
-                {Math.round(game.playtime_forever_minutes / 60)} h
-                {game.price_cents != null && ` · ${formatPrice(game.price_cents)}`}
-                {game.release_date && ` · ${formatReleaseDate(game.release_date)}`}
-              </p>
             </div>
+            <p className="library-row__meta mono">
+              <span>{Math.round(game.playtime_forever_minutes / 60)} h</span>
+              <span>{game.price_cents != null ? formatPrice(game.price_cents) : ""}</span>
+              <span>{game.release_date ? formatReleaseDate(game.release_date) : ""}</span>
+            </p>
             <button
               type="button"
-              className={`game-card__favorite${game.is_favorite ? " game-card__favorite--active" : ""}`}
+              className="favorite-button"
               onClick={() => handleToggleFavorite(game)}
-              title={game.is_favorite ? "Quitar de favoritos" : "Agregar a favoritos"}
-              aria-label={game.is_favorite ? "Quitar de favoritos" : "Agregar a favoritos"}
+              aria-pressed={game.is_favorite}
+              aria-label={game.is_favorite ? `Quitar ${game.name} de favoritos` : `Agregar ${game.name} a favoritos`}
             >
               {game.is_favorite ? "★" : "☆"}
             </button>
@@ -249,7 +265,7 @@ function LibraryPage({ steamId, friendSteamId, playtimeFilter = "all" }) {
       </ul>
 
       {!isLoading && games.length === 0 && !error && (
-        <p className="roulette-page__hint">No hay juegos que coincidan con ese filtro.</p>
+        <p className="hint">No hay juegos que coincidan con ese filtro.</p>
       )}
     </section>
   );

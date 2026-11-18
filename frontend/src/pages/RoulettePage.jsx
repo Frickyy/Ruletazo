@@ -1,101 +1,47 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRandomGame } from "../hooks/useRandomGame.js";
 import { addFavorite, fetchGenres, fetchLibrary, fetchPlayerAchievements, removeFavorite } from "../services/gameService.js";
 import GameCard from "../components/GameCard.jsx";
+import Reel from "../components/Reel.jsx";
 import "../components/GameCard.css";
 import "./RoulettePage.css";
 
-function RoulettePage({ steamId, friendSteamId, playtimeFilter = "all", spinRequest = 0, onGameChange, onAchievementChange, onLoadingChange }) {
+const PLAYTIME_OPTIONS = [
+  { id: "all", label: "Toda la biblioteca" },
+  { id: "zero", label: "0 horas" },
+  { id: "under2", label: "Menos de 2 h" },
+];
+
+function RoulettePage({ steamId, friendSteamId, playtimeFilter = "all", onPlaytimeFilterChange, includeFamily, onIncludeFamilyChange }) {
   const { game, isLoading, error, spin, setGame } = useRandomGame();
   const [collection, setCollection] = useState("all");
   const [genre, setGenre] = useState("");
   const [genres, setGenres] = useState([]);
+  const [library, setLibrary] = useState([]);
   const [achievementProgress, setAchievementProgress] = useState(null);
   const [isLoadingAchievements, setIsLoadingAchievements] = useState(false);
   const [achievementError, setAchievementError] = useState(false);
-  const optionsRef = useRef({});
-  const [thinkingIndex, setThinkingIndex] = useState(0);
-  const [libraryPreview, setLibraryPreview] = useState([]);
-  const [thinkingGames, setThinkingGames] = useState(DEMO_THINKING_GAMES);
-  const lastSpinRequestRef = useRef(spinRequest);
 
-  optionsRef.current = { steamId, friendSteamId, collection, genre: genre || undefined, playtimeFilter };
-
-  useEffect(() => {
-    onLoadingChange?.(isLoading);
-  }, [isLoading, onLoadingChange]);
-
-  // Juegos reales de la biblioteca (propia + familia) para la animación de "Buscando".
-  // El backend la tiene cacheada, así que este pedido es liviano.
+  // Biblioteca (propia + familia) para el rodillo y los contadores. El backend la tiene cacheada.
   useEffect(() => {
     if (!steamId) {
-      setLibraryPreview([]);
+      setLibrary([]);
       return undefined;
     }
     let cancelled = false;
     fetchLibrary({ steamId, friendSteamId })
       .then((games) => {
-        if (!cancelled) setLibraryPreview(games);
+        if (!cancelled) setLibrary(games);
       })
       .catch(() => {
-        if (!cancelled) setLibraryPreview([]);
+        if (!cancelled) setLibrary([]);
       });
     return () => {
       cancelled = true;
     };
   }, [steamId, friendSteamId]);
 
-  // Al empezar cada giro se arma una tanda nueva, respetando los filtros activos,
-  // y se precargan las portadas para que no parpadeen mientras rotan.
-  useEffect(() => {
-    if (!isLoading) return undefined;
-    const nextGames = pickThinkingGames(libraryPreview, optionsRef.current);
-    nextGames.forEach(({ image }) => {
-      const preload = new Image();
-      preload.src = image;
-    });
-    setThinkingGames(nextGames);
-    setThinkingIndex(0);
-    const timer = window.setInterval(() => setThinkingIndex((index) => (index + 1) % nextGames.length), 350);
-    return () => window.clearInterval(timer);
-  }, [isLoading, libraryPreview]);
-
-  useEffect(() => {
-    onGameChange?.(game);
-  }, [game, onGameChange]);
-
-  useEffect(() => {
-    if (!steamId || !game) {
-      setAchievementProgress(null);
-      setIsLoadingAchievements(false);
-      setAchievementError(false);
-      onAchievementChange?.(null);
-      return;
-    }
-    setIsLoadingAchievements(true);
-    setAchievementError(false);
-    fetchPlayerAchievements(steamId, game.appid)
-      .then((progress) => {
-        setAchievementProgress(progress);
-        setIsLoadingAchievements(false);
-        onAchievementChange?.(progress);
-      })
-      .catch(() => {
-        setAchievementProgress(null);
-        setIsLoadingAchievements(false);
-        setAchievementError(true);
-        onAchievementChange?.(null);
-      });
-  }, [steamId, game, onAchievementChange]);
-
-  useEffect(() => {
-    if (spinRequest === lastSpinRequestRef.current) return;
-    lastSpinRequestRef.current = spinRequest;
-    spin(optionsRef.current);
-  }, [spinRequest, spin]);
-
-  // Los géneros disponibles dependen de cuánto de la biblioteca ya se clasificó
-  // (ver "Clasificar biblioteca" en Mi biblioteca), por eso se refrescan acá también.
+  // Los géneros disponibles dependen de cuánto de la biblioteca ya se clasificó.
   useEffect(() => {
     if (!steamId) {
       setGenres([]);
@@ -107,7 +53,39 @@ function RoulettePage({ steamId, friendSteamId, playtimeFilter = "all", spinRequ
       .catch(() => setGenres([]));
   }, [steamId, friendSteamId]);
 
+  useEffect(() => {
+    if (!steamId || !game) {
+      setAchievementProgress(null);
+      setIsLoadingAchievements(false);
+      setAchievementError(false);
+      return;
+    }
+    setIsLoadingAchievements(true);
+    setAchievementError(false);
+    fetchPlayerAchievements(steamId, game.appid)
+      .then((progress) => {
+        setAchievementProgress(progress);
+        setIsLoadingAchievements(false);
+      })
+      .catch(() => {
+        setAchievementProgress(null);
+        setIsLoadingAchievements(false);
+        setAchievementError(true);
+      });
+  }, [steamId, game]);
+
+  // El rodillo muestra los juegos que cumplen los filtros actuales (o la biblioteca de ejemplo sin sesión).
+  const reelPool = useMemo(() => {
+    if (library.length === 0) return DEMO_GAMES;
+    const matching = library.filter((item) => matchesFilters(item, { collection, genre, playtimeFilter }));
+    const source = matching.length >= 3 ? matching : library;
+    return source.map((item) => ({ appid: item.appid, name: item.name, image: item.header_image }));
+  }, [library, collection, genre, playtimeFilter]);
+
+  const unplayedCount = useMemo(() => library.filter((item) => item.playtime_forever_minutes === 0).length, [library]);
+
   function handleSpin() {
+    if (isLoading) return;
     spin({ steamId, friendSteamId, collection, genre: genre || undefined, playtimeFilter });
   }
 
@@ -122,103 +100,107 @@ function RoulettePage({ steamId, friendSteamId, playtimeFilter = "all", spinRequ
   }
 
   return (
-    <section className="roulette-page">
-      {steamId && (
-        <div className="roulette-page__filters">
-          <div className="collection-toggle">
-            <button type="button" className={collection === "all" ? "active" : ""} onClick={() => setCollection("all")}>
+    <section className="roulette" aria-labelledby="roulette-title">
+      <div className="roulette__heading">
+        <h1 id="roulette-title">¿Qué jugamos hoy?</h1>
+        {library.length > 0 && (
+          <p className="roulette__stats">
+            {library.length} juegos · {unplayedCount} sin estrenar
+          </p>
+        )}
+      </div>
+
+      <Reel pool={reelPool} result={isLoading ? null : game} isSpinning={isLoading} />
+
+      <div className="roulette__controls">
+        <button type="button" className="button button--primary button--large" onClick={handleSpin} disabled={isLoading}>
+          {isLoading ? "Girando…" : "Girar la ruleta"}
+        </button>
+
+        <div className="segmented" role="group" aria-label="Horas jugadas">
+          {PLAYTIME_OPTIONS.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              aria-pressed={playtimeFilter === option.id}
+              onClick={() => onPlaytimeFilterChange?.(option.id)}
+              disabled={isLoading}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+
+        {steamId && (
+          <div className="segmented" role="group" aria-label="Colección">
+            <button type="button" aria-pressed={collection === "all"} onClick={() => setCollection("all")} disabled={isLoading}>
               Todos
             </button>
-            <button
-              type="button"
-              className={collection === "favorites" ? "active" : ""}
-              onClick={() => setCollection("favorites")}
-            >
+            <button type="button" aria-pressed={collection === "favorites"} onClick={() => setCollection("favorites")} disabled={isLoading}>
               Favoritos
             </button>
           </div>
+        )}
 
-          {genres.length > 0 && (
-            <select
-              className="genre-select"
-              value={genre}
-              onChange={(event) => setGenre(event.target.value)}
-              aria-label="Filtrar por género"
-            >
-              <option value="">Todos los géneros</option>
-              {genres.map((genreOption) => (
-                <option key={genreOption} value={genreOption}>
-                  {genreOption}
-                </option>
-              ))}
-            </select>
-          )}
-        </div>
-      )}
+        {steamId && genres.length > 0 && (
+          <select className="select" value={genre} onChange={(event) => setGenre(event.target.value)} aria-label="Filtrar por género" disabled={isLoading}>
+            <option value="">Todos los géneros</option>
+            {genres.map((genreOption) => (
+              <option key={genreOption} value={genreOption}>
+                {genreOption}
+              </option>
+            ))}
+          </select>
+        )}
 
-      {error && <p className="roulette-page__error">{error}</p>}
+        <label className="checkbox roulette__family">
+          <input type="checkbox" checked={includeFamily} onChange={(event) => onIncludeFamilyChange?.(event.target.checked)} />
+          Incluir biblioteca de Familia
+        </label>
+      </div>
 
-      {isLoading && <ThinkingCard game={thinkingGames[thinkingIndex] ?? thinkingGames[0]} />}
+      {error && <p className="error-text">{error}</p>}
 
       {!error && !game && !isLoading && (
-        <p className="roulette-page__hint">
+        <p className="hint roulette__hint">
           {steamId
-            ? "Presioná el botón para elegir un juego al azar de tu biblioteca de Steam."
-            : "Presioná el botón para probar con una biblioteca de ejemplo, o iniciá sesión con Steam para usar la tuya."}
+            ? "Tocá «Girar la ruleta» y te elige un juego de tu biblioteca."
+            : "Sin sesión, la ruleta usa una biblioteca de ejemplo. Iniciá sesión con Steam para usar la tuya."}
         </p>
       )}
 
-      {game && <GameCard game={game} achievementProgress={achievementProgress} isLoadingAchievements={isLoadingAchievements} achievementError={achievementError} onToggleFavorite={steamId ? handleToggleFavorite : undefined} />}
+      {game && !isLoading && (
+        <GameCard
+          game={game}
+          achievementProgress={achievementProgress}
+          isLoadingAchievements={isLoadingAchievements}
+          achievementError={achievementError}
+          onToggleFavorite={steamId ? handleToggleFavorite : undefined}
+        />
+      )}
     </section>
   );
 }
 
-const THINKING_BATCH_SIZE = 14;
-
-// Sin sesión iniciada la ruleta usa la biblioteca de ejemplo del backend: se muestran esos mismos juegos.
-const DEMO_THINKING_GAMES = [
-  { name: "Cyberpunk 2077", image: steamHeader(1091500) },
-  { name: "ELDEN RING", image: steamHeader(1245620) },
-  { name: "Stardew Valley", image: steamHeader(413150) },
-  { name: "Red Dead Redemption 2", image: steamHeader(1174180) },
-  { name: "Hades", image: steamHeader(1145360) },
-];
+function matchesFilters(game, { collection, genre, playtimeFilter }) {
+  if (collection === "favorites" && !game.is_favorite) return false;
+  if (genre && !game.genres.includes(genre)) return false;
+  if (playtimeFilter === "zero" && game.playtime_forever_minutes !== 0) return false;
+  if (playtimeFilter === "under2" && game.playtime_forever_minutes >= 120) return false;
+  return true;
+}
 
 function steamHeader(appid) {
   return `https://cdn.cloudflare.steamstatic.com/steam/apps/${appid}/header.jpg`;
 }
 
-/** Elige una tanda al azar de la biblioteca, priorizando los juegos que cumplen los filtros del giro. */
-function pickThinkingGames(library, { collection, genre, playtimeFilter } = {}) {
-  if (library.length === 0) return DEMO_THINKING_GAMES;
-
-  const matching = library.filter((game) => {
-    if (collection === "favorites" && !game.is_favorite) return false;
-    if (genre && !game.genres.includes(genre)) return false;
-    if (playtimeFilter === "zero" && game.playtime_forever_minutes !== 0) return false;
-    if (playtimeFilter === "under2" && game.playtime_forever_minutes >= 120) return false;
-    return true;
-  });
-  const pool = matching.length >= 3 ? matching : library;
-
-  const shuffled = [...pool];
-  for (let index = shuffled.length - 1; index > 0; index -= 1) {
-    const swapIndex = Math.floor(Math.random() * (index + 1));
-    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
-  }
-  return shuffled.slice(0, THINKING_BATCH_SIZE).map((game) => ({ name: game.name, image: game.header_image }));
-}
-
-function ThinkingCard({ game }) {
-  return (
-    <article className="thinking-card" aria-live="polite">
-      <img src={game.image} alt="" />
-      <div>
-        <span>Buscando</span>
-        <strong>{game.name}</strong>
-      </div>
-    </article>
-  );
-}
+// Sin sesión la ruleta usa la biblioteca de ejemplo del backend: el rodillo muestra esos mismos juegos.
+const DEMO_GAMES = [
+  { appid: 1091500, name: "Cyberpunk 2077", image: steamHeader(1091500) },
+  { appid: 1245620, name: "ELDEN RING", image: steamHeader(1245620) },
+  { appid: 413150, name: "Stardew Valley", image: steamHeader(413150) },
+  { appid: 1174180, name: "Red Dead Redemption 2", image: steamHeader(1174180) },
+  { appid: 1145360, name: "Hades", image: steamHeader(1145360) },
+];
 
 export default RoulettePage;

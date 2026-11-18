@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import RoulettePage from "./pages/RoulettePage.jsx";
 import LibraryPage from "./pages/LibraryPage.jsx";
 import SteamIdInput from "./components/SteamIdInput.jsx";
@@ -22,9 +22,6 @@ function App() {
     return legacyId ? [legacyId] : [""];
   });
   const [activeView, setActiveView] = useState("roulette");
-  const [spinRequest, setSpinRequest] = useState(0);
-  const [isSpinning, setIsSpinning] = useState(false);
-  const spinningRef = useRef(false);
   const [authMessage, setAuthMessage] = useState("");
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [includeFamily, setIncludeFamily] = useState(() => localStorage.getItem("steamRoulette.includeFamily") !== "false");
@@ -112,24 +109,6 @@ function App() {
     setFamilyIds((current) => current.filter((_, currentIndex) => currentIndex !== index));
   }
 
-  function handleRequestSpin() {
-    if (spinningRef.current) return;
-    spinningRef.current = true;
-    setIsSpinning(true);
-    setActiveView("roulette");
-    setSpinRequest((value) => value + 1);
-  }
-
-  function handleFilterChange(nextFilter) {
-    if (spinningRef.current) return;
-    setPlaytimeFilter(nextFilter);
-  }
-
-  function handleSpinLoadingChange(loading) {
-    setIsSpinning(loading);
-    if (!loading) spinningRef.current = false;
-  }
-
   function handleSteamLogin() {
     const apiUrl = import.meta.env.VITE_API_URL ?? "/api";
     window.location.href = `${apiUrl}/auth/login`;
@@ -146,39 +125,45 @@ function App() {
     setAuthMessage("Sesión cerrada.");
   }
 
+  const views = [
+    { id: "roulette", label: "Ruleta" },
+    { id: "library", label: "Biblioteca" },
+    { id: "family", label: "Familia" },
+  ];
+  const friendSteamId = includeFamily ? familyIdsStorageValue : "";
+
   return (
-    <div className="app-shell modern-shell">
-      <nav className="topbar" aria-label="Navegación principal">
-        <div className="topbar__left">
-          <button type="button" className="brand" onClick={() => setActiveView("roulette")} aria-label="Ir a Ruleta">
-            <span className="brand-mark" aria-hidden="true">SR</span>
-            <span>Steam <em>Roulette</em></span>
-          </button>
-          <div className="topbar__links">
-            <button type="button" className={activeView === "roulette" ? "nav-link nav-link--active" : "nav-link"} onClick={() => setActiveView("roulette")}>
-              Ruleta
+    <div className="app-shell">
+      <header className="topbar">
+        <button type="button" className="brand" onClick={() => setActiveView("roulette")} aria-label="Steam Roulette, ir a la ruleta">
+          steam<span className="brand__slash">/</span>roulette
+        </button>
+
+        <nav className="topbar__links" aria-label="Secciones">
+          {views.map((view) => (
+            <button
+              key={view.id}
+              type="button"
+              className="nav-link"
+              aria-current={activeView === view.id ? "page" : undefined}
+              onClick={() => setActiveView(view.id)}
+            >
+              {view.label}
             </button>
-            <button type="button" className={activeView === "library" ? "nav-link nav-link--active" : "nav-link"} onClick={() => setActiveView("library")}>
-              Biblioteca
-            </button>
-            <button type="button" className={activeView === "family" ? "nav-link nav-link--active" : "nav-link"} onClick={() => setActiveView("family")}>
-              Familia
-            </button>
-          </div>
-        </div>
+          ))}
+        </nav>
 
         <div className="topbar__meta">
           {sessionVerified && profile ? (
             <div className="profile-menu-wrap">
               <button
                 type="button"
-                className="steam-profile"
+                className="button steam-profile"
                 onClick={() => setProfileMenuOpen((isOpen) => !isOpen)}
                 aria-expanded={profileMenuOpen}
                 aria-haspopup="menu"
-                title="Abrir menú de perfil"
               >
-                <img src={profile.avatar} alt={`Avatar de ${profile.name}`} />
+                <img src={profile.avatar} alt="" />
                 <span>{profile.name}</span>
               </button>
               {profileMenuOpen && (
@@ -194,96 +179,72 @@ function App() {
               )}
             </div>
           ) : (
-            <button type="button" className="ghost-button steam-login-top" onClick={handleSteamLogin}>
-              <span className="steam-status-dot" aria-hidden="true" />
+            <button type="button" className="button" onClick={handleSteamLogin}>
               Iniciar sesión con Steam
             </button>
           )}
         </div>
-      </nav>
+      </header>
 
       {authMessage && <p className="auth-message" role="status">{authMessage}</p>}
 
       <main className="main-panel">
         {activeView === "roulette" && (
-          <>
-        <section className="hero-section">
-          <div className="hero-orb" aria-hidden="true" />
-          <button type="button" className="glow-button" onClick={handleRequestSpin} disabled={isSpinning}>
-            ¡Sorpréndeme!
-          </button>
-
-          <div className="filter-row">
-            <button type="button" className={`tag-pill${playtimeFilter === "zero" ? " active" : ""}`} onClick={() => handleFilterChange("zero")} disabled={isSpinning}>
-              0 horas
-            </button>
-            <button type="button" className={`tag-pill${playtimeFilter === "under2" ? " active" : ""}`} onClick={() => handleFilterChange("under2")} disabled={isSpinning}>
-              Menos de 2 horas
-            </button>
-            <button type="button" className={`tag-pill${playtimeFilter === "all" ? " active" : ""}`} onClick={() => handleFilterChange("all")} disabled={isSpinning}>
-              Toda la biblioteca
-            </button>
-
-            <div className="family-toggle">
-              <span>Incluir biblioteca de Familia</span>
-              <label className="switch">
-                <input type="checkbox" checked={includeFamily} onChange={(event) => setIncludeFamily(event.target.checked)} />
-                <span className="slider" />
-              </label>
-            </div>
-          </div>
-        </section>
-
-        <div className="content-surface result-surface">
-          <RoulettePage steamId={steamId} friendSteamId={includeFamily ? familyIdsStorageValue : ""} playtimeFilter={playtimeFilter} spinRequest={spinRequest} onLoadingChange={handleSpinLoadingChange} />
-        </div>
-
-          </>
+          <RoulettePage
+            steamId={steamId}
+            friendSteamId={friendSteamId}
+            playtimeFilter={playtimeFilter}
+            onPlaytimeFilterChange={setPlaytimeFilter}
+            includeFamily={includeFamily}
+            onIncludeFamilyChange={setIncludeFamily}
+          />
         )}
 
-        {activeView !== "roulette" && <div className="content-surface">
-          {activeView === "library" && (
-            <div className="family-inline-control">
-              <span>Incluir biblioteca familiar</span>
-              <label className="switch">
-                <input type="checkbox" checked={includeFamily} onChange={(event) => setIncludeFamily(event.target.checked)} />
-                <span className="slider" />
-              </label>
-              <button type="button" className="family-link" onClick={() => setActiveView("family")}>
-                Administrar Familia
+        {activeView === "library" && (
+          <LibraryPage
+            steamId={steamId}
+            friendSteamId={friendSteamId}
+            playtimeFilter={playtimeFilter}
+            includeFamily={includeFamily}
+            onIncludeFamilyChange={setIncludeFamily}
+            onManageFamily={() => setActiveView("family")}
+          />
+        )}
+
+        {activeView === "family" && (
+          <section className="family-page">
+            <div className="family-page__intro">
+              <p className="eyebrow">Familia</p>
+              <h1>Sumá la biblioteca de tu familia</h1>
+              <p className="hint">Pegá el link del perfil de Steam o el SteamID64 de hasta 5 familiares. Sus juegos entran en la ruleta y en la biblioteca.</p>
+            </div>
+            <div className="family-members">
+              {familyIds.map((familyId, index) => {
+                const familyProfile = familyProfiles.find(({ id }) => id === familyId)?.profile;
+                return (
+                  <div className="family-member" key={`${index}-${familyId}`}>
+                    <SteamIdInput id={`family-${index}`} label={`Familiar ${index + 1}`} placeholder="URL de perfil o SteamID64" value={familyId} onChange={(value) => updateFamilyId(index, value)} />
+                    {familyProfile && (
+                      <div className="family-profile">
+                        <img src={familyProfile.avatar} alt="" />
+                        <span>{familyProfile.name}</span>
+                      </div>
+                    )}
+                    {familyIds.length > 1 && (
+                      <button type="button" className="button family-remove" onClick={() => removeFamilyId(index)}>Quitar</button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <div className="family-actions">
+              {familyIds.length < 5 && <button type="button" className="button" onClick={addFamilyId}>Agregar familiar</button>}
+              <button type="button" className="button button--primary" onClick={() => setActiveView("library")}>
+                Ver biblioteca combinada
               </button>
             </div>
-          )}
-          {activeView === "library" ? (
-            <LibraryPage steamId={steamId} friendSteamId={includeFamily ? familyIdsStorageValue : ""} playtimeFilter={playtimeFilter} />
-          ) : activeView === "family" ? (
-            <section className="family-page">
-              <div>
-                <p className="eyebrow">FAMILIA</p>
-                <h2>Agregá la biblioteca de tu familia</h2>
-                <p>Ingresá la URL de tu/s familiar/es para incluirlo/s en la ruleta.</p>
-              </div>
-              <div className="family-members">
-                {familyIds.map((familyId, index) => {
-                  const familyProfile = familyProfiles.find(({ id }) => id === familyId)?.profile;
-                  return (
-                    <div className="family-member" key={`${index}-${familyId}`}>
-                      <SteamIdInput id={`family-${index}`} label={`Familiar ${index + 1}`} placeholder="URL de perfil o SteamID64" value={familyId} onChange={(value) => updateFamilyId(index, value)} />
-                      {familyProfile && <div className="family-profile"><img src={familyProfile.avatar} alt={`Avatar de ${familyProfile.name}`} /><span>{familyProfile.name}</span></div>}
-                      {familyIds.length > 1 && <button type="button" className="family-remove" onClick={() => removeFamilyId(index)}>Quitar</button>}
-                    </div>
-                  );
-                })}
-                {familyIds.length < 5 && <button type="button" className="family-secondary-action" onClick={addFamilyId}>Agregar familiar</button>}
-              </div>
-              <div className="family-actions">
-                <button type="button" className="family-secondary-action" onClick={() => setActiveView("library")}>
-                  Ver biblioteca combinada
-                </button>
-              </div>
-            </section>
-          ) : null}
-        </div>}
+          </section>
+        )}
       </main>
     </div>
   );

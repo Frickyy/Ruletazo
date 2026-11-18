@@ -8,7 +8,7 @@ function SteamIdInput({ id, label, value, onChange, placeholder }) {
       <input
         id={id}
         type="text"
-        className="steam-id-input__field"
+        className="text-input steam-id-input__field"
         placeholder={placeholder ?? "SteamID64, vanity URL o link de perfil"}
         value={value}
         onChange={(event) => onChange(event.target.value)}
