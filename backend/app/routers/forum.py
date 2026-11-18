@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.core.security import current_steam_id, require_steam_id
+from app.core.security import current_steam_id, is_moderator, require_steam_id
 from app.db.session import get_db
 from app.services import forum_service
 from app.services.forum_service import Author, ForumError
@@ -63,6 +63,12 @@ class ThreadIn(BaseModel):
 
 class PostIn(BaseModel):
     body: str = Field(min_length=1, max_length=forum_service.POST_MAX_LENGTH)
+
+
+class ReportIn(BaseModel):
+    kind: str = Field(pattern="^(review|thread|post)$")
+    target_id: int
+    reason: str = Field(default="", max_length=forum_service.REPORT_REASON_MAX_LENGTH)
 
 
 @router.get("/search")
@@ -145,7 +151,7 @@ def get_thread(
 
 @router.delete("/threads/{thread_id}", status_code=204)
 def delete_thread(thread_id: int, db: Session = Depends(get_db), steam_id: str = Depends(require_steam_id)) -> None:
-    _unwrap(lambda: forum_service.delete_thread(db, thread_id, steam_id))
+    _unwrap(lambda: forum_service.delete_thread(db, thread_id, steam_id, moderator=is_moderator(steam_id)))
 
 
 @router.post("/threads/{thread_id}/posts", status_code=201)
@@ -162,7 +168,46 @@ async def add_post(
 
 @router.delete("/posts/{post_id}", status_code=204)
 def delete_post(post_id: int, db: Session = Depends(get_db), steam_id: str = Depends(require_steam_id)) -> None:
-    _unwrap(lambda: forum_service.delete_post(db, post_id, steam_id))
+    _unwrap(lambda: forum_service.delete_post(db, post_id, steam_id, moderator=is_moderator(steam_id)))
+
+
+@router.delete("/reviews/{review_id}", status_code=204)
+def delete_review_by_id(
+    review_id: int, db: Session = Depends(get_db), steam_id: str = Depends(require_steam_id)
+) -> None:
+    """Borra una reseña por id: la propia o, para moderadores, cualquiera."""
+    _unwrap(lambda: forum_service.delete_review_by_id(db, review_id, steam_id, moderator=is_moderator(steam_id)))
+
+
+# ---------- Moderación ----------
+
+
+@router.post("/reports", status_code=204)
+def report_message(
+    report: ReportIn, db: Session = Depends(get_db), steam_id: str = Depends(require_steam_id)
+) -> None:
+    check_post_rate(steam_id)
+    _unwrap(lambda: forum_service.report(db, report.kind, report.target_id, steam_id, report.reason))
+
+
+@router.get("/reports")
+def list_reports(db: Session = Depends(get_db), steam_id: str = Depends(require_steam_id)) -> list[dict]:
+    _require_moderator(steam_id)
+    return forum_service.list_reports(db)
+
+
+@router.delete("/reports/{kind}/{target_id}", status_code=204)
+def dismiss_reports(
+    kind: str, target_id: int, db: Session = Depends(get_db), steam_id: str = Depends(require_steam_id)
+) -> None:
+    """El moderador deja el mensaje como está y descarta sus denuncias."""
+    _require_moderator(steam_id)
+    forum_service.dismiss_reports(db, kind, target_id)
+
+
+def _require_moderator(steam_id: str) -> None:
+    if not is_moderator(steam_id):
+        raise HTTPException(status_code=403, detail="Solo para moderadores del foro.")
 
 
 def _unwrap(action):

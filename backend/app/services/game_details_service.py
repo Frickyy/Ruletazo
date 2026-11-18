@@ -18,7 +18,8 @@ from app.services.store_client import SteamStoreClient
 
 logger = logging.getLogger(__name__)
 
-STORE_METADATA_VERSION = 5
+# 6: sinopsis y fechas en español, y marca de contenido para adultos.
+STORE_METADATA_VERSION = 6
 # Subir este número fuerza a volver a pedir "lo bueno / lo malo" de las reseñas.
 # 2: varias frases por lado, filtradas (review_digest), y los errores de Steam ya no se cachean.
 REVIEWS_VERSION = 2
@@ -115,6 +116,7 @@ async def get_or_fetch_details(db: Session, appid: int, name: str) -> CachedGame
         cached.developer = store_details["developer"] or cached.developer
         cached.price_cents = store_details["price_cents"]
         cached.release_date = store_details["release_date"]
+        cached.is_adult = store_details["is_adult"]
     if not store_details.get("fetch_failed"):
         cached.store_metadata_version = STORE_METADATA_VERSION
     if not reviews["failed"]:

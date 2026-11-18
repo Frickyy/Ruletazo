@@ -64,6 +64,10 @@ def current_steam_id(request: Request) -> str | None:
     return read_session_token(request.cookies.get(SESSION_COOKIE))
 
 
+def is_moderator(steam_id: str | None) -> bool:
+    return bool(steam_id) and steam_id in get_settings().admin_steam_id_set
+
+
 def require_steam_id(request: Request) -> str:
     """Dependencia de FastAPI para endpoints que exigen haber iniciado sesión con Steam."""
     steam_id = current_steam_id(request)

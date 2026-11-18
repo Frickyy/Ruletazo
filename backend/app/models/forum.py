@@ -63,3 +63,18 @@ class ForumPost(Base):
     author_avatar: Mapped[str] = mapped_column(String(512), default="")
     body: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+class ForumReport(Base):
+    """Denuncia de un mensaje del foro. Los moderadores (ADMIN_STEAM_IDS) las ven y resuelven."""
+
+    __tablename__ = "forum_reports"
+    __table_args__ = (UniqueConstraint("kind", "target_id", "reporter_steam_id", name="uq_forum_report_once"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # "review", "thread" o "post"
+    kind: Mapped[str] = mapped_column(String(16))
+    target_id: Mapped[int] = mapped_column(Integer, index=True)
+    reporter_steam_id: Mapped[str] = mapped_column(String(32))
+    reason: Mapped[str] = mapped_column(String(300), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)

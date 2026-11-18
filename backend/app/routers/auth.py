@@ -10,6 +10,7 @@ from app.core.security import (
     SESSION_MAX_AGE_SECONDS,
     create_session_token,
     current_steam_id,
+    is_moderator,
 )
 from app.services.steam_client import InvalidSteamIDError, SteamAPIError, SteamClient
 
@@ -85,7 +86,7 @@ async def steam_auth_callback(request: Request) -> RedirectResponse:
         max_age=SESSION_MAX_AGE_SECONDS,
         httponly=True,
         samesite="lax",
-        secure=request.url.scheme == "https",
+        secure=request.url.scheme == "https" or get_settings().is_production,
         path="/",
     )
     return redirect
@@ -98,9 +99,10 @@ async def current_session(steam_id: str | None = Depends(current_steam_id)) -> d
         raise HTTPException(status_code=401, detail="No hay una sesión iniciada.")
     try:
         async with SteamClient() as client:
-            return await client.get_profile(steam_id)
+            profile = await client.get_profile(steam_id)
     except SteamAPIError:
-        return {"steam_id": steam_id, "name": "Jugador de Steam", "avatar": ""}
+        profile = {"steam_id": steam_id, "name": "Jugador de Steam", "avatar": ""}
+    return {**profile, "is_moderator": is_moderator(steam_id)}
 
 
 @router.post("/logout", status_code=204)
