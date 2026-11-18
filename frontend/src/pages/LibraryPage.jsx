@@ -1,125 +1,87 @@
-import { useEffect, useRef, useState } from "react";
-import {
-  addFavorite,
-  classifyLibraryBatch,
-  fetchClassificationStatus,
-  fetchGenres,
-  fetchLibrary,
-  removeFavorite,
-} from "../services/gameService.js";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { addFavorite, removeFavorite, unhideGame } from "../services/gameService.js";
+import { DURATION_OPTIONS, PLAYTIME_OPTIONS, SORT_OPTIONS, genresOf, matchesFilters, sortGames } from "../services/libraryFilters.js";
 import "./LibraryPage.css";
 
-// Cuántos juegos sin clasificar se piden por tanda al backend (ver services/library_service.py).
-const CLASSIFY_BATCH_SIZE = 10;
+// Filas que se dibujan de entrada; al llegar al final se suman de a tanto (con 1000+ juegos,
+// dibujarlos todos juntos trababa la página).
+const PAGE_SIZE = 60;
 
-function LibraryPage({ steamId, friendSteamId, playtimeFilter = "all", includeFamily, onIncludeFamilyChange, onManageFamily }) {
-  const [games, setGames] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
+/**
+ * Explorador de la biblioteca. Filtra y ordena en el navegador sobre la lista compartida
+ * (useLibrary): buscar, cambiar de orden o de filtro no vuelve a pedir nada al backend.
+ */
+function LibraryPage({
+  steamId,
+  library,
+  hideAdult,
+  onHideAdultChange,
+  playtimeFilter = "all",
+  onPlaytimeFilterChange,
+  includeFamily,
+  onIncludeFamilyChange,
+  onManageFamily,
+}) {
+  const { games, status, error: loadError, updateGame, classification, setClassificationPaused } = library;
   const [collection, setCollection] = useState("all");
   const [genre, setGenre] = useState("");
-  const [searchDraft, setSearchDraft] = useState("");
+  const [duration, setDuration] = useState("any");
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("name");
   const [sortDirection, setSortDirection] = useState("asc");
-  const [genres, setGenres] = useState([]);
-  const [status, setStatus] = useState(null);
-  const [isClassifying, setIsClassifying] = useState(false);
-  const stopClassificationRef = useRef(false);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [actionError, setActionError] = useState(null);
+  const sentinelRef = useRef(null);
+  // Mientras se escribe, la lista se actualiza sin trabar el campo de búsqueda.
+  const deferredSearch = useDeferredValue(search);
+
+  const genres = useMemo(() => genresOf(games), [games]);
+  const hiddenCount = useMemo(() => games.filter((game) => game.is_hidden).length, [games]);
+  const filtered = useMemo(() => {
+    const filters = { collection, genre, playtimeFilter, duration, hideAdult, search: deferredSearch };
+    return sortGames(
+      games.filter((game) => matchesFilters(game, filters)),
+      sortBy,
+      sortDirection,
+    );
+  }, [games, collection, genre, playtimeFilter, duration, hideAdult, deferredSearch, sortBy, sortDirection]);
+
+  // Filtros nuevos → se vuelve a mostrar desde el principio.
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [collection, genre, playtimeFilter, duration, hideAdult, deferredSearch, sortBy, sortDirection]);
 
   useEffect(() => {
-    if (!steamId) return;
-    loadLibrary();
-  }, [steamId, friendSteamId, collection, genre, search, sortBy, sortDirection, playtimeFilter]);
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return undefined;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) setVisibleCount((count) => count + PAGE_SIZE);
+      },
+      { rootMargin: "600px" },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [filtered.length > visibleCount]);
 
-  useEffect(() => {
-    if (!steamId) return;
-    loadGenres();
-    loadStatus();
-  }, [steamId, friendSteamId]);
-
-  async function loadLibrary() {
-    setIsLoading(true);
-    setError(null);
+  async function handleToggleFavorite(game) {
+    setActionError(null);
     try {
-      setGames(await fetchLibrary({
-        steamId,
-        friendSteamId,
-        collection,
-        genre: genre || undefined,
-        search: search || undefined,
-        sortBy,
-        sortDirection,
-        playtimeFilter,
-      }));
+      if (game.is_favorite) await removeFavorite(steamId, game.appid);
+      else await addFavorite(steamId, game.appid);
+      updateGame(game.appid, { is_favorite: !game.is_favorite });
     } catch (err) {
-      setError(err.response?.data?.detail ?? "No se pudo cargar la biblioteca.");
-    } finally {
-      setIsLoading(false);
+      setActionError(err.response?.data?.detail ?? "No se pudo actualizar favoritos.");
     }
   }
 
-  async function loadGenres() {
+  async function handleUnhide(game) {
+    setActionError(null);
     try {
-      setGenres(await fetchGenres({ steamId, friendSteamId }));
-    } catch {
-      setGenres([]);
-    }
-  }
-
-  async function loadStatus() {
-    try {
-      setStatus(await fetchClassificationStatus(steamId));
-    } catch {
-      setStatus(null);
-    }
-  }
-
-  // Las tandas siguen separadas para que la biblioteca no quede bloqueada durante el proceso.
-  async function handleClassifyMore() {
-    setIsClassifying(true);
-    stopClassificationRef.current = false;
-    setError(null);
-    try {
-      let remaining = status?.total ? status.total - status.classified : 1;
-      let total = status?.total ?? 0;
-
-      while (remaining > 0 && !stopClassificationRef.current) {
-        const result = await classifyLibraryBatch(steamId, CLASSIFY_BATCH_SIZE);
-        remaining = result.remaining;
-        total = result.total;
-        setStatus({ classified: total - remaining, total });
-      }
-
-      await Promise.all([loadGenres(), loadLibrary()]);
+      await unhideGame(game.appid);
+      updateGame(game.appid, { is_hidden: false });
     } catch (err) {
-      setError(err.response?.data?.detail ?? "No se pudo clasificar la biblioteca.");
-    } finally {
-      setIsClassifying(false);
-    }
-  }
-
-  function handleStopClassification() {
-    stopClassificationRef.current = true;
-  }
-
-  async function handleToggleFavorite(target) {
-    try {
-      if (target.is_favorite) {
-        await removeFavorite(steamId, target.appid);
-      } else {
-        await addFavorite(steamId, target.appid);
-      }
-      setGames((prev) => {
-        if (target.is_favorite && collection === "favorites") {
-          return prev.filter((game) => game.appid !== target.appid);
-        }
-        return prev.map((game) => (
-          game.appid === target.appid ? { ...game, is_favorite: !target.is_favorite } : game
-        ));
-      });
-    } catch (err) {
-      setError(err.response?.data?.detail ?? "No se pudo actualizar favoritos.");
+      setActionError(err.response?.data?.detail ?? "No se pudo volver a mostrar el juego.");
     }
   }
 
@@ -132,35 +94,33 @@ function LibraryPage({ steamId, friendSteamId, playtimeFilter = "all", includeFa
     );
   }
 
-  const isClassificationPending = status && status.total > 0 && status.classified < status.total;
+  const isLoading = status === "loading";
+  const needsStoreData = ["price", "release_date", "duration"].includes(sortBy) || duration !== "any";
 
   return (
     <section className="library-page" aria-labelledby="library-title">
       <div className="library-page__heading">
         <h1 id="library-title">Biblioteca</h1>
-        {!isLoading && <p className="library-page__count mono">{games.length} juegos</p>}
+        {!isLoading && (
+          <p className="library-page__count mono">
+            {filtered.length.toLocaleString("es-AR")} de {games.length.toLocaleString("es-AR")} juegos
+          </p>
+        )}
       </div>
 
       <div className="library-page__tools">
-        <form
-          className="library-page__search"
-          role="search"
-          onSubmit={(event) => {
-            event.preventDefault();
-            setSearch(searchDraft.trim());
-          }}
-        >
+        <div className="library-page__search">
           <label htmlFor="library-search" className="visually-hidden">Buscar por nombre</label>
           <input
             id="library-search"
             className="text-input"
             type="search"
-            value={searchDraft}
-            onChange={(event) => setSearchDraft(event.target.value)}
-            placeholder="Buscar por nombre y Enter"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Buscar por nombre"
+            autoComplete="off"
           />
-          <button type="submit" className="button">Buscar</button>
-        </form>
+        </div>
 
         <div className="segmented" role="group" aria-label="Colección">
           <button type="button" aria-pressed={collection === "all"} onClick={() => setCollection("all")}>
@@ -169,7 +129,26 @@ function LibraryPage({ steamId, friendSteamId, playtimeFilter = "all", includeFa
           <button type="button" aria-pressed={collection === "favorites"} onClick={() => setCollection("favorites")}>
             Favoritos
           </button>
+          <button type="button" aria-pressed={collection === "hidden"} onClick={() => setCollection("hidden")}>
+            Ocultos{hiddenCount > 0 ? ` (${hiddenCount})` : ""}
+          </button>
         </div>
+
+        <select className="select" value={playtimeFilter} onChange={(event) => onPlaytimeFilterChange?.(event.target.value)} aria-label="Horas jugadas">
+          {PLAYTIME_OPTIONS.map((option) => (
+            <option key={option.id} value={option.id}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+
+        <select className="select" value={duration} onChange={(event) => setDuration(event.target.value)} aria-label="Duración">
+          {DURATION_OPTIONS.map((option) => (
+            <option key={option.id} value={option.id}>
+              {option.label}
+            </option>
+          ))}
+        </select>
 
         {genres.length > 0 && (
           <select className="select" value={genre} onChange={(event) => setGenre(event.target.value)} aria-label="Filtrar por género">
@@ -184,9 +163,11 @@ function LibraryPage({ steamId, friendSteamId, playtimeFilter = "all", includeFa
 
         <div className="library-page__sort">
           <select className="select" value={sortBy} onChange={(event) => setSortBy(event.target.value)} aria-label="Ordenar por">
-            <option value="name">Nombre</option>
-            <option value="price">Precio</option>
-            <option value="release_date">Fecha de salida</option>
+            {SORT_OPTIONS.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
           </select>
           <button
             type="button"
@@ -200,6 +181,10 @@ function LibraryPage({ steamId, friendSteamId, playtimeFilter = "all", includeFa
 
         <div className="library-page__family">
           <label className="checkbox">
+            <input type="checkbox" checked={hideAdult} onChange={(event) => onHideAdultChange?.(event.target.checked)} />
+            Ocultar +18
+          </label>
+          <label className="checkbox">
             <input type="checkbox" checked={includeFamily} onChange={(event) => onIncludeFamilyChange?.(event.target.checked)} />
             Incluir Familia
           </label>
@@ -209,33 +194,34 @@ function LibraryPage({ steamId, friendSteamId, playtimeFilter = "all", includeFa
         </div>
       </div>
 
-      {isClassificationPending && (
+      {classification && classification.total > 0 && classification.classified < classification.total && (
         <div className="library-page__classify">
-          <p>
-            <span className="mono">{status.classified}/{status.total}</span> juegos clasificados (género, reseñas, HowLongToBeat y logros).
-            Se consulta la tienda de Steam de a un juego, así que puede tardar.
-          </p>
-          <div className="library-page__classify-actions">
-            <button type="button" className="button button--primary" onClick={handleClassifyMore} disabled={isClassifying}>
-              {isClassifying ? "Clasificando…" : "Clasificar toda la biblioteca"}
-            </button>
-            {isClassifying && (
-              <button type="button" className="button" onClick={handleStopClassification}>
-                Detener después de esta tanda
-              </button>
-            )}
+          <div className="library-page__classify-bar" aria-hidden="true">
+            <span style={{ width: `${(classification.classified / classification.total) * 100}%` }} />
           </div>
+          <p>
+            <span className="mono">
+              {classification.classified.toLocaleString("es-AR")}/{classification.total.toLocaleString("es-AR")}
+            </span>{" "}
+            juegos con datos de la tienda (género, duración, precio, reseñas).{" "}
+            {classification.paused
+              ? "Pausado."
+              : classification.running
+                ? "Se completan solos en segundo plano, de a poco para no saturar a Steam."
+                : "Steam no respondió; se reintenta la próxima vez que abras la app."}
+            {needsStoreData && " Los juegos sin datos quedan al final o fuera del filtro."}
+          </p>
+          <button type="button" className="button" onClick={() => setClassificationPaused(!classification.paused)}>
+            {classification.paused ? "Reanudar" : "Pausar"}
+          </button>
         </div>
       )}
 
-      {sortBy !== "name" && isLoading && (
-        <p className="hint">Ordenar por precio o fecha consulta la tienda de Steam la primera vez: puede tardar un par de minutos.</p>
-      )}
-      {error && <p className="error-text">{error}</p>}
+      {(loadError || actionError) && <p className="error-text">{actionError ?? loadError}</p>}
       {isLoading && <p className="hint">Cargando biblioteca…</p>}
 
       <ul className="library-page__list">
-        {games.map((game) => (
+        {filtered.slice(0, visibleCount).map((game) => (
           <li key={game.appid} className="library-row">
             <img className="library-row__image" src={game.header_image} alt="" loading="lazy" />
             <div className="library-row__body">
@@ -244,28 +230,41 @@ function LibraryPage({ steamId, friendSteamId, playtimeFilter = "all", includeFa
                 {game.source === "friend" && <span className="tag">Familia</span>}
                 {game.source === "both" && <span className="tag">Ambas</span>}
               </p>
-              {game.genres.length > 0 && <p className="library-row__genres">{game.genres.join(" · ")}</p>}
+              <p className="library-row__genres">
+                {[game.genres.join(" · "), game.hltb_main_hours != null ? `${Math.round(game.hltb_main_hours)} h de historia` : ""]
+                  .filter(Boolean)
+                  .join(" — ")}
+              </p>
             </div>
             <p className="library-row__meta mono">
-              <span>{Math.round(game.playtime_forever_minutes / 60)} h</span>
+              <span>{Math.round(game.playtime_forever_minutes / 60)} h jugadas</span>
               <span>{game.price_cents != null ? formatPrice(game.price_cents) : ""}</span>
               <span>{game.release_date ? formatReleaseDate(game.release_date) : ""}</span>
             </p>
-            <button
-              type="button"
-              className="favorite-button"
-              onClick={() => handleToggleFavorite(game)}
-              aria-pressed={game.is_favorite}
-              aria-label={game.is_favorite ? `Quitar ${game.name} de favoritos` : `Agregar ${game.name} a favoritos`}
-            >
-              {game.is_favorite ? "★" : "☆"}
-            </button>
+            {game.is_hidden ? (
+              <button type="button" className="button library-row__unhide" onClick={() => handleUnhide(game)}>
+                Volver a mostrar
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="favorite-button"
+                onClick={() => handleToggleFavorite(game)}
+                aria-pressed={game.is_favorite}
+                aria-label={game.is_favorite ? `Quitar ${game.name} de favoritos` : `Agregar ${game.name} a favoritos`}
+              >
+                {game.is_favorite ? "★" : "☆"}
+              </button>
+            )}
           </li>
         ))}
       </ul>
+      {filtered.length > visibleCount && <div ref={sentinelRef} className="library-page__sentinel" aria-hidden="true" />}
 
-      {!isLoading && games.length === 0 && !error && (
-        <p className="hint">No hay juegos que coincidan con ese filtro.</p>
+      {!isLoading && filtered.length === 0 && !loadError && (
+        <p className="hint">
+          {collection === "hidden" ? "No ocultaste ningún juego." : "No hay juegos que coincidan con esos filtros."}
+        </p>
       )}
     </section>
   );

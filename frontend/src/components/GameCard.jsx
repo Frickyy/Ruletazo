@@ -3,9 +3,12 @@
  * No sabe de dónde vienen los datos (eso es de `RoulettePage` y `gameService`).
  * `onToggleFavorite` es opcional: sin sesión no se muestra la estrella.
  * `isDemo`: juego de la biblioteca de ejemplo (sin sesión); no se muestran horas jugadas.
+ * `onSpinAgain` ("Otro") y `onHide` ("No me lo muestres más") son opcionales.
  */
-function GameCard({ game, isDemo = false, onToggleFavorite, onOpenForum, achievementProgress, isLoadingAchievements, achievementError }) {
+function GameCard({ game, isDemo = false, onToggleFavorite, onSpinAgain, onHide, onOpenForum, achievementProgress, isLoadingAchievements, achievementError }) {
   const playtimeHours = Math.round(game.playtime_forever_minutes / 60);
+  // Solo se puede lanzar si es tuyo (un juego de un familiar se juega desde su cuenta compartida).
+  const canPlay = !isDemo && game.source !== "friend";
   const releaseYear = game.release_date ? game.release_date.slice(0, 4) : "";
   const meta = [game.developer, game.genres.join(", "), releaseYear].filter(Boolean).join(" · ");
   const showAchievements = isLoadingAchievements || achievementError || achievementProgress?.total > 0;
@@ -44,8 +47,19 @@ function GameCard({ game, isDemo = false, onToggleFavorite, onOpenForum, achieve
             {game.short_description || "Steam no tiene una sinopsis para este juego."}
           </p>
           <div className="game-card__links">
+            {canPlay && (
+              // Abre el cliente de Steam y lanza el juego (lo instala primero si hace falta).
+              <a className="button button--primary" href={`steam://run/${game.appid}`}>
+                ▶ Jugar ahora
+              </a>
+            )}
+            {onSpinAgain && (
+              <button type="button" className={`button${canPlay ? "" : " button--primary"}`} onClick={onSpinAgain}>
+                ↻ Otro
+              </button>
+            )}
             {onOpenForum && (
-              <button type="button" className="button button--primary" onClick={() => onOpenForum({ appid: game.appid, name: game.name })}>
+              <button type="button" className="button" onClick={() => onOpenForum({ appid: game.appid, name: game.name })}>
                 Foro del juego
               </button>
             )}
@@ -53,6 +67,11 @@ function GameCard({ game, isDemo = false, onToggleFavorite, onOpenForum, achieve
               Ver en Steam ↗
             </a>
           </div>
+          {onHide && (
+            <button type="button" className="text-button game-card__hide" onClick={() => onHide(game)}>
+              No me lo muestres más
+            </button>
+          )}
         </div>
       </div>
 

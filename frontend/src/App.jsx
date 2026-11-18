@@ -5,6 +5,7 @@ import ForumPage from "./pages/ForumPage.jsx";
 import SteamIdInput from "./components/SteamIdInput.jsx";
 import { fetchSession, fetchSteamProfile, logoutSession } from "./services/gameService.js";
 import { useHashRoute } from "./routes.js";
+import { useLibrary } from "./services/useLibrary.js";
 import "./components/SteamIdInput.css";
 import "./App.css";
 
@@ -39,6 +40,8 @@ function App() {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [includeFamily, setIncludeFamily] = useState(() => localStorage.getItem("steamRoulette.includeFamily") !== "false");
   const [playtimeFilter, setPlaytimeFilter] = useState("all");
+  // Ocultar juegos +18: activado por defecto.
+  const [hideAdult, setHideAdult] = useState(() => readStorage("steamRoulette.hideAdult") !== "false");
 
   useEffect(() => {
     LEGACY_SESSION_KEYS.forEach((key) => localStorage.removeItem(key));
@@ -67,6 +70,10 @@ function App() {
   useEffect(() => {
     localStorage.setItem("steamRoulette.includeFamily", String(includeFamily));
   }, [includeFamily]);
+
+  useEffect(() => {
+    writeStorage("steamRoulette.hideAdult", String(hideAdult));
+  }, [hideAdult]);
 
   const [familyProfiles, setFamilyProfiles] = useState([]);
 
@@ -123,6 +130,8 @@ function App() {
   }
 
   const friendSteamId = includeFamily ? familyIdsStorageValue : "";
+  // Una sola biblioteca para la ruleta y la página Biblioteca (se clasifica sola en segundo plano).
+  const library = useLibrary(steamId, friendSteamId);
 
   return (
     <div className="app-shell">
@@ -199,6 +208,9 @@ function App() {
             steamId={steamId}
             isLoggedIn={isLoggedIn}
             friendSteamId={friendSteamId}
+            library={library}
+            hideAdult={hideAdult}
+            onHideAdultChange={setHideAdult}
             hasFamily={familyIdsValue.length > 0}
             playtimeFilter={playtimeFilter}
             onPlaytimeFilterChange={setPlaytimeFilter}
@@ -216,8 +228,11 @@ function App() {
         {activeView === "library" && (
           <LibraryPage
             steamId={steamId}
-            friendSteamId={friendSteamId}
+            library={library}
+            hideAdult={hideAdult}
+            onHideAdultChange={setHideAdult}
             playtimeFilter={playtimeFilter}
+            onPlaytimeFilterChange={setPlaytimeFilter}
             includeFamily={includeFamily}
             onIncludeFamilyChange={setIncludeFamily}
             onManageFamily={() => setActiveView("family")}
@@ -261,6 +276,22 @@ function App() {
       </main>
     </div>
   );
+}
+
+function readStorage(key) {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeStorage(key, value) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    /* modo privado o almacenamiento bloqueado: solo se pierde la preferencia */
+  }
 }
 
 /** Logo: tres portadas de un rodillo, la del centro elegida. */

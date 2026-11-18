@@ -1,0 +1,63 @@
+.spin-history {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.spin-history h2 {
+  flex: 0 0 auto;
+  margin: 0;
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.spin-history ul {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 2px;
+  overflow-x: auto;
+  list-style: none;
+  scrollbar-width: thin;
+}
+
+.spin-history__item {
+  display: block;
+  width: 92px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface-raised);
+  aspect-ratio: 460 / 215;
+  opacity: 0.75;
+  transition: opacity 140ms ease, border-color 140ms ease;
+}
+
+.spin-history__item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.spin-history__item:hover:not(:disabled),
+.spin-history__item[aria-current="true"] {
+  border-color: var(--accent);
+  opacity: 1;
+}
+
+@media (max-width: 640px) {
+  .spin-history {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .spin-history ul {
+    max-width: 100%;
+  }
+}

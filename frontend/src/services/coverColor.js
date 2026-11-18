@@ -82,7 +82,7 @@ function accentFromImage(image) {
   };
 }
 
-function rgbToHsl(r, g, b) {
+export function rgbToHsl(r, g, b) {
   r /= 255;
   g /= 255;
   b /= 255;
@@ -99,7 +99,7 @@ function rgbToHsl(r, g, b) {
   return [h / 6, s, l];
 }
 
-function hslToHex(h, s, l) {
+export function hslToHex(h, s, l) {
   const a = s * Math.min(l, 1 - l);
   const channel = (n) => {
     const k = (n + h * 12) % 12;

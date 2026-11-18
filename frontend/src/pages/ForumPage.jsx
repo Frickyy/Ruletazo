@@ -3,14 +3,18 @@ import {
   createForumThread,
   deleteForumPost,
   deleteForumReview,
+  deleteForumReviewById,
   deleteForumThread,
+  dismissForumReports,
   fetchForumGame,
+  fetchForumReports,
   fetchForumReviews,
   fetchForumThread,
   fetchForumThreads,
   fetchRecentActivity,
   forumErrorMessage,
   replyToForumThread,
+  reportForumMessage,
   saveForumReview,
   searchForumGames,
 } from "../services/forumService.js";
@@ -29,12 +33,12 @@ function ForumPage({ target, onTargetChange, viewer, onLogin }) {
   if (target?.appid) {
     return <ForumGameView target={target} onTargetChange={onTargetChange} viewer={viewer} onLogin={onLogin} />;
   }
-  return <ForumHome onTargetChange={onTargetChange} />;
+  return <ForumHome onTargetChange={onTargetChange} viewer={viewer} />;
 }
 
 // ---------- Portada: buscador + actividad reciente ----------
 
-function ForumHome({ onTargetChange }) {
+function ForumHome({ onTargetChange, viewer }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState(null);
   const [searching, setSearching] = useState(false);
@@ -100,6 +104,8 @@ function ForumHome({ onTargetChange }) {
           ))}
         </ul>
       )}
+
+      {viewer?.is_moderator && <ModerationPanel onTargetChange={onTargetChange} />}
 
       <section className="forum-section" aria-labelledby="forum-recent">
         <h2 id="forum-recent">Actividad reciente</h2>
@@ -238,6 +244,17 @@ function ForumGameView({ target, onTargetChange, viewer, onLogin }) {
                   <div className="forum-post__content">
                     <AuthorLine author={review.author} at={review.updated_at} />
                     <p className="forum-post__body">{review.body}</p>
+                    <MessageActions
+                      kind="review"
+                      id={review.id}
+                      isMine={review.is_mine}
+                      viewer={viewer}
+                      // La propia se borra desde el formulario de arriba; acá solo los moderadores.
+                      onDelete={review.is_mine ? undefined : async () => {
+                        await deleteForumReviewById(review.id);
+                        await reload();
+                      }}
+                    />
                   </div>
                 </li>
               ))}
@@ -479,11 +496,14 @@ function ForumThreadView({ target, onTargetChange, viewer, onLogin }) {
             <h1 id="forum-thread-title">{thread.title}</h1>
             <AuthorLine author={thread.author} at={thread.created_at} />
             <p className="forum-post__body">{thread.body}</p>
-            {thread.is_mine && (
-              <button type="button" className="text-button" onClick={handleDeleteThread}>
-                Borrar discusión
-              </button>
-            )}
+            <MessageActions
+              kind="thread"
+              id={thread.id}
+              isMine={thread.is_mine}
+              viewer={viewer}
+              deleteLabel="Borrar discusión"
+              onDelete={handleDeleteThread}
+            />
           </article>
 
           <section className="forum-section" aria-label="Respuestas">
@@ -494,11 +514,13 @@ function ForumThreadView({ target, onTargetChange, viewer, onLogin }) {
                   <div className="forum-post__content">
                     <AuthorLine author={post.author} at={post.created_at} />
                     <p className="forum-post__body">{post.body}</p>
-                    {post.is_mine && (
-                      <button type="button" className="text-button" onClick={() => handleDeletePost(post.id)}>
-                        Borrar
-                      </button>
-                    )}
+                    <MessageActions
+                      kind="post"
+                      id={post.id}
+                      isMine={post.is_mine}
+                      viewer={viewer}
+                      onDelete={() => handleDeletePost(post.id)}
+                    />
                   </div>
                 </li>
               ))}
@@ -523,6 +545,150 @@ function ForumThreadView({ target, onTargetChange, viewer, onLogin }) {
         </>
       )}
     </section>
+  );
+}
+
+// ---------- Moderación ----------
+
+const KIND_LABELS = { review: "Reseña", thread: "Discusión", post: "Respuesta" };
+
+/** Denuncias pendientes, solo para moderadores (ADMIN_STEAM_IDS en el backend). */
+function ModerationPanel({ onTargetChange }) {
+  const [reports, setReports] = useState(null);
+  const [error, setError] = useState("");
+
+  async function reload() {
+    try {
+      setReports(await fetchForumReports());
+      setError("");
+    } catch (err) {
+      setError(forumErrorMessage(err, "No se pudieron cargar las denuncias."));
+    }
+  }
+
+  useEffect(() => {
+    reload();
+  }, []);
+
+  async function act(action) {
+    try {
+      await action();
+      await reload();
+    } catch (err) {
+      setError(forumErrorMessage(err));
+    }
+  }
+
+  function remove(report) {
+    if (report.kind === "review") return deleteForumReviewById(report.target_id);
+    if (report.kind === "thread") return deleteForumThread(report.target_id);
+    return deleteForumPost(report.target_id);
+  }
+
+  function open(report) {
+    if (!report.appid) return;
+    onTargetChange(
+      report.thread_id
+        ? { appid: report.appid, name: report.game_name, threadId: report.thread_id }
+        : { appid: report.appid, name: report.game_name, tab: "reviews" },
+    );
+  }
+
+  return (
+    <section className="forum-section moderation" aria-labelledby="moderation-title">
+      <h2 id="moderation-title">Denuncias {reports?.length ? `(${reports.length})` : ""}</h2>
+      {error && <p className="error-text">{error}</p>}
+      {reports && reports.length === 0 && <p className="hint">No hay denuncias pendientes.</p>}
+      {reports && reports.length > 0 && (
+        <ul className="moderation__list">
+          {reports.map((report) => (
+            <li key={`${report.kind}-${report.target_id}`} className="moderation__item">
+              <p className="moderation__meta">
+                <span className="tag">{KIND_LABELS[report.kind]}</span>
+                <strong>{report.author.name || "Jugador de Steam"}</strong>
+                <span className="muted">
+                  en {report.game_name || "un juego"} · {report.report_count} {report.report_count === 1 ? "denuncia" : "denuncias"}
+                </span>
+              </p>
+              <p className="moderation__excerpt">{report.excerpt}</p>
+              {report.reasons.length > 0 && <p className="muted moderation__reasons">Motivos: {report.reasons.join(" · ")}</p>}
+              <div className="moderation__actions">
+                <button type="button" className="text-button" onClick={() => open(report)}>
+                  Ver en el foro
+                </button>
+                <button type="button" className="text-button moderation__delete" onClick={() => act(() => remove(report))}>
+                  Borrar mensaje
+                </button>
+                <button type="button" className="text-button" onClick={() => act(() => dismissForumReports(report.kind, report.target_id))}>
+                  Descartar denuncia
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+/**
+ * Acciones de un mensaje: "Borrar" (autor o moderador, si se pasa `onDelete`) y "Denunciar"
+ * (cualquiera con sesión, menos el autor). La denuncia pide un motivo opcional.
+ */
+function MessageActions({ kind, id, isMine, viewer, onDelete, deleteLabel = "Borrar" }) {
+  const [reporting, setReporting] = useState(false);
+  const [reason, setReason] = useState("");
+  const [state, setState] = useState(""); // "" | "sending" | "sent" | mensaje de error
+  if (!viewer) return null;
+  const canDelete = onDelete && (isMine || viewer.is_moderator);
+  const canReport = !isMine;
+  if (!canDelete && !canReport) return null;
+
+  async function submitReport(event) {
+    event.preventDefault();
+    setState("sending");
+    try {
+      await reportForumMessage(kind, id, reason.trim());
+      setState("sent");
+      setReporting(false);
+    } catch (err) {
+      setState(forumErrorMessage(err));
+    }
+  }
+
+  return (
+    <div className="message-actions">
+      {canDelete && (
+        <button type="button" className="text-button" onClick={onDelete}>
+          {deleteLabel}
+        </button>
+      )}
+      {canReport && state !== "sent" && !reporting && (
+        <button type="button" className="text-button message-actions__report" onClick={() => setReporting(true)}>
+          Denunciar
+        </button>
+      )}
+      {state === "sent" && <span className="muted">Gracias, un moderador lo va a revisar.</span>}
+      {reporting && (
+        <form className="message-actions__form" onSubmit={submitReport}>
+          <input
+            className="text-input"
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            maxLength={300}
+            placeholder="Motivo (opcional)"
+            aria-label="Motivo de la denuncia"
+          />
+          <button type="submit" className="button" disabled={state === "sending"}>
+            Enviar
+          </button>
+          <button type="button" className="text-button" onClick={() => setReporting(false)}>
+            Cancelar
+          </button>
+        </form>
+      )}
+      {state && !["sending", "sent"].includes(state) && <span className="error-text">{state}</span>}
+    </div>
   );
 }
 

@@ -57,6 +57,26 @@ export async function deleteForumPost(postId) {
   await api.delete(`/forum/posts/${postId}`);
 }
 
+/** Borra una reseña por id: la propia o, para moderadores, cualquiera. */
+export async function deleteForumReviewById(reviewId) {
+  await api.delete(`/forum/reviews/${reviewId}`);
+}
+
+/** Denuncia un mensaje. `kind`: "review", "thread" o "post". */
+export async function reportForumMessage(kind, targetId, reason = "") {
+  await api.post("/forum/reports", { kind, target_id: targetId, reason });
+}
+
+/** Mensajes denunciados (solo moderadores). */
+export async function fetchForumReports() {
+  const { data } = await api.get("/forum/reports");
+  return data;
+}
+
+export async function dismissForumReports(kind, targetId) {
+  await api.delete(`/forum/reports/${kind}/${targetId}`);
+}
+
 /** Mensaje de error legible: el backend manda el motivo en `detail`. */
 export function forumErrorMessage(err, fallback = "Algo salió mal. Probá de nuevo.") {
   const detail = err?.response?.data?.detail;
