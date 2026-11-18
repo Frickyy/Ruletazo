@@ -4,9 +4,8 @@
  * es del hook `useRandomGame` y del `gameService`. `onToggleFavorite` es opcional:
  * si no se pasa, no se muestra la estrella (ej. mientras no hay SteamID cargado).
  */
-function GameCard({ game, onToggleFavorite }) {
+function GameCard({ game, onToggleFavorite, achievementProgress, isLoadingAchievements, achievementError }) {
   const playtimeHours = Math.round(game.playtime_forever_minutes / 60);
-  const hasHltbData = game.hltb_main_hours != null || game.hltb_completionist_hours != null;
 
   return (
     <article className="game-card">
@@ -27,9 +26,15 @@ function GameCard({ game, onToggleFavorite }) {
       <div className="game-card__body">
         <h2>
           {game.name}
-          {game.source === "friend" && <span className="game-card__source"> 👪 de tu familia</span>}
-          {game.source === "both" && <span className="game-card__source"> 👪 en ambas bibliotecas</span>}
+          {game.source === "friend" && <span className="game-card__source"> de tu familia</span>}
+          {game.source === "both" && <span className="game-card__source"> en ambas bibliotecas</span>}
         </h2>
+
+        {game.developer && <p className="game-card__developer">Desarrollado por {game.developer}</p>}
+
+        <a className="game-card__steam-link" href={`https://store.steampowered.com/app/${game.appid}/`} target="_blank" rel="noopener noreferrer">
+          Ver en Steam
+        </a>
 
         {game.genres.length > 0 && (
           <ul className="game-card__genres">
@@ -43,47 +48,54 @@ function GameCard({ game, onToggleFavorite }) {
           {game.short_description || "Sinopsis no disponible para este juego en Steam Store."}
         </p>
 
-        <ul className="game-card__stats">
-          <li>
-            🕒 Jugado: <strong>{playtimeHours} h</strong>
-          </li>
-          {hasHltbData && (
-            <li>
-              ⏱️ HowLongToBeat:{" "}
-              {game.hltb_main_hours != null && (
-                <>
-                  historia <strong>{game.hltb_main_hours} h</strong>
-                </>
-              )}
-              {game.hltb_main_hours != null && game.hltb_completionist_hours != null && " · "}
-              {game.hltb_completionist_hours != null && (
-                <>
-                  100% <strong>{game.hltb_completionist_hours} h</strong>
-                </>
-              )}
-            </li>
-          )}
-          <li>
-            🏆 Dificultad de logros: <strong>{game.achievement_difficulty}</strong>
-          </li>
-        </ul>
-
-        {(game.review_score_desc || game.review_total > 0 || game.featured_reviews.length > 0) && (
-          <div className="game-card__reviews">
-            <p className="game-card__review-score">
-              📝 {game.review_score_desc || "Reseñas de usuarios"}
-              {game.review_total > 0 && ` · ${game.review_total.toLocaleString("es-AR")} reseñas`}
-            </p>
-            {game.featured_reviews.length > 0 && (
-              <ul className="game-card__featured-reviews">
-                {game.featured_reviews.map((review, index) => (
-                  <li key={index}>“{review}”</li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
       </div>
+      <aside className="game-card__sidebar">
+
+        <div className="game-card__dashboard">
+          <section className="game-card__panel">
+            <h3>Tiempo Estimado (HLTB)</h3>
+            <div className="game-card__stat"><span>Historia Principal</span><strong>{game.hltb_main_hours != null ? `${game.hltb_main_hours}h` : "Sin datos"}</strong></div>
+            <div className="game-card__stat"><span>Completista</span><strong>{game.hltb_completionist_hours != null ? `${game.hltb_completionist_hours}h` : "Sin datos"}</strong></div>
+            <div className="game-card__alert">
+              <span>Dificultad de logros <strong>{game.achievement_difficulty}</strong></span>
+            </div>
+          </section>
+
+          <section className="game-card__panel game-card__reviews-panel">
+            <h3>Resumen de reseñas</h3>
+            <strong>{game.review_score_desc || "Reseñas de la comunidad"}</strong>
+            <span>{game.review_total > 0 ? `${game.review_total.toLocaleString("es-AR")} reseñas` : "Todavía no hay reseñas clasificadas"}</span>
+            {game.featured_reviews.length > 0 && <p>“{game.featured_reviews[0]}”</p>}
+          </section>
+        </div>
+
+        <section className="game-card__progress">
+          <div><span>Tu tiempo de juego</span><strong>{playtimeHours} h</strong></div>
+        </section>
+      </aside>
+      {(
+        isLoadingAchievements || achievementError || achievementProgress?.achievements?.length > 0 || !achievementProgress
+      ) && (
+        <section className="game-achievements">
+          <div className="game-achievements__heading">
+              <h3>{achievementProgress ? `${achievementProgress.unlocked}/${achievementProgress.total}` : "--/--"}</h3>
+              <span>{isLoadingAchievements ? "Cargando progreso" : achievementError ? "Progreso no disponible" : "Progreso"}</span>
+          </div>
+          {achievementProgress?.achievements?.length > 0 && <div className="game-achievements__list">
+            {achievementProgress.achievements.map((achievement, index) => (
+              <article className={`achievement-item${achievement.achieved ? " achievement-item--unlocked" : ""}`} key={`${achievement.name}-${index}`}>
+                {(achievement.achieved ? achievement.icon : achievement.icon_gray || achievement.icon) && (
+                  <img src={achievement.achieved ? achievement.icon : achievement.icon_gray || achievement.icon} alt="" />
+                )}
+                <div>
+                  <strong>{achievement.name || "Logro sin nombre"}</strong>
+                  <p>{achievement.description || "Sin descripción disponible."}</p>
+                </div>
+              </article>
+            ))}
+          </div>}
+        </section>
+      )}
     </article>
   );
 }

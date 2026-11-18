@@ -40,6 +40,7 @@ class CachedGameDetails(Base):
     appid: Mapped[int] = mapped_column(Integer, primary_key=True)
     genres: Mapped[list[str]] = mapped_column(JSON, default=list)
     short_description: Mapped[str] = mapped_column(Text, default="")
+    developer: Mapped[str] = mapped_column(String(255), default="")
     price_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
     release_date: Mapped[str] = mapped_column(String(32), default="")
     store_metadata_version: Mapped[int] = mapped_column(Integer, default=3)

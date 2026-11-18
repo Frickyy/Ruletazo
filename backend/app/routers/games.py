@@ -8,7 +8,7 @@ from app.core.config import get_settings
 from app.db.session import get_db
 from app.schemas.game import Game
 from app.services import favorites_service, library_service
-from app.services.steam_client import InvalidSteamIDError, PrivateProfileError, SteamAPIError
+from app.services.steam_client import InvalidSteamIDError, PrivateProfileError, SteamAPIError, SteamClient
 
 router = APIRouter(prefix="/api/games", tags=["games"])
 
@@ -17,6 +17,7 @@ _T = TypeVar("_T")
 _COLLECTION_PATTERN = "^(all|favorites)$"
 _SORT_PATTERN = "^(name|price|release_date)$"
 _DIRECTION_PATTERN = "^(asc|desc)$"
+_PLAYTIME_PATTERN = "^(zero|under2|all)$"
 
 # Biblioteca de ejemplo: se usa si no se pasa `steamid` o si falta STEAM_API_KEY,
 # para que el frontend siempre tenga algo que mostrar en desarrollo.
@@ -43,7 +44,7 @@ _MOCK_LIBRARY: list[Game] = [
         header_image="https://cdn.cloudflare.steamstatic.com/steam/apps/413150/header.jpg",
         genres=["Simulación", "Vida rural", "Indie"],
         short_description="Heredaste la vieja granja de tu abuelo. Con herramientas de segunda mano y algo de dinero, sales a labrarte una nueva vida.",
-        playtime_forever_minutes=8100,
+        playtime_forever_minutes=90,
     ),
     Game(
         appid=1174180,
@@ -59,7 +60,7 @@ _MOCK_LIBRARY: list[Game] = [
         header_image="https://cdn.cloudflare.steamstatic.com/steam/apps/1145360/header.jpg",
         genres=["Roguelike", "Acción", "Indie"],
         short_description="Combate a golpe de estoque para escapar del Inframundo en este roguelike de acción de la casa de Bastion.",
-        playtime_forever_minutes=1320,
+        playtime_forever_minutes=0,
     ),
 ]
 
@@ -78,16 +79,20 @@ async def get_random_game(
     search: str | None = Query(default=None, description="Busca por nombre del juego."),
     sort_by: str = Query(default="name", pattern=_SORT_PATTERN, description="name, price o release_date."),
     sort_direction: str = Query(default="asc", pattern=_DIRECTION_PATTERN, description="asc o desc."),
+    playtime_filter: str = Query(default="all", pattern=_PLAYTIME_PATTERN, description="zero, under2 o all."),
     db: Session = Depends(get_db),
 ) -> Game:
     """Devuelve un juego aleatorio: de la biblioteca real de `steamid` si se indica, o de una de ejemplo."""
     settings = get_settings()
     if not steamid or not settings.has_steam_api_key:
-        return random.choice(_MOCK_LIBRARY)
+        mock_games = _filter_mock_library(_MOCK_LIBRARY, genre, playtime_filter)
+        if not mock_games:
+            raise HTTPException(status_code=404, detail="No hay juegos que coincidan con ese filtro.")
+        return random.choice(mock_games)
 
     game = await _unwrap_steam_errors(
         library_service.get_random_from_library(
-            db, steamid, friend_steamid, collection, genre, search, sort_by, sort_direction
+            db, steamid, friend_steamid, collection, genre, search, sort_by, sort_direction, playtime_filter
         )
     )
     if game is None:
@@ -104,12 +109,13 @@ async def get_library(
     search: str | None = Query(default=None, description="Busca por nombre del juego."),
     sort_by: str = Query(default="name", pattern=_SORT_PATTERN, description="name, price o release_date."),
     sort_direction: str = Query(default="asc", pattern=_DIRECTION_PATTERN, description="asc o desc."),
+    playtime_filter: str = Query(default="all", pattern=_PLAYTIME_PATTERN, description="zero, under2 o all."),
     db: Session = Depends(get_db),
 ) -> list[Game]:
     """Devuelve la biblioteca completa de un usuario de Steam (cacheada en SQL), con filtros opcionales."""
     return await _unwrap_steam_errors(
         library_service.get_filtered_library(
-            db, steamid, friend_steamid, collection, genre, search, sort_by, sort_direction
+            db, steamid, friend_steamid, collection, genre, search, sort_by, sort_direction, playtime_filter
         )
     )
 
@@ -134,6 +140,14 @@ async def get_classification_status(
 ) -> dict:
     """Cuántos juegos de la biblioteca ya tienen género/reseñas/HLTB/logros clasificados."""
     return await _unwrap_steam_errors(library_service.get_classification_status(db, steamid))
+
+
+@router.get("/achievements")
+async def get_player_achievements(steamid: str = Query(...), appid: int = Query(...)) -> dict:
+    """Devuelve el progreso de logros del usuario para el juego elegido."""
+    resolved_id = await _unwrap_steam_errors(library_service.resolve_steam_id(steamid))
+    async with SteamClient() as client:
+        return await _unwrap_steam_errors(client.get_player_achievements(resolved_id, appid))
 
 
 @router.post("/library/classify")
@@ -178,4 +192,16 @@ async def _unwrap_steam_errors(coro: Awaitable[_T]) -> _T:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
     except SteamAPIError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+def _filter_mock_library(games: list[Game], genre: str | None, playtime_filter: str) -> list[Game]:
+    """Aplica al catálogo de desarrollo las mismas condiciones de horas y género."""
+    filtered = games
+    if genre:
+        filtered = [game for game in filtered if genre in game.genres]
+    if playtime_filter == "zero":
+        filtered = [game for game in filtered if game.playtime_forever_minutes == 0]
+    elif playtime_filter == "under2":
+        filtered = [game for game in filtered if game.playtime_forever_minutes < 120]
+    return filtered
 

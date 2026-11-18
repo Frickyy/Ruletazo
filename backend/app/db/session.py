@@ -39,6 +39,8 @@ def _upgrade_game_details_table() -> None:
             connection.execute(text("ALTER TABLE cached_game_details ADD COLUMN release_date VARCHAR(32) DEFAULT ''"))
         if "store_metadata_version" not in columns:
             connection.execute(text("ALTER TABLE cached_game_details ADD COLUMN store_metadata_version INTEGER DEFAULT 0"))
+        if "developer" not in columns:
+            connection.execute(text("ALTER TABLE cached_game_details ADD COLUMN developer VARCHAR(255) DEFAULT ''"))
 
 
 def get_db() -> Generator[Session, None, None]:

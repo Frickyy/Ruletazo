@@ -103,6 +103,22 @@ class SteamClient:
             raise PrivateProfileError("El perfil o la biblioteca de este usuario es privada.")
         return data.get("games", [])
 
+    async def get_profile(self, steam_id: str) -> dict:
+        """Devuelve los datos públicos básicos del perfil, incluido el avatar."""
+        response = await self._get(
+            "/ISteamUser/GetPlayerSummaries/v0002/",
+            params={"key": self._api_key, "steamids": steam_id, "format": "json"},
+        )
+        players = response.json().get("response", {}).get("players", [])
+        if not players:
+            raise InvalidSteamIDError("No se encontró el perfil de Steam.")
+        player = players[0]
+        return {
+            "steam_id": player.get("steamid", steam_id),
+            "name": player.get("personaname", "Jugador de Steam"),
+            "avatar": player.get("avatarfull", player.get("avatarmedium", "")),
+        }
+
     async def get_achievement_difficulty(self, appid: int) -> dict:
         """% global de desbloqueo promedio de los logros del juego (no requiere API key).
 
@@ -124,6 +140,37 @@ class SteamClient:
 
         percentages = [float(a["percent"]) for a in achievements]
         return {"total": len(percentages), "average_percent": sum(percentages) / len(percentages)}
+
+    async def get_player_achievements(self, steam_id: str, appid: int) -> dict:
+        """Devuelve logros desbloqueados y totales del usuario para un juego."""
+        response, schema_response = await asyncio.gather(
+            self._get(
+                "/ISteamUserStats/GetPlayerAchievements/v0001/",
+                params={"key": self._api_key, "steamid": steam_id, "appid": appid, "format": "json"},
+            ),
+            self._get(
+                "/ISteamUserStats/GetSchemaForGame/v2/",
+                params={"key": self._api_key, "appid": appid, "format": "json"},
+            ),
+        )
+        data = response.json().get("playerstats", {})
+        achievements = data.get("achievements", [])
+        schema_achievements = schema_response.json().get("game", {}).get("availableGameStats", {}).get("achievements", [])
+        schema_by_api_name = {achievement.get("name"): achievement for achievement in schema_achievements}
+        return {
+            "unlocked": sum(1 for achievement in achievements if achievement.get("achieved") == 1),
+            "total": len(achievements),
+            "achievements": [
+                {
+                    "name": schema_by_api_name.get(achievement.get("apiname"), {}).get("displayName", "Logro sin nombre"),
+                    "description": schema_by_api_name.get(achievement.get("apiname"), {}).get("description", "Sin descripción disponible."),
+                    "icon": schema_by_api_name.get(achievement.get("apiname"), {}).get("icon", ""),
+                    "icon_gray": schema_by_api_name.get(achievement.get("apiname"), {}).get("icongray", ""),
+                    "achieved": achievement.get("achieved") == 1,
+                }
+                for achievement in achievements
+            ],
+        }
 
     async def _get(self, path: str, params: dict, require_key: bool = True) -> httpx.Response:
         if require_key and not self._api_key:

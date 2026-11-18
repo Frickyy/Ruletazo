@@ -56,6 +56,7 @@ async def get_filtered_library(
     search: str | None = None,
     sort_by: str = "name",
     sort_direction: str = "asc",
+    playtime_filter: str = "all",
 ) -> list[Game]:
     """Biblioteca (combinada con la de un familiar si se pasa `friend_identifier`) + favoritos
     y detalles ya cacheados, con el filtro de colección/género aplicado."""
@@ -64,10 +65,12 @@ async def get_filtered_library(
         game.source = "you"
 
     if friend_identifier:
-        friend_games = await get_library(db, friend_identifier)
-        for game in friend_games:
-            game.source = "friend"
-        games = _merge_union(games, friend_games)
+        friend_identifiers = [identifier.strip() for identifier in friend_identifier.split(",") if identifier.strip()]
+        for current_identifier in friend_identifiers[:5]:
+            friend_games = await get_library(db, current_identifier)
+            for game in friend_games:
+                game.source = "friend"
+            games = _merge_union(games, friend_games)
 
     steam_id = await resolve_steam_id(identifier)
     _attach_favorites_and_details(db, games, steam_id)
@@ -79,6 +82,10 @@ async def get_filtered_library(
     if search:
         search_value = search.casefold().strip()
         games = [game for game in games if search_value in game.name.casefold()]
+    if playtime_filter == "zero":
+        games = [game for game in games if game.playtime_forever_minutes == 0]
+    elif playtime_filter == "under2":
+        games = [game for game in games if game.playtime_forever_minutes < 120]
 
     if sort_by in {"price", "release_date"}:
         await _ensure_store_metadata(db, games)
@@ -110,10 +117,11 @@ async def get_random_from_library(
     search: str | None = None,
     sort_by: str = "name",
     sort_direction: str = "asc",
+    playtime_filter: str = "all",
 ) -> Game | None:
     """Elige un juego al azar del pool filtrado y lo enriquece (Store/HLTB/logros) al toque."""
     games = await get_filtered_library(
-        db, identifier, friend_identifier, collection, genre, search, sort_by, sort_direction
+        db, identifier, friend_identifier, collection, genre, search, sort_by, sort_direction, playtime_filter
     )
     if not games:
         return None
@@ -215,6 +223,7 @@ async def _ensure_store_metadata(db: Session, games: list[Game]) -> None:
             db.add(details)
         details.genres = normalize_genres(store_details["genres"]) or details.genres
         details.short_description = store_details["short_description"] or details.short_description
+        details.developer = store_details["developer"] or details.developer
         details.price_cents = store_details["price_cents"]
         details.release_date = store_details["release_date"]
         details.store_metadata_version = game_details_service.STORE_METADATA_VERSION
@@ -225,6 +234,7 @@ async def _ensure_store_metadata(db: Session, games: list[Game]) -> None:
 def _apply_cached_details(game: Game, details: CachedGameDetails) -> None:
     game.genres = normalize_genres(details.genres)
     game.short_description = details.short_description
+    game.developer = details.developer
     game.price_cents = details.price_cents
     game.release_date = details.release_date
     game.review_score_desc = details.review_score_desc

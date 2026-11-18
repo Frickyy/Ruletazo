@@ -18,7 +18,7 @@ from app.services.store_client import SteamStoreClient
 
 logger = logging.getLogger(__name__)
 
-STORE_METADATA_VERSION = 3
+STORE_METADATA_VERSION = 5
 
 # Store API / reseñas / logros cambian poco: se reutilizan varios días antes de
 # volver a golpear las 3 APIs externas para el mismo juego.
@@ -60,7 +60,10 @@ def difficulty_label(details: CachedGameDetails) -> str:
 async def get_or_fetch_details(db: Session, appid: int, name: str) -> CachedGameDetails:
     """Devuelve los detalles cacheados de `appid` si están frescos; si no, los vuelve a pedir."""
     cached = get_cached_details(db, appid)
-    if cached is not None and is_fresh(cached) and has_store_metadata(cached):
+    has_hltb_result = cached is not None and (
+        cached.hltb_main_hours is not None or cached.hltb_completionist_hours is not None
+    )
+    if cached is not None and is_fresh(cached) and has_store_metadata(cached) and has_hltb_result:
         return cached
 
     logger.info("Enriqueciendo detalles de '%s' (appid %s)", name, appid)
@@ -77,6 +80,7 @@ async def get_or_fetch_details(db: Session, appid: int, name: str) -> CachedGame
     if store_details.get("store_available"):
         cached.genres = store_details["genres"] or cached.genres
         cached.short_description = store_details["short_description"] or cached.short_description
+        cached.developer = store_details["developer"] or cached.developer
         cached.price_cents = store_details["price_cents"]
         cached.release_date = store_details["release_date"]
     cached.store_metadata_version = STORE_METADATA_VERSION
@@ -109,6 +113,7 @@ async def get_or_fetch_store_metadata(db: Session, appid: int) -> CachedGameDeta
         db.add(cached)
     cached.genres = store_details["genres"] or cached.genres
     cached.short_description = store_details["short_description"] or cached.short_description
+    cached.developer = store_details["developer"] or cached.developer
     cached.price_cents = store_details["price_cents"]
     cached.release_date = store_details["release_date"]
     cached.store_metadata_version = STORE_METADATA_VERSION if store_details.get("store_available") else 0

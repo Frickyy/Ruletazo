@@ -5,7 +5,7 @@
 function RouletteButton({ onSpin, isLoading }) {
   return (
     <button className="roulette-button" onClick={onSpin} disabled={isLoading}>
-      {isLoading ? "Girando..." : "🎯 Girar Ruleta"}
+      {isLoading ? "Girando..." : "Girar Ruleta"}
     </button>
   );
 }

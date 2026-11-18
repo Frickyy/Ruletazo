@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     steam_api_key: str = ""
     database_url: str = "sqlite:///./steam_roulette.db"
     cors_origins: str = "http://localhost:5173"
+    frontend_url: str = "http://localhost:5173"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

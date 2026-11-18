@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
 from app.db.session import init_db
-from app.routers import games
+from app.routers import auth, games
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
@@ -37,6 +37,7 @@ app.add_middleware(
 )
 
 app.include_router(games.router)
+app.include_router(auth.router)
 
 
 @app.get("/api/health", tags=["health"])

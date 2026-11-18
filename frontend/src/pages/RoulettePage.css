@@ -12,40 +12,44 @@
   justify-content: center;
   align-items: center;
   gap: 0.75rem;
+  padding: 0.35rem;
+  border: 1px solid rgba(255, 177, 200, 0.12);
+  border-radius: 14px;
+  background: rgba(40, 22, 27, 0.72);
 }
 
 .collection-toggle {
   display: flex;
   gap: 0.4rem;
-  background-color: #2a3f5a;
+  background: rgba(255, 255, 255, 0.04);
   padding: 0.3rem;
-  border-radius: 8px;
+  border-radius: 10px;
 }
 
 .collection-toggle button {
   background: none;
   border: none;
-  color: #8f98a0;
+  color: #d9c1c5;
   font-size: 0.9rem;
   font-weight: 600;
   padding: 0.4rem 0.9rem;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .collection-toggle button.active {
-  background-color: #66c0f4;
-  color: #1b2838;
+  background: rgba(255, 177, 200, 0.2);
+  color: #ffb1c8;
 }
 
 .genre-select {
-  background-color: #2a3f5a;
-  border: 1px solid #4c6b8a;
-  color: #c7d5e0;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 177, 200, 0.2);
+  color: #f5dde2;
   font-size: 0.9rem;
   padding: 0.5rem 0.8rem;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 .roulette-button {
@@ -77,4 +81,54 @@
 
 .roulette-page__error {
   color: #ff6b6b;
+}
+
+.thinking-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: min(100%, 900px);
+  padding: 0.75rem;
+  border: 1px solid rgba(255, 177, 200, 0.2);
+  border-radius: 16px;
+  background: rgba(255, 177, 200, 0.06);
+  animation: thinking-pulse 0.9s ease-in-out infinite alternate;
+}
+
+.thinking-card img {
+  width: 180px;
+  height: 68px;
+  flex-shrink: 0;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.thinking-card div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  text-align: left;
+}
+
+.thinking-card span {
+  color: #ffb1c8;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.thinking-card strong {
+  color: white;
+}
+
+@keyframes thinking-pulse {
+  from { opacity: 0.65; }
+  to { opacity: 1; }
+}
+
+@media (max-width: 520px) {
+  .thinking-card img {
+    width: 120px;
+    height: 55px;
+  }
 }

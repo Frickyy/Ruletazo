@@ -12,7 +12,7 @@ import "./LibraryPage.css";
 // Cuántos juegos sin clasificar se piden por tanda al backend (ver services/library_service.py).
 const CLASSIFY_BATCH_SIZE = 10;
 
-function LibraryPage({ steamId, friendSteamId }) {
+function LibraryPage({ steamId, friendSteamId, playtimeFilter = "all" }) {
   const [games, setGames] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -30,7 +30,7 @@ function LibraryPage({ steamId, friendSteamId }) {
   useEffect(() => {
     if (!steamId) return;
     loadLibrary();
-  }, [steamId, friendSteamId, collection, genre, search, sortBy, sortDirection]);
+  }, [steamId, friendSteamId, collection, genre, search, sortBy, sortDirection, playtimeFilter]);
 
   useEffect(() => {
     if (!steamId) return;
@@ -50,6 +50,7 @@ function LibraryPage({ steamId, friendSteamId }) {
         search: search || undefined,
         sortBy,
         sortDirection,
+        playtimeFilter,
       }));
     } catch (err) {
       setError(err.response?.data?.detail ?? "No se pudo cargar la biblioteca.");
@@ -131,14 +132,14 @@ function LibraryPage({ steamId, friendSteamId }) {
       <div className="roulette-page__filters">
         <div className="collection-toggle">
           <button type="button" className={collection === "all" ? "active" : ""} onClick={() => setCollection("all")}>
-            📚 Todos
+            Todos
           </button>
           <button
             type="button"
             className={collection === "favorites" ? "active" : ""}
             onClick={() => setCollection("favorites")}
           >
-            ⭐ Favoritos
+            Favoritos
           </button>
         </div>
 
@@ -200,7 +201,7 @@ function LibraryPage({ steamId, friendSteamId }) {
       {status && status.total > 0 && status.classified < status.total && (
         <div className="library-page__classify">
           <p>
-            🏷️ Clasificados {status.classified} / {status.total} juegos (género, reseñas, HowLongToBeat, logros).
+            Clasificados {status.classified} / {status.total} juegos (género, reseñas, HowLongToBeat, logros).
             Esto pega contra la Store de Steam de a un juego por vez, así que puede tardar.
           </p>
           <button type="button" onClick={handleClassifyMore} disabled={isClassifying}>
@@ -224,12 +225,12 @@ function LibraryPage({ steamId, friendSteamId }) {
             <div className="library-row__body">
               <p className="library-row__name">
                 {game.name}
-                {game.source === "friend" && <span className="game-card__source"> 👪</span>}
-                {game.source === "both" && <span className="game-card__source"> 👪👪</span>}
+                {game.source === "friend" && <span className="game-card__source"> de familia</span>}
+                {game.source === "both" && <span className="game-card__source"> en ambas</span>}
               </p>
               {game.genres.length > 0 && <p className="library-row__genres">{game.genres.join(" · ")}</p>}
               <p className="library-row__meta">
-                🕒 {Math.round(game.playtime_forever_minutes / 60)} h
+                {Math.round(game.playtime_forever_minutes / 60)} h
                 {game.price_cents != null && ` · ${formatPrice(game.price_cents)}`}
                 {game.release_date && ` · ${formatReleaseDate(game.release_date)}`}
               </p>

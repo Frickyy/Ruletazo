@@ -101,6 +101,7 @@ class SteamStoreClient:
             result[appid] = {
                 "genres": genres,
                 "short_description": data.get("short_description", ""),
+                "developer": ", ".join(data.get("developers", [])),
                 "price_cents": (
                     price_overview.get("final")
                     if not data.get("is_free") and app_type == "game"
@@ -132,7 +133,11 @@ class SteamStoreClient:
         data = response.json()
         summary = data.get("query_summary", {})
         score_desc_en = summary.get("review_score_desc", "")
-        featured = [r["review"].strip() for r in data.get("reviews", []) if r.get("review", "").strip()]
+        featured = [
+            review
+            for review in (r.get("review", "").strip() for r in data.get("reviews", []))
+            if _is_substantive_review(review)
+        ]
         return {
             "score_desc": _REVIEW_SCORE_TRANSLATIONS.get(score_desc_en, score_desc_en),
             "total_reviews": summary.get("total_reviews", 0),
@@ -152,4 +157,12 @@ def _normalize_release_date(value: str) -> str:
 
 
 def _empty_app_details() -> dict:
-    return {"genres": [], "short_description": "", "price_cents": None, "release_date": "", "store_available": False}
+    return {"genres": [], "short_description": "", "developer": "", "price_cents": None, "release_date": "", "store_available": False}
+
+
+def _is_substantive_review(review: str) -> bool:
+    """Descarta reseñas cortas o dibujos ASCII aunque superen el mínimo de longitud."""
+    if len(review) < 200:
+        return False
+    letters = sum(character.isalpha() for character in review)
+    return letters >= 40 and len(set(review.casefold())) >= 12

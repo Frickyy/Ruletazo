@@ -1,14 +1,15 @@
 import api from "./api.js";
 
-function buildParams({ steamId, friendSteamId, collection, genre, search, sortBy, sortDirection } = {}) {
+function buildParams({ steamId, friendSteamId, collection, genre, search, sortBy, sortDirection, playtimeFilter } = {}) {
   const params = {};
   if (steamId) params.steamid = steamId;
-  if (friendSteamId) params.friend_steamid = friendSteamId;
+  if (friendSteamId) params.friend_steamid = Array.isArray(friendSteamId) ? friendSteamId.join(",") : friendSteamId;
   if (collection) params.collection = collection;
   if (genre) params.genre = genre;
   if (search) params.search = search;
   if (sortBy) params.sort_by = sortBy;
   if (sortDirection) params.sort_direction = sortDirection;
+  if (playtimeFilter) params.playtime_filter = playtimeFilter;
   return params;
 }
 
@@ -55,5 +56,15 @@ export async function addFavorite(steamId, appid) {
 
 export async function removeFavorite(steamId, appid) {
   const { data } = await api.delete("/games/favorites", { params: { steamid: steamId, appid } });
+  return data;
+}
+
+export async function fetchPlayerAchievements(steamId, appid) {
+  const { data } = await api.get("/games/achievements", { params: { steamid: steamId, appid } });
+  return data;
+}
+
+export async function fetchSteamProfile(steamId) {
+  const { data } = await api.get("/auth/profile", { params: { steamid: steamId } });
   return data;
 }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { fetchRandomGame } from "../services/gameService.js";
 
 /**
@@ -17,9 +17,10 @@ export function useRandomGame() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  async function spin(options) {
+  const spin = useCallback(async (options) => {
     setIsLoading(true);
     setError(null);
+    setGame(null);
     try {
       const randomGame = await fetchRandomGame(options);
       setGame(randomGame);
@@ -28,7 +29,7 @@ export function useRandomGame() {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, []);
 
   return { game, isLoading, error, spin, setGame };
 }
