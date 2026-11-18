@@ -10,7 +10,7 @@ function SiteFooter({ config, onNavigate }) {
     <footer className="site-footer">
       <div className="site-footer__inner">
         {supportLinks.length > 0 && (
-          <div className="site-footer__support">
+          <div className="site-footer__support" id="apoyar">
             <p>
               <strong>¿Te sirve la ruleta?</strong> Es gratis y sin publicidad: si querés, podés ayudar a mantenerla.
             </p>

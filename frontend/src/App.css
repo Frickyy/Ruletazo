@@ -141,7 +141,35 @@
 }
 
 .topbar__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   justify-self: end;
+}
+
+.support-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 40px;
+  padding: 0 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--line));
+  border-radius: 999px;
+  color: var(--accent);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 140ms ease;
+}
+
+.support-button:hover {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.support-button svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
 }
 
 .account-button {
@@ -411,5 +439,21 @@
 @media (max-width: 420px) {
   .account-button__name {
     max-width: 7rem;
+  }
+
+  /* En pantallas chicas queda solo el corazón, con el mismo alto que el botón de la cuenta. */
+  .support-button {
+    width: 40px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .support-button__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
   }
 }

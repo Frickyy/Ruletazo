@@ -247,6 +247,7 @@ function App() {
           </nav>
 
           <div className="topbar__meta">
+            <SupportButton links={config?.support_links ?? []} />
             {!sessionChecked ? null : isLoggedIn ? (
               <div className="profile-menu-wrap">
                 <button
@@ -448,6 +449,37 @@ function writeStorage(key, value) {
   } catch {
     /* modo privado o almacenamiento bloqueado: solo se pierde la preferencia */
   }
+}
+
+/**
+ * "Apoyar" en la barra de arriba: con un solo link (SUPPORT_LINKS) lo abre directo; con varios,
+ * baja a la sección de apoyo del pie de página para elegir. Sin links configurados no se muestra.
+ */
+function SupportButton({ links }) {
+  if (links.length === 0) return null;
+  const single = links.length === 1 ? links[0] : null;
+  return (
+    <a
+      className="support-button"
+      href={single ? single.url : "#apoyar"}
+      target={single ? "_blank" : undefined}
+      rel={single ? "noopener noreferrer" : undefined}
+      onClick={
+        single
+          ? undefined
+          : (event) => {
+              event.preventDefault();
+              document.getElementById("apoyar")?.scrollIntoView({ behavior: "smooth" });
+            }
+      }
+      title="Es gratis y sin publicidad: si querés, ayudá a mantenerla"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z" />
+      </svg>
+      <span className="support-button__label">Apoyar</span>
+    </a>
+  );
 }
 
 /** Logo: tres portadas de un rodillo, la del centro elegida. */
