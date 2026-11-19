@@ -1,9 +1,11 @@
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.core.config import get_settings
 from app.db.session import init_db
@@ -14,6 +16,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
 settings = get_settings()
+settings.check_production_ready()
 
 
 @asynccontextmanager
@@ -46,3 +49,11 @@ app.include_router(forum.router)
 @app.get("/api/health", tags=["health"])
 async def health_check() -> dict[str, str]:
     return {"status": "ok"}
+
+
+# En producción (Docker) el backend también sirve el frontend ya compilado: una sola URL para
+# la página, la API y la vuelta del login de Steam. En desarrollo lo sirve Vite y esto no se monta.
+# Las rutas del frontend van con hash (#/foro/...), así que alcanza con servir los archivos.
+_frontend_dist = Path(settings.frontend_dist).resolve() if settings.frontend_dist else None
+if _frontend_dist and (_frontend_dist / "index.html").is_file():
+    app.mount("/", StaticFiles(directory=_frontend_dist, html=True), name="frontend")

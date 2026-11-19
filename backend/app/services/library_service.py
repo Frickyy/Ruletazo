@@ -8,9 +8,9 @@ from sqlalchemy.orm import Session
 
 from app.models.game import CachedGameDetails, CachedLibraryEntry
 from app.schemas.game import Game
-from app.services import favorites_service, game_details_service
+from app.services import favorites_service, game_details_service, hidden_service
 from app.services.steam_client import SteamAPIError, SteamClient
-from app.services.store_client import SteamStoreClient, normalize_genres
+from app.services.store_client import SteamStoreClient, looks_adult_by_name, normalize_genres
 
 logger = logging.getLogger(__name__)
 
@@ -191,6 +191,7 @@ async def get_game_details(
 
     steam_id = await resolve_steam_id(identifier)
     chosen.is_favorite = appid in favorites_service.get_favorite_appids(db, steam_id)
+    chosen.is_hidden = appid in hidden_service.get_hidden_appids(db, steam_id)
     details = await game_details_service.get_or_fetch_details(db, chosen.appid, chosen.name)
     apply_cached_details(chosen, details)
     return chosen
@@ -243,10 +244,12 @@ def _merge_union(primary: list[Game], friend: list[Game]) -> list[Game]:
 
 def _attach_favorites_and_details(db: Session, games: list[Game], steam_id: str) -> None:
     favorite_appids = favorites_service.get_favorite_appids(db, steam_id)
+    hidden_appids = hidden_service.get_hidden_appids(db, steam_id)
     details_map = _get_cached_details_map(db, [game.appid for game in games])
 
     for game in games:
         game.is_favorite = game.appid in favorite_appids
+        game.is_hidden = game.appid in hidden_appids
         details = details_map.get(game.appid)
         if details is not None:
             apply_cached_details(game, details)
@@ -278,6 +281,8 @@ async def _ensure_store_metadata(db: Session, games: list[Game]) -> None:
             details.developer = store_details["developer"] or details.developer
             details.price_cents = store_details["price_cents"]
             details.release_date = store_details["release_date"]
+            details.is_adult = store_details["is_adult"]
+            details.header_image = store_details["header_image"] or details.header_image
         details.store_metadata_version = game_details_service.STORE_METADATA_VERSION
         details.fetched_at = datetime.now(timezone.utc)
     db.commit()
@@ -296,6 +301,9 @@ def apply_cached_details(game: Game, details: CachedGameDetails) -> None:
     game.hltb_main_hours = details.hltb_main_hours
     game.hltb_completionist_hours = details.hltb_completionist_hours
     game.achievement_difficulty = game_details_service.difficulty_label(details)
+    game.is_adult = bool(details.is_adult) or looks_adult_by_name(game.name)
+    if details.header_image:
+        game.header_image = details.header_image
 
 
 def _get_cached_details_map(db: Session, appids: list[int]) -> dict[int, CachedGameDetails]:
@@ -326,6 +334,8 @@ def _replace_cache(db: Session, steam_id: str, games_raw: list[dict]) -> None:
                 appid=game["appid"],
                 name=game.get("name", f"App {game['appid']}"),
                 playtime_forever_minutes=game.get("playtime_forever", 0),
+                # Steam manda 0 si nunca lo jugó.
+                last_played=game.get("rtime_last_played") or None,
                 fetched_at=now,
             )
         )
@@ -341,4 +351,7 @@ def _to_schema(entry: CachedLibraryEntry) -> Game:
         genres=[],
         short_description="",
         playtime_forever_minutes=entry.playtime_forever_minutes,
+        last_played=entry.last_played,
+        # Hasta que la tienda lo clasifique, se adivina por el nombre (ver apply_cached_details).
+        is_adult=looks_adult_by_name(entry.name),
     )

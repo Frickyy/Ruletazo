@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, DateTime, Float, Integer, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, Float, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.session import Base
@@ -23,6 +23,8 @@ class CachedLibraryEntry(Base):
     appid: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(255))
     playtime_forever_minutes: Mapped[int] = mapped_column(Integer, default=0)
+    # Última vez que lo jugó (timestamp Unix de Steam, `rtime_last_played`). None si nunca.
+    last_played: Mapped[int | None] = mapped_column(Integer, nullable=True)
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 
@@ -43,6 +45,10 @@ class CachedGameDetails(Base):
     developer: Mapped[str] = mapped_column(String(255), default="")
     price_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
     release_date: Mapped[str] = mapped_column(String(32), default="")
+    # Portada según la tienda (los juegos recientes no la tienen en la dirección fija). Vacío si no se sabe.
+    header_image: Mapped[str] = mapped_column(String(512), default="")
+    # La tienda lo marca como contenido sexual para adultos (descriptores 3 o 4).
+    is_adult: Mapped[bool] = mapped_column(Boolean, default=False)
     store_metadata_version: Mapped[int] = mapped_column(Integer, default=3)
     review_score_desc: Mapped[str] = mapped_column(String(64), default="")
     review_total: Mapped[int] = mapped_column(Integer, default=0)
@@ -65,6 +71,16 @@ class FavoriteGame(Base):
     """Un juego marcado como favorito por un usuario, para la colección "Favoritos" de la ruleta."""
 
     __tablename__ = "favorite_games"
+
+    steam_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    appid: Mapped[int] = mapped_column(Integer, primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+class HiddenGame(Base):
+    """Un juego que el usuario pidió no volver a ver en la ruleta ("No me lo muestres más")."""
+
+    __tablename__ = "hidden_games"
 
     steam_id: Mapped[str] = mapped_column(String(32), primary_key=True)
     appid: Mapped[int] = mapped_column(Integer, primary_key=True)

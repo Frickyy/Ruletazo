@@ -23,3 +23,15 @@ def db_session():
         yield session
     finally:
         session.close()
+
+
+@pytest.fixture(autouse=True)
+def _no_throttle(monkeypatch):
+    """Sin pausas entre pedidos ni servicios enfriados entre un test y otro."""
+    from app.services import hltb_client, throttle
+
+    throttle.reset()
+    hltb_client._security_cache.clear()
+    monkeypatch.setattr(throttle, "MIN_INTERVAL_SECONDS", {})
+    yield
+    throttle.reset()

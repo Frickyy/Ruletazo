@@ -39,14 +39,34 @@ function accentFromImage(image) {
   canvas.height = SAMPLE_HEIGHT;
   const context = canvas.getContext("2d", { willReadFrequently: true });
   context.drawImage(image, 0, 0, SAMPLE_WIDTH, SAMPLE_HEIGHT);
-  const { data } = context.getImageData(0, 0, SAMPLE_WIDTH, SAMPLE_HEIGHT);
+  return accentFromPixels(context.getImageData(0, 0, SAMPLE_WIDTH, SAMPLE_HEIGHT).data);
+}
 
+/**
+ * Dos pasadas sobre los píxeles (RGBA):
+ * 1. Colores vivos. Alcanza con que ocupen el 2% de la portada: en una portada casi negra
+ *    con detalles de color (un auto rojo, un logo), esos detalles son el color del juego.
+ *    Antes se exigía el 8% y esas portadas quedaban siempre en rosa.
+ * 2. Si no hay colores vivos, colores apagados (portadas en tonos pastel o sepia), con un
+ *    acento menos saturado para no exagerarlos.
+ * Si tampoco hay, la portada es en blanco y negro: null (queda el acento de siempre).
+ */
+export function accentFromPixels(data) {
+  const total = data.length / 4;
+  const vivid = dominantHue(data, { minSaturation: 0.3, minLightness: 0.12, maxLightness: 0.9 });
+  if (vivid.count >= total * 0.02) return accentFromHue(vivid, 0.7);
+  const muted = dominantHue(data, { minSaturation: 0.12, minLightness: 0.08, maxLightness: 0.92 });
+  if (muted.count >= total * 0.1) return accentFromHue(muted, 0.5);
+  return null;
+}
+
+function dominantHue(data, { minSaturation, minLightness, maxLightness }) {
   const bins = Array.from({ length: HUE_BINS }, () => ({ weight: 0, r: 0, g: 0, b: 0 }));
-  let colorful = 0;
+  let count = 0;
   for (let i = 0; i < data.length; i += 4) {
     const [h, s, l] = rgbToHsl(data[i], data[i + 1], data[i + 2]);
-    if (s < 0.3 || l < 0.15 || l > 0.9) continue; // grises, sombras y brillos
-    colorful += 1;
+    if (s < minSaturation || l < minLightness || l > maxLightness) continue;
+    count += 1;
     // Pesan más los píxeles saturados y de luminosidad media: son los que "se ven" de color.
     const weight = s * s * (1 - Math.abs(l - 0.5) * 1.6);
     const bin = bins[Math.floor(h * HUE_BINS) % HUE_BINS];
@@ -55,9 +75,6 @@ function accentFromImage(image) {
     bin.g += data[i + 1] * weight;
     bin.b += data[i + 2] * weight;
   }
-
-  // Menos del 8% de píxeles con color: portada en blanco y negro, se deja el acento de siempre.
-  if (colorful < (SAMPLE_WIDTH * SAMPLE_HEIGHT) * 0.08) return null;
 
   // El bin más pesado, sumado a sus vecinos (un mismo color suele caer entre dos bins).
   let best = 0;
@@ -72,17 +89,20 @@ function accentFromImage(image) {
   const merged = [-1, 0, 1]
     .map((offset) => bins[(best + offset + HUE_BINS) % HUE_BINS])
     .reduce((sum, bin) => ({ weight: sum.weight + bin.weight, r: sum.r + bin.r, g: sum.g + bin.g, b: sum.b + bin.b }));
-  if (merged.weight === 0) return null;
+  return { ...merged, count };
+}
 
-  const [h, s] = rgbToHsl(merged.r / merged.weight, merged.g / merged.weight, merged.b / merged.weight);
-  const saturation = Math.max(s, 0.7);
+function accentFromHue(bin, minSaturation) {
+  if (bin.weight === 0) return null;
+  const [h, s] = rgbToHsl(bin.r / bin.weight, bin.g / bin.weight, bin.b / bin.weight);
+  const saturation = Math.max(s, minSaturation);
   return {
     accent: hslToHex(h, saturation, 0.66),
     hover: hslToHex(h, saturation, 0.74),
   };
 }
 
-function rgbToHsl(r, g, b) {
+export function rgbToHsl(r, g, b) {
   r /= 255;
   g /= 255;
   b /= 255;
@@ -99,7 +119,7 @@ function rgbToHsl(r, g, b) {
   return [h / 6, s, l];
 }
 
-function hslToHex(h, s, l) {
+export function hslToHex(h, s, l) {
   const a = s * Math.min(l, 1 - l);
   const channel = (n) => {
     const k = (n + h * 12) % 12;

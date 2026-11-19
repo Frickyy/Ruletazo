@@ -19,6 +19,12 @@ class Game(BaseModel):
     developer: str = ""
     playtime_forever_minutes: int = 0
     is_favorite: bool = False
+    # "No me lo muestres más": queda fuera de la ruleta, se puede restaurar desde la biblioteca.
+    is_hidden: bool = False
+    # Contenido sexual para adultos según la tienda (o, si todavía no hay datos, por el nombre).
+    is_adult: bool = False
+    # Última vez que se jugó (timestamp Unix). None si nunca.
+    last_played: int | None = None
     # De qué biblioteca viene: la propia, la de un familiar combinado, o ambas (mismo appid en las dos).
     source: Literal["you", "friend", "both"] = "you"
     price_cents: int | None = None

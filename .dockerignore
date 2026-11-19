@@ -1,0 +1,12 @@
+**/node_modules
+**/.venv
+**/venv
+**/__pycache__
+**/.pytest_cache
+**/*.db
+**/.env
+frontend/dist
+.git
+.github
+.claude
+stitch_steam_roulette_dashboard

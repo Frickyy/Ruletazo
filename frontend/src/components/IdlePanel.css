@@ -1,3 +1,11 @@
+.idle-panel-wrap {
+  transition: opacity 220ms ease;
+}
+
+.idle-panel-wrap--stale {
+  opacity: 0.35;
+}
+
 .idle-panel {
   display: grid;
   grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);

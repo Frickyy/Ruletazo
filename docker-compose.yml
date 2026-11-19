@@ -1,0 +1,20 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    # STEAM_API_KEY, SESSION_SECRET, ADMIN_STEAM_IDS… (ver backend/.env.example)
+    env_file: backend/.env
+    # Estos pisan lo que diga backend/.env (que está pensado para desarrollo local).
+    environment:
+      # Adonde vuelve el login de Steam: la URL pública de la app.
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8000}
+      DATABASE_URL: sqlite:////data/steam_roulette.db
+      FRONTEND_DIST: /app/frontend-dist
+      ENVIRONMENT: production
+    volumes:
+      - data:/data
+    restart: unless-stopped
+
+volumes:
+  data:

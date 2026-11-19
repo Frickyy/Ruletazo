@@ -7,10 +7,10 @@ resuelven en el router, así esta lógica se puede testear sin red.
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
-from app.models.forum import ForumPost, ForumReview, ForumThread
+from app.models.forum import ForumPost, ForumReport, ForumReview, ForumThread
 
 SCORE_MIN = 1
 SCORE_MAX = 10
@@ -18,6 +18,8 @@ REVIEW_MAX_LENGTH = 5000
 POST_MAX_LENGTH = 5000
 TITLE_MIN_LENGTH = 3
 TITLE_MAX_LENGTH = 120
+REPORT_REASON_MAX_LENGTH = 300
+REPORT_KINDS = ("review", "thread", "post")
 
 
 class ForumError(Exception):
@@ -100,6 +102,19 @@ def delete_review(db: Session, appid: int, steam_id: str) -> None:
     ).scalar_one_or_none()
     if review is None:
         raise ForumError("No tenés una reseña de este juego.", status_code=404)
+    _delete_reports(db, "review", review.id)
+    db.delete(review)
+    db.commit()
+
+
+def delete_review_by_id(db: Session, review_id: int, steam_id: str, moderator: bool = False) -> None:
+    """Borra una reseña puntual: la propia, o cualquiera si es moderador."""
+    review = db.get(ForumReview, review_id)
+    if review is None:
+        raise ForumError("Esa reseña no existe.", status_code=404)
+    if review.steam_id != steam_id and not moderator:
+        raise ForumError("Solo quien escribió la reseña o un moderador puede borrarla.", status_code=403)
+    _delete_reports(db, "review", review.id)
     db.delete(review)
     db.commit()
 
@@ -191,24 +206,27 @@ def add_post(db: Session, thread_id: int, author: Author, body: str) -> dict:
     return _post_dict(post, author.steam_id)
 
 
-def delete_thread(db: Session, thread_id: int, steam_id: str) -> None:
+def delete_thread(db: Session, thread_id: int, steam_id: str, moderator: bool = False) -> None:
     thread = db.get(ForumThread, thread_id)
     if thread is None:
         raise ForumError("Ese hilo no existe.", status_code=404)
-    if thread.steam_id != steam_id:
-        raise ForumError("Solo quien creó el hilo puede borrarlo.", status_code=403)
+    if thread.steam_id != steam_id and not moderator:
+        raise ForumError("Solo quien creó el hilo o un moderador puede borrarlo.", status_code=403)
     for post in db.execute(select(ForumPost).where(ForumPost.thread_id == thread_id)).scalars():
+        _delete_reports(db, "post", post.id)
         db.delete(post)
+    _delete_reports(db, "thread", thread.id)
     db.delete(thread)
     db.commit()
 
 
-def delete_post(db: Session, post_id: int, steam_id: str) -> None:
+def delete_post(db: Session, post_id: int, steam_id: str, moderator: bool = False) -> None:
     post = db.get(ForumPost, post_id)
     if post is None:
         raise ForumError("Esa respuesta no existe.", status_code=404)
-    if post.steam_id != steam_id:
-        raise ForumError("Solo quien escribió la respuesta puede borrarla.", status_code=403)
+    if post.steam_id != steam_id and not moderator:
+        raise ForumError("Solo quien escribió la respuesta o un moderador puede borrarla.", status_code=403)
+    _delete_reports(db, "post", post.id)
     db.delete(post)
     db.commit()
 
@@ -281,3 +299,88 @@ def recent_activity(db: Session, limit: int = 12) -> list[dict]:
     ]
     items.sort(key=lambda item: item["at"], reverse=True)
     return items[:limit]
+
+
+# ---------- Denuncias (moderación) ----------
+
+
+def report(db: Session, kind: str, target_id: int, reporter_steam_id: str, reason: str) -> None:
+    """Denuncia un mensaje. Denunciar dos veces lo mismo no duplica la denuncia."""
+    if kind not in REPORT_KINDS:
+        raise ForumError("Tipo de mensaje inválido.")
+    target = _report_target(db, kind, target_id)
+    if target is None:
+        raise ForumError("Ese mensaje ya no existe.", status_code=404)
+    if target.steam_id == reporter_steam_id:
+        raise ForumError("No podés denunciar un mensaje tuyo.")
+    text = (reason or "").strip()[:REPORT_REASON_MAX_LENGTH]
+    existing = db.execute(
+        select(ForumReport).where(
+            ForumReport.kind == kind,
+            ForumReport.target_id == target_id,
+            ForumReport.reporter_steam_id == reporter_steam_id,
+        )
+    ).scalar_one_or_none()
+    if existing is None:
+        db.add(
+            ForumReport(
+                kind=kind, target_id=target_id, reporter_steam_id=reporter_steam_id, reason=text, created_at=_now()
+            )
+        )
+        db.commit()
+
+
+def list_reports(db: Session) -> list[dict]:
+    """Mensajes denunciados, agrupados: el más denunciado primero. Solo para moderadores."""
+    grouped: dict[tuple[str, int], dict] = {}
+    for item in db.execute(select(ForumReport).order_by(ForumReport.created_at.desc())).scalars():
+        key = (item.kind, item.target_id)
+        if key not in grouped:
+            target = _report_target(db, item.kind, item.target_id)
+            if target is None:
+                continue
+            grouped[key] = {
+                "kind": item.kind,
+                "target_id": item.target_id,
+                "report_count": 0,
+                "reasons": [],
+                "last_reported_at": _iso(item.created_at),
+                **_report_context(db, item.kind, target),
+            }
+        grouped[key]["report_count"] += 1
+        if item.reason:
+            grouped[key]["reasons"].append(item.reason)
+    return sorted(grouped.values(), key=lambda entry: entry["report_count"], reverse=True)
+
+
+def dismiss_reports(db: Session, kind: str, target_id: int) -> None:
+    """El moderador revisó el mensaje y lo deja: se descartan sus denuncias."""
+    _delete_reports(db, kind, target_id)
+    db.commit()
+
+
+def _delete_reports(db: Session, kind: str, target_id: int) -> None:
+    db.execute(delete(ForumReport).where(ForumReport.kind == kind, ForumReport.target_id == target_id))
+
+
+def _report_target(db: Session, kind: str, target_id: int):
+    model = {"review": ForumReview, "thread": ForumThread, "post": ForumPost}[kind]
+    return db.get(model, target_id)
+
+
+def _report_context(db: Session, kind: str, target) -> dict:
+    """Lo que el moderador necesita ver: autor, texto y dónde está el mensaje."""
+    if kind == "post":
+        thread = db.get(ForumThread, target.thread_id)
+        appid, game_name, thread_id = (thread.appid, thread.game_name, thread.id) if thread else (None, "", None)
+    else:
+        appid, game_name = target.appid, target.game_name
+        thread_id = target.id if kind == "thread" else None
+    prefix = f"{target.title} — " if kind == "thread" else ""
+    return {
+        "appid": appid,
+        "game_name": game_name,
+        "thread_id": thread_id,
+        "author": {"steam_id": target.steam_id, "name": target.author_name, "avatar": target.author_avatar},
+        "excerpt": prefix + target.body[:280],
+    }

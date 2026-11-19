@@ -8,7 +8,7 @@ from app.core.config import get_settings
 from app.core.security import require_steam_id
 from app.db.session import get_db
 from app.schemas.game import Game
-from app.services import favorites_service, game_details_service, library_service
+from app.services import favorites_service, game_details_service, hidden_service, library_service
 from app.services.steam_client import InvalidSteamIDError, PrivateProfileError, SteamAPIError, SteamClient
 
 router = APIRouter(prefix="/api/games", tags=["games"])
@@ -209,6 +209,27 @@ async def remove_favorite(
 ) -> dict:
     favorites_service.remove_favorite(db, steam_id, appid)
     return {"appid": appid, "is_favorite": False}
+
+
+# "No me lo muestres más": igual que los favoritos, se guarda para el usuario de la sesión.
+@router.post("/hidden")
+async def hide_game(
+    appid: int = Query(..., description="appid del juego a ocultar de la ruleta."),
+    db: Session = Depends(get_db),
+    steam_id: str = Depends(require_steam_id),
+) -> dict:
+    hidden_service.hide_game(db, steam_id, appid)
+    return {"appid": appid, "is_hidden": True}
+
+
+@router.delete("/hidden")
+async def unhide_game(
+    appid: int = Query(..., description="appid del juego a volver a mostrar."),
+    db: Session = Depends(get_db),
+    steam_id: str = Depends(require_steam_id),
+) -> dict:
+    hidden_service.unhide_game(db, steam_id, appid)
+    return {"appid": appid, "is_hidden": False}
 
 
 async def _unwrap_steam_errors(coro: Awaitable[_T]) -> _T:

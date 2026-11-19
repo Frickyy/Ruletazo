@@ -27,12 +27,6 @@ export async function fetchLibrary(options = {}) {
   return data;
 }
 
-/** Géneros ya clasificados entre los juegos de la biblioteca, para armar el filtro. */
-export async function fetchGenres(options = {}) {
-  const { data } = await api.get("/games/genres", { params: buildParams(options) });
-  return data;
-}
-
 export async function fetchClassificationStatus(steamId) {
   const { data } = await api.get("/games/library/classification-status", {
     params: { steamid: steamId },
@@ -57,6 +51,16 @@ export async function addFavorite(steamId, appid) {
 
 export async function removeFavorite(steamId, appid) {
   const { data } = await api.delete("/games/favorites", { params: { steamid: steamId, appid } });
+  return data;
+}
+
+export async function hideGame(appid) {
+  const { data } = await api.post("/games/hidden", null, { params: { appid } });
+  return data;
+}
+
+export async function unhideGame(appid) {
+  const { data } = await api.delete("/games/hidden", { params: { appid } });
   return data;
 }
 

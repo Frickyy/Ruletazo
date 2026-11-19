@@ -9,9 +9,13 @@ const TOP_PLAYED_COUNT = 5;
  * Con sesión: algunos juegos sin estrenar (se pueden elegir a mano) y los más jugados.
  * Sin sesión: cómo funciona y una invitación a iniciar sesión.
  */
-function IdlePanel({ steamId, library, pool, onPick, onLogin }) {
-  if (!steamId) return <DemoPanel onLogin={onLogin} />;
-  return <LibraryPanel library={library} pool={pool} onPick={onPick} />;
+function IdlePanel({ steamId, library, pool, onPick, onLogin, isStale = false }) {
+  // isStale: ya se giró y se está esperando la ficha; el panel se atenúa en vez de desaparecer.
+  return (
+    <div className={`idle-panel-wrap${isStale ? " idle-panel-wrap--stale" : ""}`} inert={isStale ? "" : undefined}>
+      {steamId ? <LibraryPanel library={library} pool={pool} onPick={onPick} /> : <DemoPanel onLogin={onLogin} />}
+    </div>
+  );
 }
 
 function LibraryPanel({ library, pool, onPick }) {

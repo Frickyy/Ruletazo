@@ -6,7 +6,7 @@ from datetime import datetime
 
 import httpx
 
-from app.services import review_digest
+from app.services import review_digest, throttle
 
 STORE_API_BASE_URL = "https://store.steampowered.com"
 
@@ -72,12 +72,12 @@ class SteamStoreClient:
     async def __aexit__(self, *exc_info: object) -> None:
         await self._client.aclose()
 
-    async def get_app_details(self, appid: int, language: str = "english") -> dict:
+    async def get_app_details(self, appid: int, language: str = "spanish") -> dict:
         """Devuelve metadatos de Store. Vacío si Steam no tiene ficha para el appid."""
         details = await self.get_app_details_batch([appid], language)
         return details.get(appid, _empty_app_details())
 
-    async def get_app_details_batch(self, appids: list[int], language: str = "english") -> dict[int, dict]:
+    async def get_app_details_batch(self, appids: list[int], language: str = "spanish") -> dict[int, dict]:
         """Metadatos de varios juegos.
 
         /api/appdetails responde 400 si se le pasan varios appids juntos (solo lo acepta con
@@ -93,11 +93,8 @@ class SteamStoreClient:
         return dict(await asyncio.gather(*(fetch(appid) for appid in appids)))
 
     async def _fetch_app_details(self, appid: int, language: str) -> dict:
-        try:
-            response = await self._client.get("/api/appdetails", params={"appids": appid, "l": language, "cc": "us"})
-            response.raise_for_status()
-            payload = response.json()
-        except (httpx.HTTPError, ValueError):
+        payload = await self._get_json("store", "/api/appdetails", {"appids": appid, "l": language, "cc": "us"})
+        if payload is None:
             # Falla de red o rate limit: no es lo mismo que "Steam no tiene ficha", no hay que cachearlo.
             return {**_empty_app_details(), "fetch_failed": True}
 
@@ -122,7 +119,9 @@ class SteamStoreClient:
             "developer": ", ".join(data.get("developers", [])),
             "price_cents": price_cents,
             "app_type": app_type,
-            "release_date": _normalize_release_date(data.get("release_date", {}).get("date", "")),
+            "release_date": normalize_release_date(data.get("release_date", {}).get("date", "")),
+            "is_adult": is_adult_content(data),
+            "header_image": data.get("header_image", ""),
             "store_available": True,
         }
 
@@ -161,36 +160,45 @@ class SteamStoreClient:
 
     async def _fetch_reviews(self, appid: int, language: str, num_per_page: int) -> dict | None:
         """Primera página de reseñas ordenadas por utilidad. None si Steam no respondió con JSON válido."""
+        payload = await self._get_json(
+            "reviews",
+            f"/appreviews/{appid}",
+            {
+                "json": 1,
+                "filter": "all",
+                "language": language,
+                "review_type": "all",
+                "purchase_type": "all",
+                "num_per_page": num_per_page,
+            },
+        )
+        return payload if payload and payload.get("success") == 1 else None
+
+    async def search_games(self, term: str, limit: int = 10) -> list[dict]:
+        """Busca juegos en la tienda de Steam por nombre (para el buscador del foro)."""
+        payload = await self._get_json("store", "/api/storesearch/", {"term": term, "l": "spanish", "cc": "us"})
+        return parse_search_results(payload, limit) if payload else []
+
+    async def _get_json(self, service: str, path: str, params: dict) -> dict | None:
+        """GET respetando el ritmo de `service` (ver throttle.py). None ante cualquier falla.
+
+        Steam no avisa el rate limit con un error: redirige a la portada (302) o responde 429.
+        En ese caso se enfría el servicio para no seguir pidiendo y alargar el bloqueo.
+        """
         try:
-            response = await self._client.get(
-                f"/appreviews/{appid}",
-                params={
-                    "json": 1,
-                    "filter": "all",
-                    "language": language,
-                    "review_type": "all",
-                    "purchase_type": "all",
-                    "num_per_page": num_per_page,
-                },
-            )
-            # Con rate limit Steam responde 302 a la portada en vez de un error.
+            await throttle.wait_turn(service)
+            response = await self._client.get(path, params=params)
+        except (throttle.ServiceCoolingDown, httpx.HTTPError):
+            return None
+        if response.status_code in (302, 429):
+            throttle.cool_down(service)
+            return None
+        try:
             response.raise_for_status()
             payload = response.json()
         except (httpx.HTTPError, ValueError):
             return None
-        return payload if payload.get("success") == 1 else None
-
-    async def search_games(self, term: str, limit: int = 10) -> list[dict]:
-        """Busca juegos en la tienda de Steam por nombre (para el buscador del foro)."""
-        try:
-            response = await self._client.get(
-                "/api/storesearch/",
-                params={"term": term, "l": "spanish", "cc": "us"},
-            )
-            response.raise_for_status()
-        except httpx.HTTPError:
-            return []
-        return parse_search_results(response.json(), limit)
+        return payload if isinstance(payload, dict) else None
 
 
 # Pedidos simultáneos a /api/appdetails (la Store limita a ~200 cada 5 minutos por IP).
@@ -224,11 +232,45 @@ def steam_header_image(appid: int) -> str:
     return f"https://cdn.cloudflare.steamstatic.com/steam/apps/{appid}/header.jpg"
 
 
-def _normalize_release_date(value: str) -> str:
-    """Converts Steam's English display date into ISO for reliable sorting."""
+# Descriptores de contenido de Steam que marcan un juego para adultos:
+# 3 = contenido sexual solo para adultos, 4 = desnudos o contenido sexual frecuentes.
+# (1 = algo de desnudez, 2 = violencia, 5 = contenido maduro general: no alcanzan para ocultarlo.)
+_ADULT_DESCRIPTORS = {3, 4}
+_ADULT_NAME_RE = re.compile(r"\b(?:hentai|nsfw|sex|sexy|porn|erotic|ecchi|lewd|waifu)\b", re.IGNORECASE)
+
+_SPANISH_MONTHS = {
+    "ene": 1, "feb": 2, "mar": 3, "abr": 4, "may": 5, "jun": 6,
+    "jul": 7, "ago": 8, "sep": 9, "sept": 9, "oct": 10, "nov": 11, "dic": 12,
+}
+_SPANISH_DATE_RE = re.compile(r"^(\d{1,2})\s+([a-záé]+)\.?,?\s+(\d{4})$", re.IGNORECASE)
+
+
+def is_adult_content(data: dict) -> bool:
+    descriptors = set((data.get("content_descriptors") or {}).get("ids") or [])
+    return bool(descriptors & _ADULT_DESCRIPTORS)
+
+
+def looks_adult_by_name(name: str) -> bool:
+    """Aproximación para juegos que todavía no tienen datos de la tienda."""
+    return bool(_ADULT_NAME_RE.search(name or ""))
+
+
+def normalize_release_date(value: str) -> str:
+    """Fecha de la tienda a ISO (AAAA-MM-DD) para ordenar. Acepta el formato en español
+    ("9 DIC 2020", "17 sep. 2020") y el inglés ("Dec 9, 2020"). Vacío si no se reconoce."""
+    value = (value or "").strip()
+    match = _SPANISH_DATE_RE.match(value)
+    if match:
+        day, month_name, year = match.groups()
+        month = _SPANISH_MONTHS.get(month_name.casefold().rstrip("."))
+        if month:
+            try:
+                return datetime(int(year), month, int(day)).date().isoformat()
+            except ValueError:
+                return ""
     for date_format in ("%b %d, %Y", "%d %b, %Y", "%b %Y", "%Y"):
         try:
-            return datetime.strptime(value.strip(), date_format).date().isoformat()
+            return datetime.strptime(value, date_format).date().isoformat()
         except ValueError:
             continue
     return ""
@@ -242,5 +284,7 @@ def _empty_app_details() -> dict:
         "developer": "",
         "price_cents": None,
         "release_date": "",
+        "is_adult": False,
+        "header_image": "",
         "store_available": False,
     }
