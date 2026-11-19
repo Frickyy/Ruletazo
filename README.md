@@ -110,7 +110,7 @@ Completá `backend/.env`:
 | `CORS_ORIGINS` | Orígenes permitidos, separados por coma. |
 | `ADMIN_STEAM_IDS` | SteamID64 de los moderadores del foro, separados por coma. |
 | `ENVIRONMENT` | `development` o `production` (en producción `SESSION_SECRET` es obligatoria). |
-| `CONTACT_EMAIL` | Mail de contacto de la política de privacidad y los términos. |
+| `CONTACT_EMAIL` | Mail de contacto de la política de privacidad y los términos (por defecto `ruletazo007@gmail.com`). |
 | `FEEDBACK_EMAIL` | Adónde llegan los comentarios del botón "Mandar comentario" (por defecto `ruletazo007@gmail.com`). |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` | Cuenta que manda esos mails. Con Gmail: `smtp.gmail.com`, `587`, la cuenta y una [contraseña de aplicación](https://myaccount.google.com/apppasswords) (hace falta la verificación en dos pasos). Sin usuario y contraseña, los comentarios solo quedan en la tabla `feedback`. |
 | `HLTB_ENABLED` | `false` (por defecto). Prenderlo solo con permiso por escrito de Ziff Davis (ver *Riesgos antes de monetizar*). |
@@ -148,7 +148,7 @@ Con las dependencias ya instaladas, `iniciar.bat` levanta el backend y el fronte
 docker compose up --build
 ```
 
-Abrí <http://localhost:8000>. La imagen compila el frontend y lo sirve desde el backend; la base queda en el volumen `data`, con una copia de seguridad por día en `data/backups`. Usa las variables de `backend/.env` (necesita al menos `STEAM_API_KEY` y un `SESSION_SECRET` de 32 caracteres o más). Si la publicás en otro dominio, poné su URL en `FRONTEND_URL`.
+Abrí <http://localhost:8000>. La imagen compila el frontend y lo sirve desde el backend; la base queda en el volumen `data`, con una copia de seguridad por día en `data/backups`. Usa las variables de `backend/.env` (necesita al menos `STEAM_API_KEY` y un `SESSION_SECRET` de 32 caracteres o más). Si la publicás en otro dominio, poné su URL en `FRONTEND_URL`. Esa misma URL se usa al compilar para la vista previa del link al compartirlo (imagen `frontend/public/og-image.png`, que se regenera desde `frontend/scripts/og-image.html`); sin Docker, compilá con `SITE_URL=https://tu-dominio npm run build`.
 
 ## Tests
 
@@ -174,7 +174,7 @@ Pensada para no tocar la experiencia: **la plata nunca influye en qué juego sal
 ### Duración
 Cuando alguien marca un juego como *Terminado*, se guardan sus horas en Steam en ese momento. La duración de cada juego es la **mediana** de esas horas y se muestra recién cuando lo terminaron al menos 3 personas (nunca por persona). Las horas de menos de 30 minutos no cuentan. Al principio casi ningún juego tiene duración, así que el filtro por duración aparece recién cuando hay datos.
 - **El nombre**: la app se llama Ruletazo, sin "Steam", para no dar a entender una relación con Valve. Internamente se conservan algunos nombres viejos (la base `steam_roulette.db`, las claves `steamRoulette.*` del navegador) para no perder datos ni preferencias.
-- La política de privacidad y los términos (`#/privacidad`, `#/terminos`) son un **borrador**: revisalos con alguien con conocimiento legal de tu país y completá el país del servidor (`frontend/src/pages/LegalPage.jsx`) y `CONTACT_EMAIL`.
+- La política de privacidad y los términos (`#/privacidad`, `#/terminos`) son un **borrador**: revisalos con alguien con conocimiento legal de tu país y completá el país del servidor (`DATA_LOCATION` en `frontend/src/pages/LegalPage.jsx`).
 
 ## Limitaciones conocidas
 

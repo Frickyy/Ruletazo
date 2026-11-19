@@ -1,6 +1,10 @@
 services:
   app:
-    build: .
+    build:
+      context: .
+      args:
+        # La misma URL pública, para la imagen y el link de la vista previa al compartir.
+        SITE_URL: ${FRONTEND_URL:-}
     ports:
       - "8000:8000"
     # STEAM_API_KEY, SESSION_SECRET, ADMIN_STEAM_IDS… (ver backend/.env.example)

@@ -6,6 +6,20 @@
     <title>Ruletazo</title>
     <meta name="description" content="¿No sabés qué jugar? Girá la ruleta con tu biblioteca de Steam y la de tu familia." />
     <meta name="theme-color" content="#131211" />
+    <!-- Vista previa al compartir el link (WhatsApp, Discord, X…). __SITE_URL__ lo completa
+         vite.config.js con SITE_URL al compilar: estas redes piden URLs absolutas. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Ruletazo" />
+    <meta property="og:title" content="Ruletazo · ¿No sabés qué jugar? Girá la ruleta" />
+    <meta property="og:description" content="Girá la ruleta con tu biblioteca de Steam y la de tu familia. Gratis y sin publicidad." />
+    <meta property="og:url" content="__SITE_URL__/" />
+    <meta property="og:image" content="__SITE_URL__/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Ruletazo: una ruleta que elige qué jugar de tu biblioteca de Steam" />
+    <meta property="og:locale" content="es_AR" />
+    <meta property="og:locale:alternate" content="en_US" />
+    <meta name="twitter:card" content="summary_large_image" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <!-- Instalable como app (PWA): en el celular, "Agregar a pantalla de inicio". -->
     <link rel="manifest" href="/manifest.webmanifest" />

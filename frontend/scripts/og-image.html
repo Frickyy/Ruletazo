@@ -1,0 +1,106 @@
+<!doctype html>
+<!--
+  Fuente de public/og-image.png (la imagen que aparece al compartir el link en WhatsApp,
+  Discord, X, etc.). Para regenerarla, desde frontend/:
+    & "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --headless --disable-gpu --hide-scrollbars --window-size=1200,630 --screenshot="$PWD\public\og-image.png" "file:///$PWD/scripts/og-image.html"
+-->
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; }
+      body {
+        position: relative;
+        display: flex;
+        align-items: center;
+        background:
+          radial-gradient(60% 80% at 82% 50%, rgba(255, 92, 154, 0.22), transparent 70%),
+          #131211;
+        color: #f2ede6;
+        font-family: "Inter", "Segoe UI", sans-serif;
+      }
+      .text { position: relative; z-index: 1; width: 600px; padding-left: 80px; }
+      .brand { display: flex; align-items: center; gap: 22px; }
+      .brand svg { width: 88px; height: 88px; }
+      .brand h1 {
+        margin: 0;
+        font-family: "Space Grotesk", sans-serif;
+        font-size: 92px;
+        font-weight: 700;
+        letter-spacing: -0.04em;
+        line-height: 1;
+      }
+      .tagline {
+        margin: 36px 0 0;
+        font-family: "Space Grotesk", sans-serif;
+        font-size: 44px;
+        font-weight: 500;
+        letter-spacing: -0.02em;
+        line-height: 1.12;
+      }
+      .tagline em { color: #ff5c9a; font-style: normal; }
+      .sub { margin: 22px 0 0; color: #a39c93; font-size: 26px; line-height: 1.4; }
+
+      .reel {
+        position: absolute;
+        top: 50%;
+        right: 56px;
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        transform: translateY(-50%);
+      }
+      .card {
+        width: 84px;
+        height: 300px;
+        border: 2px solid #3d3935;
+        border-radius: 18px;
+        background: linear-gradient(180deg, #2a2724, #1d1b19);
+      }
+      .card--far { height: 220px; opacity: 0.35; }
+      .card--near { height: 270px; opacity: 0.7; }
+      .card--win {
+        position: relative;
+        width: 150px;
+        height: 380px;
+        border-color: #ff5c9a;
+        background: linear-gradient(180deg, #ff7aad, #ff5c9a 55%, #e0447f);
+        box-shadow: 0 0 0 8px rgba(255, 92, 154, 0.18), 0 30px 80px rgba(255, 92, 154, 0.35);
+      }
+      .card--win::before,
+      .card--win::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        border: 16px solid transparent;
+        transform: translateX(-50%);
+      }
+      .card--win::before { top: -48px; border-top-color: #f2ede6; }
+      .card--win::after { bottom: -48px; border-bottom-color: #f2ede6; }
+    </style>
+  </head>
+  <body>
+    <div class="text">
+      <div class="brand">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <rect x="1" y="1" width="30" height="30" rx="8" fill="#22201e" stroke="#3d3935" />
+          <rect x="5" y="11" width="5" height="10" rx="1.5" fill="#a39c93" opacity="0.55" />
+          <rect x="22" y="11" width="5" height="10" rx="1.5" fill="#a39c93" opacity="0.55" />
+          <rect x="12" y="8" width="8" height="16" rx="2" fill="#ff5c9a" />
+        </svg>
+        <h1>Ruletazo</h1>
+      </div>
+      <p class="tagline">¿No sabés qué jugar?<br /><em>Girá la ruleta.</em></p>
+      <p class="sub">Con tu biblioteca de Steam y la de tu familia. Gratis.</p>
+    </div>
+    <div class="reel" aria-hidden="true">
+      <div class="card card--far"></div>
+      <div class="card card--near"></div>
+      <div class="card card--win"></div>
+      <div class="card card--near"></div>
+      <div class="card card--far"></div>
+    </div>
+  </body>
+</html>
