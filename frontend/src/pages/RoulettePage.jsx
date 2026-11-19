@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { addFavorite, fetchGameDetails, fetchGenres, fetchLibrary, fetchPlayerAchievements, removeFavorite } from "../services/gameService.js";
 import GameCard from "../components/GameCard.jsx";
+import IdlePanel from "../components/IdlePanel.jsx";
+import { coverAccent } from "../services/coverColor.js";
 import Reel from "../components/Reel.jsx";
 import "../components/GameCard.css";
 import "./RoulettePage.css";
@@ -16,7 +18,7 @@ const PLAYTIME_OPTIONS = [
  * Al tocar "Girar" se elige el ganador entre los juegos que cumplen los filtros, el rodillo
  * gira hasta él y, en paralelo, se pide su ficha completa al backend.
  */
-function RoulettePage({ steamId, isLoggedIn, friendSteamId, playtimeFilter = "all", onPlaytimeFilterChange, includeFamily, onIncludeFamilyChange, onOpenForum }) {
+function RoulettePage({ steamId, isLoggedIn, friendSteamId, hasFamily, playtimeFilter = "all", onPlaytimeFilterChange, includeFamily, onIncludeFamilyChange, onOpenForum, onLogin }) {
   const [collection, setCollection] = useState("all");
   const [genre, setGenre] = useState("");
   const [genres, setGenres] = useState([]);
@@ -81,7 +83,8 @@ function RoulettePage({ steamId, isLoggedIn, friendSteamId, playtimeFilter = "al
   const canSpin = !isSpinning && !libraryLoading && pool.length > 0;
 
   useEffect(() => {
-    if (!steamId || !shownGame) {
+    // Los logros son los tuyos: un juego que solo tiene un familiar no tiene progreso propio.
+    if (!steamId || !shownGame || shownGame.source === "friend") {
       setAchievementProgress(null);
       setIsLoadingAchievements(false);
       setAchievementError(false);
@@ -101,11 +104,37 @@ function RoulettePage({ steamId, isLoggedIn, friendSteamId, playtimeFilter = "al
       });
   }, [steamId, shownGame?.appid]);
 
+  // La página toma el color que predomina en la portada del juego que tocó (ver coverColor.js).
+  // Al salir de la ruleta vuelve el rosa de siempre.
+  const settledWinner = spin && settledSpinId === spin.id ? spin.winner : null;
+  useEffect(() => {
+    if (!settledWinner) return;
+    let cancelled = false;
+    coverAccent(settledWinner.image).then((colors) => {
+      if (!cancelled) applyAccent(colors);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [settledWinner?.appid, settledWinner?.image]);
+
+  useEffect(() => () => applyAccent(null), []);
+
   function handleSpin() {
     if (!canSpin) return;
-    const winner = pool[Math.floor(Math.random() * pool.length)];
+    showGame(pool[Math.floor(Math.random() * pool.length)]);
+  }
+
+  /** Elegido a mano desde el panel de abajo: queda en el centro del rodillo sin girar. */
+  function handlePick(game) {
+    if (isSpinning) return;
+    showGame({ appid: game.appid, name: game.name, image: game.header_image }, { instant: true });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function showGame(winner, { instant = false } = {}) {
     const spinId = Date.now();
-    setSpin({ id: spinId, winner });
+    setSpin({ id: spinId, winner, instant });
     fetchGameDetails({ steamId, friendSteamId, appid: winner.appid })
       .then((game) => setDetails({ spinId, game, error: null }))
       .catch((err) =>
@@ -133,27 +162,38 @@ function RoulettePage({ steamId, isLoggedIn, friendSteamId, playtimeFilter = "al
   if (libraryLoading) status = <p className="hint roulette__hint">Cargando tu biblioteca…</p>;
   else if (steamId && libraryStatus === "error") status = <p className="error-text roulette__hint">No se pudo cargar tu biblioteca. ¿El perfil es público?</p>;
   else if (pool.length === 0) status = <p className="hint roulette__hint">No hay juegos que cumplan esos filtros. Probá con otros.</p>;
-  else if (!spin) {
-    status = (
-      <p className="hint roulette__hint">
-        {steamId
-          ? "Tocá «Girar la ruleta»: el juego que frene en la ventana es el que te toca."
-          : "Sin sesión, la ruleta usa una biblioteca de ejemplo. Iniciá sesión con Steam para usar la tuya."}
-      </p>
-    );
-  } else if (isLoadingDetails) status = <p className="hint roulette__hint">Cargando la ficha de {spin.winner.name}…</p>;
+  else if (isLoadingDetails) status = <p className="hint roulette__hint">Cargando la ficha de {spin.winner.name}…</p>;
   else if (detailsError) status = <p className="error-text roulette__hint">{detailsError}</p>;
 
   return (
     <section className="roulette" aria-labelledby="roulette-title">
-      <div className="roulette__heading">
-        <h1 id="roulette-title">¿Qué jugamos hoy?</h1>
-        {library.length > 0 && (
-          <p className="roulette__stats">
-            {library.length} juegos · {unplayedCount} sin estrenar · {pool.length} en la ruleta
+      <header className="roulette__hero">
+        <div className="roulette__title">
+          <p className="eyebrow">{steamId ? "Tu biblioteca, a la suerte" : "Biblioteca de ejemplo"}</p>
+          <h1 id="roulette-title">¿Qué jugamos hoy?</h1>
+          <p className="roulette__lead">
+            {steamId
+              ? "Girá la ruleta: el juego que frene en el centro es el que te toca."
+              : "Probá la ruleta con 5 juegos de ejemplo, o iniciá sesión para girar con tu biblioteca."}
           </p>
+        </div>
+        {library.length > 0 && (
+          <dl className="roulette__stats">
+            <div>
+              <dt>juegos</dt>
+              <dd>{library.length.toLocaleString("es-AR")}</dd>
+            </div>
+            <div>
+              <dt>sin estrenar</dt>
+              <dd>{unplayedCount.toLocaleString("es-AR")}</dd>
+            </div>
+            <div className="roulette__stat--accent">
+              <dt>en la ruleta</dt>
+              <dd>{pool.length.toLocaleString("es-AR")}</dd>
+            </div>
+          </dl>
         )}
-      </div>
+      </header>
 
       <Reel pool={pool} spin={spin} onSettled={() => setSettledSpinId(spin?.id)} />
       <p className="visually-hidden" aria-live="polite">
@@ -201,13 +241,19 @@ function RoulettePage({ steamId, isLoggedIn, friendSteamId, playtimeFilter = "al
           </select>
         )}
 
-        <label className="checkbox roulette__family">
-          <input type="checkbox" checked={includeFamily} onChange={(event) => onIncludeFamilyChange?.(event.target.checked)} disabled={isSpinning} />
-          Incluir biblioteca de Familia
-        </label>
+        {steamId && hasFamily && (
+          <label className="checkbox roulette__family">
+            <input type="checkbox" checked={includeFamily} onChange={(event) => onIncludeFamilyChange?.(event.target.checked)} disabled={isSpinning} />
+            Incluir biblioteca de Familia
+          </label>
+        )}
       </div>
 
       {status}
+
+      {!spin && !libraryLoading && pool.length > 0 && (
+        <IdlePanel steamId={steamId} library={library} pool={pool} onPick={handlePick} onLogin={onLogin} />
+      )}
 
       {shownGame && (
         <GameCard
@@ -215,12 +261,25 @@ function RoulettePage({ steamId, isLoggedIn, friendSteamId, playtimeFilter = "al
           achievementProgress={achievementProgress}
           isLoadingAchievements={isLoadingAchievements}
           achievementError={achievementError}
+          isDemo={!steamId}
           onToggleFavorite={isLoggedIn ? handleToggleFavorite : undefined}
           onOpenForum={onOpenForum}
         />
       )}
     </section>
   );
+}
+
+/** Pisa (o con null, restaura) el color de acento de toda la página. */
+function applyAccent(colors) {
+  const root = document.documentElement.style;
+  if (colors) {
+    root.setProperty("--accent", colors.accent);
+    root.setProperty("--accent-hover", colors.hover);
+  } else {
+    root.removeProperty("--accent");
+    root.removeProperty("--accent-hover");
+  }
 }
 
 function matchesFilters(game, { collection, genre, playtimeFilter }) {

@@ -2,8 +2,9 @@
  * Componente presentacional: recibe el juego elegido y lo muestra.
  * No sabe de dónde vienen los datos (eso es de `RoulettePage` y `gameService`).
  * `onToggleFavorite` es opcional: sin sesión no se muestra la estrella.
+ * `isDemo`: juego de la biblioteca de ejemplo (sin sesión); no se muestran horas jugadas.
  */
-function GameCard({ game, onToggleFavorite, onOpenForum, achievementProgress, isLoadingAchievements, achievementError }) {
+function GameCard({ game, isDemo = false, onToggleFavorite, onOpenForum, achievementProgress, isLoadingAchievements, achievementError }) {
   const playtimeHours = Math.round(game.playtime_forever_minutes / 60);
   const releaseYear = game.release_date ? game.release_date.slice(0, 4) : "";
   const meta = [game.developer, game.genres.join(", "), releaseYear].filter(Boolean).join(" · ");
@@ -33,6 +34,7 @@ function GameCard({ game, onToggleFavorite, onOpenForum, achievementProgress, is
         <div className="game-card__info">
           <p className="eyebrow">
             Te tocó
+            {isDemo && <span className="game-card__source"> · biblioteca de ejemplo</span>}
             {game.source === "friend" && <span className="game-card__source"> · de tu familia</span>}
             {game.source === "both" && <span className="game-card__source"> · en ambas bibliotecas</span>}
           </p>
@@ -81,26 +83,18 @@ function GameCard({ game, onToggleFavorite, onOpenForum, achievementProgress, is
               <dd className="mono">{formatPrice(game.price_cents)}</dd>
             </div>
           )}
-          <div>
-            <dt>Tu tiempo de juego</dt>
-            <dd className="mono">{playtimeHours} h</dd>
-          </div>
+          {!isDemo && (
+            <div>
+              <dt>{game.source === "friend" ? "Horas de tu familiar" : "Tu tiempo de juego"}</dt>
+              <dd className="mono">{playtimeHours} h</dd>
+            </div>
+          )}
         </dl>
-        {(game.review_pros || game.review_cons) && (
+        {(game.review_good?.length > 0 || game.review_bad?.length > 0) && (
           <div className="game-card__verdict">
-            {game.review_pros && (
-              <figure className="verdict verdict--good">
-                <figcaption>Lo bueno</figcaption>
-                <blockquote>{game.review_pros}</blockquote>
-              </figure>
-            )}
-            {game.review_cons && (
-              <figure className="verdict verdict--bad">
-                <figcaption>Lo malo</figcaption>
-                <blockquote>{game.review_cons}</blockquote>
-              </figure>
-            )}
-            <p className="game-card__verdict-note">Las reseñas más votadas como útiles en Steam.</p>
+            <Verdict kind="good" title="Lo bueno" excerpts={game.review_good} />
+            <Verdict kind="bad" title="Lo malo" excerpts={game.review_bad} />
+            <p className="game-card__verdict-note">Frases de las reseñas más votadas como útiles en Steam.</p>
           </div>
         )}
       </div>
@@ -141,6 +135,22 @@ function GameCard({ game, onToggleFavorite, onOpenForum, achievementProgress, is
         </section>
       )}
     </article>
+  );
+}
+
+function Verdict({ kind, title, excerpts = [] }) {
+  if (excerpts.length === 0) return null;
+  return (
+    <section className={`verdict verdict--${kind}`} aria-label={title}>
+      <h3 className="verdict__title">{title}</h3>
+      <ul>
+        {excerpts.map((excerpt) => (
+          <li key={excerpt}>
+            <q>{excerpt}</q>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 

@@ -148,7 +148,9 @@ function ForumGameView({ target, onTargetChange, viewer, onLogin }) {
   const { appid } = target;
   const [game, setGame] = useState(null);
   const [gameError, setGameError] = useState("");
-  const [tab, setTab] = useState(target.tab ?? "reviews");
+  // La pestaña vive en la URL (#/foro/juego/<appid>/discusiones), así Atrás vuelve a la anterior.
+  const tab = target.tab ?? "reviews";
+  const setTab = (nextTab) => onTargetChange({ appid, name: game?.name ?? target.name, tab: nextTab });
   const [reviews, setReviews] = useState([]);
   const [threads, setThreads] = useState([]);
 

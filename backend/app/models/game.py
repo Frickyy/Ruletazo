@@ -54,6 +54,8 @@ class CachedGameDetails(Base):
     reviews_version: Mapped[int] = mapped_column(Integer, default=0)
     hltb_main_hours: Mapped[float | None] = mapped_column(Float, nullable=True)
     hltb_completionist_hours: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # Se buscó en HLTB con esta versión (aunque no haya habido resultado). Ver HLTB_VERSION.
+    hltb_version: Mapped[int] = mapped_column(Integer, default=0)
     achievement_total: Mapped[int] = mapped_column(Integer, default=0)
     achievement_avg_percent: Mapped[float | None] = mapped_column(Float, nullable=True)
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)

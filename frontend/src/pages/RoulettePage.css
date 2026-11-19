@@ -4,23 +4,72 @@
   gap: 1.4rem;
 }
 
-.roulette__heading {
+.roulette__hero {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 0.5rem 1.5rem;
+  gap: 1.25rem 2rem;
 }
 
-.roulette__heading h1 {
-  font-size: clamp(2rem, 4.5vw, 2.5rem);
+.roulette__title {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 36rem;
 }
 
-.roulette__stats {
+.roulette__title .eyebrow {
+  margin: 0;
+}
+
+.roulette__title h1 {
+  font-size: clamp(2.25rem, 5vw, 3.25rem);
+}
+
+.roulette__lead {
   margin: 0;
   color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 0.8125rem;
+  font-size: 0.9375rem;
+}
+
+/* Tres cifras de la biblioteca: número grande, etiqueta chica. */
+.roulette__stats {
+  display: flex;
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.roulette__stats > div {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 0.15rem;
+  min-width: 6.5rem;
+  padding: 0.75rem 1.1rem;
+}
+
+.roulette__stats > div + div {
+  border-left: 1px solid var(--line);
+}
+
+.roulette__stats dt {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.roulette__stats dd {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.roulette__stat--accent dd {
+  color: var(--accent);
 }
 
 .roulette__controls {
@@ -40,6 +89,20 @@
 }
 
 @media (max-width: 760px) {
+  .roulette__stats {
+    width: 100%;
+  }
+
+  .roulette__stats > div {
+    flex: 1;
+    min-width: 0;
+    padding: 0.6rem 0.8rem;
+  }
+
+  .roulette__stats dd {
+    font-size: 1.25rem;
+  }
+
   .roulette__controls > .button--primary {
     width: 100%;
   }

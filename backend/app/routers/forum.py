@@ -5,6 +5,7 @@ Leer es público; publicar, editar y borrar exige haber iniciado sesión con Ste
 """
 
 import time
+from collections import deque
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -20,8 +21,34 @@ from app.services.store_client import SteamStoreClient, steam_header_image
 router = APIRouter(prefix="/api/forum", tags=["forum"])
 
 _CACHE_TTL_SECONDS = 6 * 60 * 60
+# Tope de entradas de cada caché en memoria: sin él crecían sin límite mientras viviera el proceso.
+_CACHE_MAX_ENTRIES = 2000
 _game_names: dict[int, tuple[str, float]] = {}
 _profiles: dict[str, tuple[Author, float]] = {}
+
+# Cuántas publicaciones (reseñas, hilos y respuestas) puede hacer un usuario por ventana de tiempo.
+POST_LIMIT = 10
+POST_WINDOW_SECONDS = 10 * 60
+_recent_posts: dict[str, deque[float]] = {}
+
+
+def _cache_put(cache: dict, key, value) -> None:
+    """Guarda en la caché; si se llenó, descarta las entradas más viejas (orden de inserción)."""
+    cache.pop(key, None)
+    cache[key] = (value, time.monotonic())
+    while len(cache) > _CACHE_MAX_ENTRIES:
+        cache.pop(next(iter(cache)))
+
+
+def check_post_rate(steam_id: str, now: float | None = None) -> None:
+    """429 si el usuario ya publicó POST_LIMIT veces en los últimos POST_WINDOW_SECONDS."""
+    current = time.monotonic() if now is None else now
+    history = _recent_posts.setdefault(steam_id, deque())
+    while history and current - history[0] > POST_WINDOW_SECONDS:
+        history.popleft()
+    if len(history) >= POST_LIMIT:
+        raise HTTPException(status_code=429, detail="Publicaste muchos mensajes seguidos. Esperá unos minutos.")
+    history.append(current)
 
 
 class ReviewIn(BaseModel):
@@ -80,6 +107,7 @@ async def save_review(
     steam_id: str = Depends(require_steam_id),
 ) -> dict:
     """Crea o reemplaza la reseña del usuario para este juego."""
+    check_post_rate(steam_id)
     name = await _game_name(db, appid)
     author = await _author(steam_id)
     return _unwrap(lambda: forum_service.upsert_review(db, appid, name, author, review.score, review.body))
@@ -102,6 +130,7 @@ async def create_thread(
     db: Session = Depends(get_db),
     steam_id: str = Depends(require_steam_id),
 ) -> dict:
+    check_post_rate(steam_id)
     name = await _game_name(db, appid)
     author = await _author(steam_id)
     return _unwrap(lambda: forum_service.create_thread(db, appid, name, author, thread.title, thread.body))
@@ -126,6 +155,7 @@ async def add_post(
     db: Session = Depends(get_db),
     steam_id: str = Depends(require_steam_id),
 ) -> dict:
+    check_post_rate(steam_id)
     author = await _author(steam_id)
     return _unwrap(lambda: forum_service.add_post(db, thread_id, author, post.body))
 
@@ -152,7 +182,7 @@ async def _game_name(db: Session, appid: int) -> str:
     name = details.get("name") or forum_service.known_game_name(db, appid)
     if not name:
         raise HTTPException(status_code=404, detail="No encontramos ese juego en la tienda de Steam.")
-    _game_names[appid] = (name, time.monotonic())
+    _cache_put(_game_names, appid, name)
     return name
 
 
@@ -167,5 +197,5 @@ async def _author(steam_id: str) -> Author:
         author = Author(steam_id=steam_id, name=profile["name"], avatar=profile["avatar"])
     except SteamAPIError:
         author = Author(steam_id=steam_id, name="Jugador de Steam")
-    _profiles[steam_id] = (author, time.monotonic())
+    _cache_put(_profiles, steam_id, author)
     return author

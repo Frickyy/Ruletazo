@@ -3,6 +3,19 @@
  * Un solo set de variables para toda la app: carbón cálido, un único acento naranja,
  * Space Grotesk para títulos, Inter para texto y JetBrains Mono para números.
  */
+/* Registrar el acento como color permite animarlo cuando la ruleta lo cambia según la portada. */
+@property --accent {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #ff5c9a;
+}
+
+@property --accent-hover {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #ff85b3;
+}
+
 :root {
   --bg: #131211;
   --surface: #1a1917;
@@ -12,8 +25,10 @@
   --text: #f2ede6;
   --text-soft: #d6d0c8;
   --muted: #a39c93;
-  --accent: #ff6b2c;
-  --accent-hover: #ff8550;
+  /* Acento rosa. En la ruleta se reemplaza por el color de la portada que tocó (coverColor.js).
+     Los brillos y sombras derivan de --accent con color-mix, así que alcanza con cambiar estas dos. */
+  --accent: #ff5c9a;
+  --accent-hover: #ff85b3;
   --accent-ink: #131211;
   --danger: #ff8a7a;
   --success: #6fd3a4;
@@ -21,12 +36,16 @@
   --font-display: "Space Grotesk", "Segoe UI", sans-serif;
   --font-body: "Inter", "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", "Consolas", monospace;
+  /* Números: el 0 de JetBrains Mono lleva un punto adentro y a tamaño chico parece un 8.
+     Inter con cifras tabulares mantiene las columnas alineadas y el 0 se lee como 0. */
+  --font-numeric: "Inter", "Segoe UI", sans-serif;
 
   --radius: 6px;
   --radius-sm: 4px;
   --page-width: 1152px;
   --gutter: clamp(1rem, 4vw, 4rem);
 
+  transition: --accent 700ms ease, --accent-hover 700ms ease;
   color-scheme: dark;
   font-family: var(--font-body);
   line-height: 1.5;
@@ -255,7 +274,9 @@ h3 {
 }
 
 .mono {
-  font-family: var(--font-mono);
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
 }
 
 .muted {

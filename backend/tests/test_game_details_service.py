@@ -75,3 +75,13 @@ def test_expired_row_with_current_metadata_still_counts_as_classified():
 def test_missing_or_outdated_row_is_not_classified():
     assert library_service._is_classified(None) is False
     assert library_service._is_classified(_make_details(store_metadata_version=0)) is False
+
+
+def test_hltb_miss_counts_as_looked_up():
+    details = _make_details(hltb_version=game_details_service.HLTB_VERSION)
+    assert game_details_service.has_hltb_lookup(details) is True
+
+
+def test_hltb_never_looked_up():
+    details = _make_details(hltb_version=0)
+    assert game_details_service.has_hltb_lookup(details) is False

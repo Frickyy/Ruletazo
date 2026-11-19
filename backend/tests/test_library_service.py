@@ -161,3 +161,51 @@ async def test_get_filtered_library_filters_by_genre(db_session, monkeypatch):
     games = await library_service.get_filtered_library(db_session, "me", None, collection="all", genre="Acción")
 
     assert [game.appid for game in games] == [10]
+
+
+class _FamilySteamClient:
+    """Cliente falso con varias bibliotecas; un ID desconocido falla como un perfil privado."""
+
+    libraries = {
+        STEAM_ID64: [{"appid": 10, "name": "Counter-Strike"}],
+        "76561198000000001": [{"appid": 10, "name": "Counter-Strike"}, {"appid": 20, "name": "Team Fortress"}],
+    }
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc_info):
+        return False
+
+    async def resolve_steam_id(self, identifier):
+        if identifier not in self.libraries:
+            raise library_service.SteamAPIError("perfil privado")
+        return identifier
+
+    async def get_owned_games(self, steam_id):
+        return self.libraries[steam_id]
+
+
+async def test_bad_family_id_does_not_break_own_library(db_session, monkeypatch):
+    monkeypatch.setattr(library_service, "SteamClient", _FamilySteamClient)
+
+    games = await library_service.get_filtered_library(
+        db_session, STEAM_ID64, "76561198000000001,no-existe", collection="all", genre=None
+    )
+
+    assert {game.appid: game.source for game in games} == {10: "both", 20: "friend"}
+
+
+async def test_get_game_details_finds_family_game(db_session, monkeypatch):
+    monkeypatch.setattr(library_service, "SteamClient", _FamilySteamClient)
+
+    async def fake_details(db, appid, name):
+        return CachedGameDetails(appid=appid, genres=["Acción"], featured_reviews=[], achievement_total=0)
+
+    monkeypatch.setattr(library_service.game_details_service, "get_or_fetch_details", fake_details)
+
+    game = await library_service.get_game_details(db_session, STEAM_ID64, "76561198000000001", 20)
+
+    assert game.name == "Team Fortress"
+    assert game.source == "friend"
+    assert game.genres == ["Acción"]

@@ -69,7 +69,7 @@ async def get_completion_times(game_name: str) -> dict:
     except Exception:
         # howlongtobeatpy scrapea HLTB; un cambio en su HTML o un timeout no debe tumbar el enriquecimiento.
         logger.warning("Fallo buscando '%s' en HowLongToBeat", game_name, exc_info=True)
-        return {"main_hours": None, "completionist_hours": None}
+        return {"main_hours": None, "completionist_hours": None, "failed": True}
 
     if not results:
         return {"main_hours": None, "completionist_hours": None}
