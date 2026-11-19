@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     # Carpeta para copias de seguridad diarias de la base SQLite (vacío = sin copias) y cuántas conservar.
     backup_dir: str = ""
     backup_keep: int = 7
-    # Usar HowLongToBeat para la duración. Antes de monetizar conviene tener su permiso (ver README);
+    # Usar HowLongToBeat para la duración. Antes de monetizar conviene tener su permiso (ver DESARROLLO.md);
     # en "false" se dejan de pedir duraciones y la página oculta el filtro de duración.
     # Apagado por defecto: los términos de Ziff Davis (dueña de HLTB) prohíben el acceso automatizado.
     hltb_enabled: bool = False
