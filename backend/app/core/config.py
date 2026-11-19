@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     # {query} se reemplaza por el nombre del juego (ej. "Humble|https://www.humblebundle.com/store/search?search={query}&partner=TU_ID").
     affiliate_stores: str = ""
     # Mail de contacto que se muestra en la política de privacidad y los términos.
-    contact_email: str = ""
+    contact_email: str = "ruletazo007@gmail.com"
     # Formulario de feedback: los comentarios se mandan a FEEDBACK_EMAIL por SMTP. Con Gmail,
     # SMTP_USER es la cuenta y SMTP_PASSWORD una "contraseña de aplicación" (no la contraseña
     # normal). Sin SMTP_USER/SMTP_PASSWORD los comentarios solo se guardan en la base.
