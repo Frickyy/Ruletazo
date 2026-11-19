@@ -45,3 +45,5 @@ class RateLimit:
 steam_reads = RateLimit("steam_reads", max_requests=240, window_seconds=10 * 60)
 # Clasificación en segundo plano: muchas llamadas chicas seguidas.
 background = RateLimit("background", max_requests=600, window_seconds=10 * 60)
+# Formulario de feedback: pocos por visitante, para que no lo usen para llenar el mail de spam.
+feedback_limit = RateLimit("feedback", max_requests=5, window_seconds=10 * 60)
