@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { playTick, playWin } from "../services/reelSound.js";
 import { avoidAdjacentRepeats, sample } from "../services/reelStrip.js";
 import "./Reel.css";
 
@@ -19,7 +20,7 @@ const SPIN_DURATION_MS = 4600;
  * Con `spin.instant` (un juego elegido a mano) el ganador queda en el centro sin girar.
  * El ganador frena siempre centrado: antes se corría un poco al azar y quedaba fuera del marco.
  */
-function Reel({ pool, spin, onSettled }) {
+function Reel({ pool, spin, onSettled, sound = false }) {
   const [strip, setStrip] = useState(() => idleStrip(pool));
   const [index, setIndex] = useState(SIDE);
   const [settled, setSettled] = useState(false);
@@ -30,6 +31,30 @@ function Reel({ pool, spin, onSettled }) {
   const settleRef = useRef(null);
   const finishRef = useRef(null);
   stripRef.current = strip;
+  const soundRef = useRef(sound);
+  soundRef.current = sound;
+
+  // Con sonido: un "tic" cada vez que una portada cruza el centro. Se lee la posición real de la
+  // tira en cada cuadro, así los tics se frenan junto con el rodillo.
+  useEffect(() => {
+    if (!animating || !sound || !trackRef.current) return undefined;
+    const track = trackRef.current;
+    const cards = track.children;
+    const step = cards.length > 1 ? cards[1].offsetLeft - cards[0].offsetLeft : 0;
+    const cardWidth = cards[0]?.offsetWidth ?? 0;
+    if (!step) return undefined;
+    let frame;
+    let lastCard = null;
+    const read = () => {
+      const x = new DOMMatrixReadOnly(getComputedStyle(track).transform).m41;
+      const current = Math.round((-x - cardWidth / 2) / step);
+      if (lastCard !== null && current !== lastCard) playTick();
+      lastCard = current;
+      frame = requestAnimationFrame(read);
+    };
+    frame = requestAnimationFrame(read);
+    return () => cancelAnimationFrame(frame);
+  }, [animating, sound]);
 
   // Filtros nuevos → tira nueva al instante (si el juego del centro sigue siendo válido, queda).
   useEffect(() => {
@@ -75,6 +100,7 @@ function Reel({ pool, spin, onSettled }) {
       setStrip(nextStrip.slice(target - SIDE, target + SIDE + 1));
       setIndex(SIDE);
       setSettled(true);
+      if (soundRef.current) playWin();
       onSettled?.(spin.winner);
     };
     // Respaldo por si el navegador no dispara transitionend (pestaña en segundo plano, etc.).

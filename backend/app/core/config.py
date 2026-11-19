@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     admin_steam_ids: str = ""
     # Carpeta con el frontend compilado (`npm run build`). Si existe, el backend lo sirve en "/".
     frontend_dist: str = ""
+    # Carpeta para copias de seguridad diarias de la base SQLite (vacío = sin copias) y cuántas conservar.
+    backup_dir: str = ""
+    backup_keep: int = 7
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

@@ -313,6 +313,19 @@
   border-radius: 50%;
 }
 
+.family-profile__avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--surface-raised);
+}
+
+.family-profile--missing {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
 .family-actions {
   display: flex;
   flex-wrap: wrap;

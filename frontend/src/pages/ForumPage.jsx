@@ -6,6 +6,8 @@ import {
   deleteForumReviewById,
   deleteForumThread,
   dismissForumReports,
+  editForumPost,
+  editForumThread,
   fetchForumGame,
   fetchForumReports,
   fetchForumReviews,
@@ -18,6 +20,7 @@ import {
   saveForumReview,
   searchForumGames,
 } from "../services/forumService.js";
+import FormattedText, { FORMAT_HELP } from "../components/FormattedText.jsx";
 import "./ForumPage.css";
 
 const SCORES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
@@ -243,7 +246,7 @@ function ForumGameView({ target, onTargetChange, viewer, onLogin }) {
                   <span className="score-badge score-badge--large" aria-label={`Puntaje ${review.score} de 10`}>{review.score}</span>
                   <div className="forum-post__content">
                     <AuthorLine author={review.author} at={review.updated_at} />
-                    <p className="forum-post__body">{review.body}</p>
+                    <FormattedText className="forum-post__body" text={review.body} />
                     <MessageActions
                       kind="review"
                       id={review.id}
@@ -358,6 +361,7 @@ function ReviewForm({ appid, existing, onSaved }) {
       <label className="forum-form__field">
         <span>Reseña</span>
         <textarea className="text-input textarea" rows={4} maxLength={5000} value={body} onChange={(event) => setBody(event.target.value)} placeholder="¿Qué te pareció? ¿Lo recomendarías?" />
+        <span className="format-help">{FORMAT_HELP}</span>
       </label>
       {error && <p className="error-text">{error}</p>}
       <div className="forum-form__actions">
@@ -412,6 +416,7 @@ function ThreadForm({ appid, onCreated }) {
       <label className="forum-form__field">
         <span>Mensaje</span>
         <textarea className="text-input textarea" rows={4} maxLength={5000} value={body} onChange={(event) => setBody(event.target.value)} />
+        <span className="format-help">{FORMAT_HELP}</span>
       </label>
       {error && <p className="error-text">{error}</p>}
       <div className="forum-form__actions">
@@ -432,6 +437,8 @@ function ForumThreadView({ target, onTargetChange, viewer, onLogin }) {
   const [thread, setThread] = useState(null);
   const [error, setError] = useState("");
   const [reply, setReply] = useState("");
+  const [editingThread, setEditingThread] = useState(false);
+  const [editingPostId, setEditingPostId] = useState(null);
   const [sending, setSending] = useState(false);
 
   async function reload() {
@@ -493,17 +500,33 @@ function ForumThreadView({ target, onTargetChange, viewer, onLogin }) {
       {thread && (
         <>
           <article className="forum-thread">
-            <h1 id="forum-thread-title">{thread.title}</h1>
-            <AuthorLine author={thread.author} at={thread.created_at} />
-            <p className="forum-post__body">{thread.body}</p>
-            <MessageActions
-              kind="thread"
-              id={thread.id}
-              isMine={thread.is_mine}
-              viewer={viewer}
-              deleteLabel="Borrar discusión"
-              onDelete={handleDeleteThread}
-            />
+            {editingThread ? (
+              <EditForm
+                initialTitle={thread.title}
+                initialBody={thread.body}
+                onCancel={() => setEditingThread(false)}
+                onSave={async ({ title, body }) => {
+                  await editForumThread(thread.id, { title, body });
+                  setEditingThread(false);
+                  await reload();
+                }}
+              />
+            ) : (
+              <>
+                <h1 id="forum-thread-title">{thread.title}</h1>
+                <AuthorLine author={thread.author} at={thread.created_at} editedAt={thread.edited_at} />
+                <FormattedText className="forum-post__body" text={thread.body} />
+                <MessageActions
+                  kind="thread"
+                  id={thread.id}
+                  isMine={thread.is_mine}
+                  viewer={viewer}
+                  deleteLabel="Borrar discusión"
+                  onDelete={handleDeleteThread}
+                  onEdit={() => setEditingThread(true)}
+                />
+              </>
+            )}
           </article>
 
           <section className="forum-section" aria-label="Respuestas">
@@ -512,15 +535,30 @@ function ForumThreadView({ target, onTargetChange, viewer, onLogin }) {
               {thread.posts.map((post) => (
                 <li key={post.id} className="forum-post">
                   <div className="forum-post__content">
-                    <AuthorLine author={post.author} at={post.created_at} />
-                    <p className="forum-post__body">{post.body}</p>
-                    <MessageActions
-                      kind="post"
-                      id={post.id}
-                      isMine={post.is_mine}
-                      viewer={viewer}
-                      onDelete={() => handleDeletePost(post.id)}
-                    />
+                    <AuthorLine author={post.author} at={post.created_at} editedAt={post.edited_at} />
+                    {editingPostId === post.id ? (
+                      <EditForm
+                        initialBody={post.body}
+                        onCancel={() => setEditingPostId(null)}
+                        onSave={async ({ body }) => {
+                          await editForumPost(post.id, body);
+                          setEditingPostId(null);
+                          await reload();
+                        }}
+                      />
+                    ) : (
+                      <>
+                        <FormattedText className="forum-post__body" text={post.body} />
+                        <MessageActions
+                          kind="post"
+                          id={post.id}
+                          isMine={post.is_mine}
+                          viewer={viewer}
+                          onDelete={() => handleDeletePost(post.id)}
+                          onEdit={() => setEditingPostId(post.id)}
+                        />
+                      </>
+                    )}
                   </div>
                 </li>
               ))}
@@ -531,6 +569,7 @@ function ForumThreadView({ target, onTargetChange, viewer, onLogin }) {
                 <label className="forum-form__field">
                   <span>Tu respuesta</span>
                   <textarea className="text-input textarea" rows={3} maxLength={5000} value={reply} onChange={(event) => setReply(event.target.value)} />
+                  <span className="format-help">{FORMAT_HELP}</span>
                 </label>
                 <div className="forum-form__actions">
                   <button type="submit" className="button button--primary" disabled={sending || !reply.trim()}>
@@ -635,14 +674,15 @@ function ModerationPanel({ onTargetChange }) {
  * Acciones de un mensaje: "Borrar" (autor o moderador, si se pasa `onDelete`) y "Denunciar"
  * (cualquiera con sesión, menos el autor). La denuncia pide un motivo opcional.
  */
-function MessageActions({ kind, id, isMine, viewer, onDelete, deleteLabel = "Borrar" }) {
+function MessageActions({ kind, id, isMine, viewer, onDelete, onEdit, deleteLabel = "Borrar" }) {
   const [reporting, setReporting] = useState(false);
   const [reason, setReason] = useState("");
   const [state, setState] = useState(""); // "" | "sending" | "sent" | mensaje de error
   if (!viewer) return null;
   const canDelete = onDelete && (isMine || viewer.is_moderator);
   const canReport = !isMine;
-  if (!canDelete && !canReport) return null;
+  const canEdit = onEdit && isMine;
+  if (!canDelete && !canReport && !canEdit) return null;
 
   async function submitReport(event) {
     event.preventDefault();
@@ -658,6 +698,11 @@ function MessageActions({ kind, id, isMine, viewer, onDelete, deleteLabel = "Bor
 
   return (
     <div className="message-actions">
+      {canEdit && (
+        <button type="button" className="text-button" onClick={onEdit}>
+          Editar
+        </button>
+      )}
       {canDelete && (
         <button type="button" className="text-button" onClick={onDelete}>
           {deleteLabel}
@@ -694,13 +739,64 @@ function MessageActions({ kind, id, isMine, viewer, onDelete, deleteLabel = "Bor
 
 // ---------- Piezas compartidas ----------
 
-function AuthorLine({ author, at }) {
+function AuthorLine({ author, at, editedAt }) {
   return (
     <p className="author-line">
       {author.avatar ? <img src={author.avatar} alt="" /> : <span className="author-line__avatar" aria-hidden="true" />}
       <strong>{author.name || "Jugador de Steam"}</strong>
       <span className="muted">{timeAgo(at)}</span>
+      {editedAt && (
+        <span className="muted" title={`Editado ${timeAgo(editedAt)}`}>
+          (editado)
+        </span>
+      )}
     </p>
+  );
+}
+
+/** Edición en el lugar: con `initialTitle` edita un hilo (título y texto); sin él, una respuesta. */
+function EditForm({ initialTitle, initialBody, onSave, onCancel }) {
+  const [title, setTitle] = useState(initialTitle ?? "");
+  const [body, setBody] = useState(initialBody ?? "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const editsTitle = initialTitle !== undefined;
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+    try {
+      await onSave({ title: title.trim(), body: body.trim() });
+    } catch (err) {
+      setError(forumErrorMessage(err));
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form className="forum-form forum-form--edit" onSubmit={handleSubmit}>
+      {editsTitle && (
+        <label className="forum-form__field">
+          <span>Título</span>
+          <input className="text-input" value={title} onChange={(event) => setTitle(event.target.value)} maxLength={120} />
+        </label>
+      )}
+      <label className="forum-form__field">
+        <span>{editsTitle ? "Mensaje" : "Respuesta"}</span>
+        <textarea className="text-input textarea" rows={4} maxLength={5000} value={body} onChange={(event) => setBody(event.target.value)} />
+        <span className="format-help">{FORMAT_HELP}</span>
+      </label>
+      {error && <p className="error-text">{error}</p>}
+      <div className="forum-form__actions">
+        <button type="submit" className="button button--primary" disabled={saving || !body.trim() || (editsTitle && title.trim().length < 3)}>
+          {saving ? "Guardando…" : "Guardar cambios"}
+        </button>
+        <button type="button" className="button" onClick={onCancel} disabled={saving}>
+          Cancelar
+        </button>
+      </div>
+    </form>
   );
 }
 

@@ -1,6 +1,17 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
-import { addFavorite, removeFavorite, unhideGame } from "../services/gameService.js";
-import { DURATION_OPTIONS, PLAYTIME_OPTIONS, SORT_OPTIONS, genresOf, matchesFilters, sortGames } from "../services/libraryFilters.js";
+import { addFavorite, fetchStateSummary, removeFavorite, unhideGame } from "../services/gameService.js";
+import {
+  DURATION_OPTIONS,
+  MODE_OPTIONS,
+  PLAYTIME_OPTIONS,
+  SORT_OPTIONS,
+  STATE_LABELS,
+  STATE_OPTIONS,
+  genresOf,
+  matchesFilters,
+  sortGames,
+} from "../services/libraryFilters.js";
+import ClassificationBanner from "../components/ClassificationBanner.jsx";
 import "./LibraryPage.css";
 
 // Filas que se dibujan de entrada; al llegar al final se suman de a tanto (con 1000+ juegos,
@@ -26,6 +37,9 @@ function LibraryPage({
   const [collection, setCollection] = useState("all");
   const [genre, setGenre] = useState("");
   const [duration, setDuration] = useState("any");
+  const [mode, setMode] = useState("any");
+  const [stateFilter, setStateFilter] = useState("any");
+  const [summary, setSummary] = useState(null);
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("name");
   const [sortDirection, setSortDirection] = useState("asc");
@@ -38,18 +52,25 @@ function LibraryPage({
   const genres = useMemo(() => genresOf(games), [games]);
   const hiddenCount = useMemo(() => games.filter((game) => game.is_hidden).length, [games]);
   const filtered = useMemo(() => {
-    const filters = { collection, genre, playtimeFilter, duration, hideAdult, search: deferredSearch };
+    const filters = { collection, genre, playtimeFilter, duration, hideAdult, mode, state: stateFilter, search: deferredSearch };
     return sortGames(
       games.filter((game) => matchesFilters(game, filters)),
       sortBy,
       sortDirection,
     );
-  }, [games, collection, genre, playtimeFilter, duration, hideAdult, deferredSearch, sortBy, sortDirection]);
+  }, [games, collection, genre, playtimeFilter, duration, hideAdult, mode, stateFilter, deferredSearch, sortBy, sortDirection]);
+
+  // Resumen de estados: se vuelve a pedir cuando cambia algún estado.
+  const statesKey = useMemo(() => games.filter((game) => game.state).map((game) => `${game.appid}:${game.state}`).join(","), [games]);
+  useEffect(() => {
+    if (!steamId) return;
+    fetchStateSummary().then(setSummary).catch(() => setSummary(null));
+  }, [steamId, statesKey]);
 
   // Filtros nuevos → se vuelve a mostrar desde el principio.
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
-  }, [collection, genre, playtimeFilter, duration, hideAdult, deferredSearch, sortBy, sortDirection]);
+  }, [collection, genre, playtimeFilter, duration, hideAdult, mode, stateFilter, deferredSearch, sortBy, sortDirection]);
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -95,7 +116,6 @@ function LibraryPage({
   }
 
   const isLoading = status === "loading";
-  const needsStoreData = ["price", "release_date", "duration"].includes(sortBy) || duration !== "any";
 
   return (
     <section className="library-page" aria-labelledby="library-title">
@@ -107,6 +127,27 @@ function LibraryPage({
           </p>
         )}
       </div>
+
+      {summary && Object.values(summary.counts).some(Boolean) && (
+        <dl className="library-summary">
+          <div>
+            <dt>Jugando</dt>
+            <dd>{summary.counts.playing}</dd>
+          </div>
+          <div>
+            <dt>Terminados</dt>
+            <dd>{summary.counts.finished}</dd>
+          </div>
+          <div>
+            <dt>Abandonados</dt>
+            <dd>{summary.counts.abandoned}</dd>
+          </div>
+          <p className="library-summary__year">
+            En {summary.year} terminaste <strong>{summary.finished_this_year}</strong>{" "}
+            {summary.finished_this_year === 1 ? "juego" : "juegos"} y empezaste <strong>{summary.started_this_year}</strong>.
+          </p>
+        </dl>
+      )}
 
       <div className="library-page__tools">
         <div className="library-page__search">
@@ -136,6 +177,22 @@ function LibraryPage({
 
         <select className="select" value={playtimeFilter} onChange={(event) => onPlaytimeFilterChange?.(event.target.value)} aria-label="Horas jugadas">
           {PLAYTIME_OPTIONS.map((option) => (
+            <option key={option.id} value={option.id}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+
+        <select className="select" value={stateFilter} onChange={(event) => setStateFilter(event.target.value)} aria-label="Estado">
+          {STATE_OPTIONS.map((option) => (
+            <option key={option.id} value={option.id}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+
+        <select className="select" value={mode} onChange={(event) => setMode(event.target.value)} aria-label="Modo de juego">
+          {MODE_OPTIONS.map((option) => (
             <option key={option.id} value={option.id}>
               {option.label}
             </option>
@@ -194,28 +251,7 @@ function LibraryPage({
         </div>
       </div>
 
-      {classification && classification.total > 0 && classification.classified < classification.total && (
-        <div className="library-page__classify">
-          <div className="library-page__classify-bar" aria-hidden="true">
-            <span style={{ width: `${(classification.classified / classification.total) * 100}%` }} />
-          </div>
-          <p>
-            <span className="mono">
-              {classification.classified.toLocaleString("es-AR")}/{classification.total.toLocaleString("es-AR")}
-            </span>{" "}
-            juegos con datos de la tienda (género, duración, precio, reseñas).{" "}
-            {classification.paused
-              ? "Pausado."
-              : classification.running
-                ? "Se completan solos en segundo plano, de a poco para no saturar a Steam."
-                : "Steam no respondió; se reintenta la próxima vez que abras la app."}
-            {needsStoreData && " Los juegos sin datos quedan al final o fuera del filtro."}
-          </p>
-          <button type="button" className="button" onClick={() => setClassificationPaused(!classification.paused)}>
-            {classification.paused ? "Reanudar" : "Pausar"}
-          </button>
-        </div>
-      )}
+      <ClassificationBanner classification={classification} onPause={setClassificationPaused} />
 
       {(loadError || actionError) && <p className="error-text">{actionError ?? loadError}</p>}
       {isLoading && <p className="hint">Cargando biblioteca…</p>}
@@ -229,6 +265,8 @@ function LibraryPage({
                 {game.name}
                 {game.source === "friend" && <span className="tag">Familia</span>}
                 {game.source === "both" && <span className="tag">Ambas</span>}
+                {game.state && <span className={`tag tag--state tag--${game.state}`}>{STATE_LABELS[game.state]}</span>}
+                {game.coop && <span className="tag">Coop</span>}
               </p>
               <p className="library-row__genres">
                 {[game.genres.join(" · "), game.hltb_main_hours != null ? `${Math.round(game.hltb_main_hours)} h de historia` : ""]
@@ -237,7 +275,10 @@ function LibraryPage({
               </p>
             </div>
             <p className="library-row__meta mono">
-              <span>{Math.round(game.playtime_forever_minutes / 60)} h jugadas</span>
+              <span>
+                {Math.round(game.playtime_forever_minutes / 60)} h jugadas
+                {game.achievements_total ? ` · ${game.achievements_unlocked}/${game.achievements_total} logros` : ""}
+              </span>
               <span>{game.price_cents != null ? formatPrice(game.price_cents) : ""}</span>
               <span>{game.release_date ? formatReleaseDate(game.release_date) : ""}</span>
             </p>

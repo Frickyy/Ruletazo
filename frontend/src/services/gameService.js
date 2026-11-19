@@ -36,7 +36,7 @@ export async function fetchClassificationStatus(steamId) {
 
 // Clasificar un lote puede tardar (llama a 3 APIs externas por juego, de a uno);
 // se le da más tiempo que al resto de los pedidos para que no corte antes de tiempo.
-export async function classifyLibraryBatch(steamId, limit = 10) {
+export async function classifyLibraryBatch(steamId, limit = 100) {
   const { data } = await api.post("/games/library/classify", null, {
     params: { steamid: steamId, limit },
     timeout: 60000,
@@ -51,6 +51,23 @@ export async function addFavorite(steamId, appid) {
 
 export async function removeFavorite(steamId, appid) {
   const { data } = await api.delete("/games/favorites", { params: { steamid: steamId, appid } });
+  return data;
+}
+
+// Segunda pasada de la clasificación: duración (HowLongToBeat) y tu progreso de logros.
+export async function enrichLibraryBatch(steamId, limit = 5) {
+  const { data } = await api.post("/games/library/enrich", null, { params: { steamid: steamId, limit }, timeout: 90000 });
+  return data;
+}
+
+/** state: "playing" | "finished" | "abandoned" | null (sin estado). */
+export async function setGameState(appid, state) {
+  const { data } = await api.put("/games/state", { appid, state });
+  return data;
+}
+
+export async function fetchStateSummary() {
+  const { data } = await api.get("/games/states/summary");
   return data;
 }
 

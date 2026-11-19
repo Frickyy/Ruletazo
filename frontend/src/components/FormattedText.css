@@ -1,0 +1,36 @@
+.formatted a {
+  color: var(--accent);
+  word-break: break-all;
+}
+
+.spoiler {
+  display: inline;
+  padding: 0 0.25rem;
+  border: 0;
+  border-radius: 4px;
+  background: var(--line-strong);
+  color: transparent;
+  font: inherit;
+  cursor: pointer;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.spoiler span {
+  user-select: none;
+}
+
+.spoiler--revealed {
+  background: var(--surface-raised);
+  color: inherit;
+  cursor: text;
+}
+
+.spoiler--revealed span {
+  user-select: text;
+}
+
+.format-help {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+}

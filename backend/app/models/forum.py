@@ -48,6 +48,7 @@ class ForumThread(Base):
     title: Mapped[str] = mapped_column(String(120))
     body: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    edited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_activity_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, index=True)
 
 
@@ -63,6 +64,7 @@ class ForumPost(Base):
     author_avatar: Mapped[str] = mapped_column(String(512), default="")
     body: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    edited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class ForumReport(Base):

@@ -189,7 +189,7 @@ def test_migrations_create_a_fresh_database(tmp_path):
     connection = sqlite3.connect(db_file)
     tables = {row[0] for row in connection.execute("select name from sqlite_master where type='table'")}
     assert {"hidden_games", "forum_reports", "cached_game_details"} <= tables
-    assert connection.execute("select version_num from alembic_version").fetchone() == ("0003",)
+    assert connection.execute("select version_num from alembic_version").fetchone() == ("0004",)
     connection.close()
 
 
@@ -206,6 +206,8 @@ def test_migrations_upgrade_a_database_created_before_alembic(tmp_path):
         CREATE TABLE cached_library_entries (steam_id VARCHAR(32), appid INTEGER, name VARCHAR(255),
             playtime_forever_minutes INTEGER, fetched_at DATETIME, PRIMARY KEY (steam_id, appid));
         CREATE TABLE cached_game_details (appid INTEGER PRIMARY KEY, genres JSON, short_description TEXT);
+        CREATE TABLE forum_threads (id INTEGER PRIMARY KEY, appid INTEGER, title VARCHAR(120), body TEXT);
+        CREATE TABLE forum_posts (id INTEGER PRIMARY KEY, thread_id INTEGER, body TEXT);
         INSERT INTO cached_library_entries VALUES ('1', 10, 'Juego', 5, '2026-01-01');
         """
     )

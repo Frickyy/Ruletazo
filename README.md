@@ -10,8 +10,11 @@
 
 ### Ruleta
 - **Rodillo en vivo**: las portadas de tu biblioteca giran y el juego que frena en el centro es el que te toca. La página toma el color que predomina en su portada.
-- **Filtros**: sin estrenar (0 horas), poco jugados (menos de 2 horas), abandonados (jugados, pero no en los últimos 6 meses), favoritos, género y duración según HowLongToBeat (cortos, medianos, largos). Los juegos para adultos se ocultan por defecto.
-- **Después de girar**: *Jugar ahora* abre Steam y lanza el juego; *Otro* vuelve a girar sin ese juego; *No me lo muestres más* lo saca de la ruleta (se recupera desde Biblioteca → Ocultos).
+- **Filtros**: sin estrenar (0 horas), poco jugados (menos de 2 horas), abandonados (jugados, pero no en los últimos 6 meses), favoritos, *Jugando*, *Casi al 100%* (te falta poco para todos los logros), género, duración según HowLongToBeat (cortos, medianos, largos) y modo de juego (un jugador, cooperativo, multijugador, pantalla compartida). Los terminados y los juegos para adultos quedan fuera por defecto.
+- **Para jugar juntos**: con la familia sumada, *En común con la familia* deja solo los juegos que tienen los dos; combinado con *Cooperativos*, la ruleta elige qué jugar en pareja o con amigos.
+- **Ruleta inteligente** (opcional): todos pueden salir, pero salen más seguido los sin estrenar, los cortos, los bien reseñados, tus favoritos y los que estás jugando.
+- **Barra espaciadora** para girar y **sonido** opcional del rodillo.
+- **Después de girar**: *Jugar ahora* abre Steam y lanza el juego; *Otro* vuelve a girar sin ese juego; *No me lo muestres más* lo saca de la ruleta (se recupera desde Biblioteca → Ocultos); y se puede marcar como *Jugando*, *Terminado* o *Abandonado*.
 - **Historial**: los últimos juegos que salieron, para volver a cualquiera con un clic.
 - **Antes del primer giro**: juegos sin estrenar para elegir a mano y tus más jugados.
 
@@ -20,11 +23,15 @@ Duración estimada (HowLongToBeat), puntaje de la comunidad, **lo bueno y lo mal
 
 ### Biblioteca
 - Búsqueda instantánea, los mismos filtros que la ruleta y orden por nombre, horas jugadas, última partida, duración, precio o fecha de salida.
-- Los datos de la tienda (género, sinopsis en español, duración, reseñas) se completan **solos en segundo plano**, de a poco para no saturar a Steam. Se puede pausar.
+- Los datos se completan **solos en segundo plano**, en dos pasadas: primero los de la tienda (géneros, modos de juego, sinopsis en español, portada, precio), de a 50 juegos por pedido, que tarda segundos; después la duración (HowLongToBeat) y tu progreso de logros, de a un juego. Se puede pausar.
+- **Progreso**: cuántos juegos estás jugando, terminaste y abandonaste, y cuántos terminaste y empezaste en el año.
 - **Familia**: combina tu biblioteca con la de hasta 5 familiares e indica de quién es cada juego. Un perfil privado o un ID mal escrito se omite sin romper la tuya.
 
 ### Foro
-Buscador de cualquier juego de Steam, reseñas con puntaje del 1 al 10 y discusiones con respuestas. Cualquiera con sesión puede **denunciar** un mensaje; los **moderadores** (`ADMIN_STEAM_IDS`) ven las denuncias y pueden borrar cualquier mensaje.
+Buscador de cualquier juego de Steam, reseñas con puntaje del 1 al 10 y discusiones con respuestas, con formato básico (`**negrita**`, `||spoiler||` y links). Los mensajes propios se pueden **editar**. Cualquiera con sesión puede **denunciar** un mensaje; los **moderadores** (`ADMIN_STEAM_IDS`) ven las denuncias y pueden borrar cualquier mensaje.
+
+### Instalable
+En el celular se puede agregar a la pantalla de inicio y se abre como una app (PWA).
 
 ### Cuenta
 **Inicio de sesión con Steam** (OpenID): no se piden ni se guardan contraseñas. La sesión queda en una cookie firmada por el backend.
@@ -51,7 +58,9 @@ Buscador de cualquier juego de Steam, reseñas con puntaje del 1 al 10 y discusi
 
 En desarrollo, Vite reenvía todas las rutas `/api` al backend, así frontend y API comparten el mismo origen y el login con Steam vuelve al mismo puerto. En Docker el backend sirve también el frontend compilado: una sola URL para todo.
 
-Los pedidos a servicios externos pasan por un control de ritmo común (`services/throttle.py`): si Steam o HowLongToBeat avisan que nos pasamos, ese servicio se pausa unos minutos en lugar de seguir insistiendo.
+Los pedidos a servicios externos pasan por un control de ritmo común (`services/throttle.py`): si Steam o HowLongToBeat avisan que nos pasamos, ese servicio se pausa unos minutos en lugar de seguir insistiendo. Además, los endpoints que consultan a Steam con la API key tienen un límite por visitante (`core/rate_limit.py`), para que nadie pueda gastar la cuota de la clave si la app se publica.
+
+Los datos de la tienda vienen de `IStoreBrowseService/GetItems` (el mismo servicio que usa la tienda), que acepta 50 juegos por pedido y no necesita API key.
 
 ## Puesta en marcha (desarrollo)
 
@@ -82,6 +91,7 @@ Completá `backend/.env`:
 | `CORS_ORIGINS` | Orígenes permitidos, separados por coma. |
 | `ADMIN_STEAM_IDS` | SteamID64 de los moderadores del foro, separados por coma. |
 | `ENVIRONMENT` | `development` o `production` (en producción `SESSION_SECRET` es obligatoria). |
+| `BACKUP_DIR` | Carpeta para una copia diaria de la base (vacío = sin copias). `BACKUP_KEEP` dice cuántas conservar (7). |
 
 Levantá la API:
 
@@ -112,7 +122,7 @@ Con las dependencias ya instaladas, `iniciar.bat` levanta el backend y el fronte
 docker compose up --build
 ```
 
-Abrí <http://localhost:8000>. La imagen compila el frontend y lo sirve desde el backend; la base queda en el volumen `data`. Usa las variables de `backend/.env` (necesita al menos `STEAM_API_KEY` y un `SESSION_SECRET` de 32 caracteres o más). Si la publicás en otro dominio, poné su URL en `FRONTEND_URL`.
+Abrí <http://localhost:8000>. La imagen compila el frontend y lo sirve desde el backend; la base queda en el volumen `data`, con una copia de seguridad por día en `data/backups`. Usa las variables de `backend/.env` (necesita al menos `STEAM_API_KEY` y un `SESSION_SECRET` de 32 caracteres o más). Si la publicás en otro dominio, poné su URL en `FRONTEND_URL`.
 
 ## Tests
 
@@ -129,6 +139,8 @@ El CI (GitHub Actions) corre los dos, verifica que las migraciones coincidan con
 - **HowLongToBeat** no tiene una API oficial: se busca por nombre y, si el sitio cambia, la duración puede faltar.
 - **Reseñas**: Steam limita los pedidos de reseñas; si se pasa, se reintenta más tarde y mientras tanto la ficha sale sin "lo bueno y lo malo".
 - **Contenido +18**: se detecta con los descriptores de contenido de la tienda. Hasta que un juego tiene esos datos, se usa una aproximación por el nombre.
+- **Logros**: el filtro *Casi al 100%* necesita que tus logros sean públicos en Steam; si son privados, esos juegos cuentan como "sin logros".
+- **Límite por visitante y rate limits**: viven en memoria, así que valen para un solo proceso del backend.
 
 ## Endpoints principales
 
@@ -139,7 +151,10 @@ El CI (GitHub Actions) corre los dos, verifica que las migraciones coincidan con
 | `GET` | `/api/games/random` | Juego aleatorio según los filtros |
 | `GET` | `/api/games/genres` | Géneros disponibles en la biblioteca |
 | `GET` | `/api/games/library/classification-status` | Cuántos juegos tienen datos de la tienda |
-| `POST` | `/api/games/library/classify` | Completa los datos de un lote de juegos pendientes |
+| `POST` | `/api/games/library/classify` | Completa los datos de la tienda de un lote de juegos (de a 50 por pedido) |
+| `POST` | `/api/games/library/enrich` | Completa duración (HLTB) y progreso de logros de un lote chico |
+| `PUT` | `/api/games/state` | Marca un juego como jugando, terminado o abandonado (requiere sesión) |
+| `GET` | `/api/games/states/summary` | Cuántos juegos hay en cada estado y cuántos se terminaron en el año |
 | `GET` | `/api/games/achievements` | Progreso de logros de un juego |
 | `POST` / `DELETE` | `/api/games/favorites` | Agrega o quita un favorito (requiere sesión) |
 | `POST` / `DELETE` | `/api/games/hidden` | Oculta un juego de la ruleta o lo vuelve a mostrar (requiere sesión) |
@@ -153,9 +168,9 @@ El CI (GitHub Actions) corre los dos, verifica que las migraciones coincidan con
 | `GET` / `PUT` / `DELETE` | `/api/forum/games/{appid}/reviews` | Reseñas del juego; publicar o borrar la propia |
 | `DELETE` | `/api/forum/reviews/{id}` | Borrar una reseña (la propia o, moderadores, cualquiera) |
 | `GET` / `POST` | `/api/forum/games/{appid}/threads` | Discusiones del juego; abrir una nueva |
-| `GET` / `DELETE` | `/api/forum/threads/{id}` | Una discusión con sus respuestas; borrarla |
+| `GET` / `PUT` / `DELETE` | `/api/forum/threads/{id}` | Una discusión con sus respuestas; editarla o borrarla |
 | `POST` | `/api/forum/threads/{id}/posts` | Responder en una discusión |
-| `DELETE` | `/api/forum/posts/{id}` | Borrar una respuesta |
+| `PUT` / `DELETE` | `/api/forum/posts/{id}` | Editar o borrar una respuesta |
 | `POST` | `/api/forum/reports` | Denunciar un mensaje |
 | `GET` | `/api/forum/reports` | Denuncias pendientes (moderadores) |
 | `DELETE` | `/api/forum/reports/{kind}/{id}` | Descartar las denuncias de un mensaje (moderadores) |

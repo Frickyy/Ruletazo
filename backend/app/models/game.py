@@ -47,6 +47,8 @@ class CachedGameDetails(Base):
     release_date: Mapped[str] = mapped_column(String(32), default="")
     # Portada según la tienda (los juegos recientes no la tienen en la dirección fija). Vacío si no se sabe.
     header_image: Mapped[str] = mapped_column(String(512), default="")
+    # Categorías de jugadores de la tienda (un jugador, cooperativo, multijugador…). Ver store_browse.player_modes.
+    player_categories: Mapped[list[int]] = mapped_column(JSON, default=list)
     # La tienda lo marca como contenido sexual para adultos (descriptores 3 o 4).
     is_adult: Mapped[bool] = mapped_column(Boolean, default=False)
     store_metadata_version: Mapped[int] = mapped_column(Integer, default=3)
@@ -85,3 +87,28 @@ class HiddenGame(Base):
     steam_id: Mapped[str] = mapped_column(String(32), primary_key=True)
     appid: Mapped[int] = mapped_column(Integer, primary_key=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+class GameState(Base):
+    """En qué está el usuario con un juego: jugando, terminado o abandonado."""
+
+    __tablename__ = "game_states"
+
+    steam_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    appid: Mapped[int] = mapped_column(Integer, primary_key=True)
+    # "playing", "finished" o "abandoned"
+    state: Mapped[str] = mapped_column(String(16))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+class UserGameProgress(Base):
+    """Logros desbloqueados por el usuario en un juego (para el filtro "Casi al 100%")."""
+
+    __tablename__ = "user_game_progress"
+
+    steam_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    appid: Mapped[int] = mapped_column(Integer, primary_key=True)
+    unlocked: Mapped[int] = mapped_column(Integer, default=0)
+    # 0 si el juego no tiene logros.
+    total: Mapped[int] = mapped_column(Integer, default=0)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)

@@ -72,50 +72,129 @@
   color: var(--accent);
 }
 
-.roulette__controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.75rem 1rem;
+/* ---------- Controles: grilla de 4 columnas ----------
+   Fila 1: girar + sonido | horas jugadas (2 columnas) | género
+   Fila 2: colección (2 columnas) | modo | duración
+   Fila 3: opciones on/off, todas del mismo ancho
+   Sin sesión (demo) solo está la fila 1, con las horas ocupando las 3 columnas. */
+.roulette__panel {
+  --control-height: 46px;
+
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
 }
 
-.roulette__filters {
+.roulette__panel .segmented,
+.roulette__panel .select,
+.roulette__panel .button {
+  width: 100%;
+  min-height: var(--control-height);
+}
+
+.roulette__panel .segmented {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.75rem 1rem;
-  margin-top: -0.5rem;
+}
+
+.roulette__panel .segmented button {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0 0.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.roulette__wide {
+  grid-column: 2 / span 2;
+}
+
+.roulette__panel--demo .roulette__wide {
+  grid-column: 2 / -1;
+}
+
+.roulette__genre {
+  grid-row: 1;
+  grid-column: 4;
+}
+
+.roulette__collection {
+  grid-column: 1 / span 2;
+}
+
+.roulette__spin-group {
+  display: flex;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.roulette__spin {
+  flex: 1;
+  min-width: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.roulette__panel .roulette__sound {
+  flex: 0 0 var(--control-height);
+  width: var(--control-height);
+  padding: 0;
+}
+
+.roulette__sound svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.roulette__sound[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .roulette__toggles {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem 1.25rem;
-  margin-left: auto;
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+  gap: 0.5rem;
 }
 
-.roulette__classifying {
+.toggle {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  margin: 0;
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: 40px;
+  padding: 0 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
   color: var(--muted);
   font-size: 0.8125rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 140ms ease, background-color 140ms ease, color 140ms ease;
 }
 
-.roulette__classifying-dot {
-  width: 8px;
-  height: 8px;
+.toggle input {
+  width: 16px;
+  height: 16px;
   flex: 0 0 auto;
-  border-radius: 50%;
-  background: var(--accent);
-  animation: roulette-pulse 1.4s ease-in-out infinite;
+  margin: 0;
+  accent-color: var(--accent);
 }
 
-@keyframes roulette-pulse {
-  50% {
-    opacity: 0.25;
-  }
+.toggle:hover {
+  border-color: var(--line-strong);
+  color: var(--text);
+}
+
+.toggle--on {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--text);
 }
 
 .roulette__notice {
@@ -156,24 +235,68 @@
     font-size: 1.25rem;
   }
 
-  .roulette__controls > .button--primary {
-    width: 100%;
+  .roulette__panel {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* En dos columnas: girar, horas y colección a lo ancho; modo y duración comparten fila;
+     el género va solo, a lo ancho, para no dejar un hueco. */
+  .roulette__spin-group,
+  .roulette__wide,
+  .roulette__panel--demo .roulette__wide,
+  .roulette__collection,
+  .roulette__genre {
+    grid-row: auto;
+    grid-column: 1 / -1;
+  }
+}
+
+/* En el celular, las opciones de 4 botones van de a 2 por fila para que el texto entre. */
+@media (max-width: 480px) {
+  .roulette__panel .segmented {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .roulette__panel .segmented button {
+    min-height: calc(var(--control-height) - 4px);
+  }
+
+  .roulette__panel .segmented button:nth-child(odd) {
+    border-left: 0;
+  }
+
+  .roulette__panel .segmented button:nth-child(n + 3) {
+    border-top: 1px solid var(--line-strong);
+  }
+
+  /* Si quedan 3 (demo), el último ocupa la fila entera. */
+  .roulette__panel .segmented button:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
   }
 
   .roulette__toggles {
-    margin-left: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .roulette__filters .select {
-    flex: 1 1 10rem;
+  .roulette__toggles .toggle:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
   }
+}
 
-  .roulette__controls .segmented {
-    flex: 1 1 auto;
-  }
+.roulette__kbd {
+  margin-left: 0.25rem;
+  padding: 0.05rem 0.4rem;
+  border: 1px solid color-mix(in srgb, var(--accent-ink) 30%, transparent);
+  border-radius: 4px;
+  font-family: var(--font-body);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  opacity: 0.7;
+}
 
-  .roulette__controls .segmented button {
-    flex: 1;
-    padding: 0 0.6rem;
+@media (hover: none) {
+  .roulette__kbd {
+    display: none;
   }
 }

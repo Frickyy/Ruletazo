@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse, Response
 
 from app.core.config import get_settings
+from app.core.rate_limit import steam_reads
 from app.core.security import (
     SESSION_COOKIE,
     SESSION_MAX_AGE_SECONDS,
@@ -18,7 +19,7 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 STEAM_OPENID_URL = "https://steamcommunity.com/openid/login"
 
 
-@router.get("/profile")
+@router.get("/profile", dependencies=[Depends(steam_reads)])
 async def steam_profile(steamid: str) -> dict:
     """Comprueba el perfil autenticado y devuelve su nombre y avatar público."""
     try:

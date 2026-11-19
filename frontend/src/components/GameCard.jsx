@@ -1,3 +1,5 @@
+import { STATE_LABELS } from "../services/libraryFilters.js";
+
 /**
  * Componente presentacional: recibe el juego elegido y lo muestra.
  * No sabe de dónde vienen los datos (eso es de `RoulettePage` y `gameService`).
@@ -5,10 +7,16 @@
  * `isDemo`: juego de la biblioteca de ejemplo (sin sesión); no se muestran horas jugadas.
  * `onSpinAgain` ("Otro") y `onHide` ("No me lo muestres más") son opcionales.
  */
-function GameCard({ game, isStale = false, isDemo = false, onToggleFavorite, onSpinAgain, onHide, onOpenForum, achievementProgress, isLoadingAchievements, achievementError }) {
+function GameCard({ game, isStale = false, isDemo = false, onToggleFavorite, onSpinAgain, onHide, onSetState, onOpenForum, achievementProgress, isLoadingAchievements, achievementError }) {
   const playtimeHours = Math.round(game.playtime_forever_minutes / 60);
   // Solo se puede lanzar si es tuyo (un juego de un familiar se juega desde su cuenta compartida).
   const canPlay = !isDemo && game.source !== "friend";
+  const modes = [
+    game.single_player && "Un jugador",
+    game.coop && "Cooperativo",
+    game.multiplayer && !game.coop && "Multijugador",
+    game.local_multiplayer && "Pantalla compartida",
+  ].filter(Boolean);
   const releaseYear = game.release_date ? game.release_date.slice(0, 4) : "";
   const meta = [game.developer, game.genres.join(", "), releaseYear].filter(Boolean).join(" · ");
   const showAchievements = isLoadingAchievements || achievementError || achievementProgress?.total > 0;
@@ -44,6 +52,15 @@ function GameCard({ game, isStale = false, isDemo = false, onToggleFavorite, onS
           </p>
           <h2 id="game-card-title">{game.name}</h2>
           {meta && <p className="game-card__meta">{meta}</p>}
+          {modes.length > 0 && (
+            <ul className="game-card__modes" aria-label="Modos de juego">
+              {modes.map((mode) => (
+                <li key={mode} className="tag">
+                  {mode}
+                </li>
+              ))}
+            </ul>
+          )}
           <p className="game-card__description">
             {game.short_description || "Steam no tiene una sinopsis para este juego."}
           </p>
@@ -68,6 +85,21 @@ function GameCard({ game, isStale = false, isDemo = false, onToggleFavorite, onS
               Ver en Steam ↗
             </a>
           </div>
+          {onSetState && game.source !== "friend" && (
+            <div className="segmented game-card__state" role="group" aria-label="Estado del juego">
+              {Object.entries(STATE_LABELS).map(([state, label]) => (
+                <button
+                  key={state}
+                  type="button"
+                  aria-pressed={game.state === state}
+                  // Tocar el estado activo lo quita.
+                  onClick={() => onSetState(game, game.state === state ? null : state)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
           {onHide && (
             <button type="button" className="text-button game-card__hide" onClick={() => onHide(game)}>
               No me lo muestres más

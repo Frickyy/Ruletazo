@@ -49,6 +49,16 @@ export async function replyToForumThread(threadId, body) {
   return data;
 }
 
+export async function editForumThread(threadId, { title, body }) {
+  const { data } = await api.put(`/forum/threads/${threadId}`, { title, body });
+  return data;
+}
+
+export async function editForumPost(postId, body) {
+  const { data } = await api.put(`/forum/posts/${postId}`, { body });
+  return data;
+}
+
 export async function deleteForumThread(threadId) {
   await api.delete(`/forum/threads/${threadId}`);
 }

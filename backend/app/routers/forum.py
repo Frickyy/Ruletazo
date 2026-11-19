@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from app.core.rate_limit import steam_reads
 from app.core.security import current_steam_id, is_moderator, require_steam_id
 from app.db.session import get_db
 from app.services import forum_service
@@ -71,7 +72,7 @@ class ReportIn(BaseModel):
     reason: str = Field(default="", max_length=forum_service.REPORT_REASON_MAX_LENGTH)
 
 
-@router.get("/search")
+@router.get("/search", dependencies=[Depends(steam_reads)])
 async def search_games(q: str = Query(..., min_length=2, max_length=80)) -> list[dict]:
     """Busca juegos en la tienda de Steam por nombre."""
     async with SteamStoreClient() as client:
@@ -147,6 +148,18 @@ def get_thread(
     thread_id: int, db: Session = Depends(get_db), viewer: str | None = Depends(current_steam_id)
 ) -> dict:
     return _unwrap(lambda: forum_service.get_thread(db, thread_id, viewer))
+
+
+@router.put("/threads/{thread_id}")
+def edit_thread(
+    thread_id: int, thread: ThreadIn, db: Session = Depends(get_db), steam_id: str = Depends(require_steam_id)
+) -> dict:
+    return _unwrap(lambda: forum_service.edit_thread(db, thread_id, steam_id, thread.title, thread.body))
+
+
+@router.put("/posts/{post_id}")
+def edit_post(post_id: int, post: PostIn, db: Session = Depends(get_db), steam_id: str = Depends(require_steam_id)) -> dict:
+    return _unwrap(lambda: forum_service.edit_post(db, post_id, steam_id, post.body))
 
 
 @router.delete("/threads/{thread_id}", status_code=204)

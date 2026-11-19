@@ -2,9 +2,11 @@ import random
 from typing import Awaitable, TypeVar
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.core.rate_limit import background, steam_reads
 from app.core.security import require_steam_id
 from app.db.session import get_db
 from app.schemas.game import Game
@@ -66,7 +68,7 @@ _MOCK_LIBRARY: list[Game] = [
 ]
 
 
-@router.get("/random", response_model=Game)
+@router.get("/random", response_model=Game, dependencies=[Depends(steam_reads)])
 async def get_random_game(
     steamid: str | None = Query(
         default=None,
@@ -101,7 +103,7 @@ async def get_random_game(
     return game
 
 
-@router.get("/details", response_model=Game)
+@router.get("/details", response_model=Game, dependencies=[Depends(steam_reads)])
 async def get_game_details(
     appid: int = Query(..., description="appid del juego que frenó en el rodillo."),
     steamid: str | None = Query(default=None, description="SteamID64 o vanity URL. Sin él se usa la biblioteca de ejemplo."),
@@ -129,7 +131,7 @@ async def get_game_details(
     return game
 
 
-@router.get("/library", response_model=list[Game])
+@router.get("/library", response_model=list[Game], dependencies=[Depends(steam_reads)])
 async def get_library(
     steamid: str = Query(..., description="SteamID64 o vanity URL."),
     friend_steamid: str | None = Query(default=None, description="SteamID64/vanity de un familiar para combinar."),
@@ -149,7 +151,7 @@ async def get_library(
     )
 
 
-@router.get("/genres", response_model=list[str])
+@router.get("/genres", response_model=list[str], dependencies=[Depends(steam_reads)])
 async def get_genres(
     steamid: str = Query(..., description="SteamID64 o vanity URL."),
     friend_steamid: str | None = Query(default=None, description="SteamID64/vanity de un familiar para combinar."),
@@ -171,7 +173,7 @@ async def get_classification_status(
     return await _unwrap_steam_errors(library_service.get_classification_status(db, steamid))
 
 
-@router.get("/achievements")
+@router.get("/achievements", dependencies=[Depends(steam_reads)])
 async def get_player_achievements(steamid: str = Query(...), appid: int = Query(...)) -> dict:
     """Devuelve el progreso de logros del usuario para el juego elegido."""
     resolved_id = await _unwrap_steam_errors(library_service.resolve_steam_id(steamid))
@@ -179,14 +181,44 @@ async def get_player_achievements(steamid: str = Query(...), appid: int = Query(
         return await _unwrap_steam_errors(client.get_player_achievements(resolved_id, appid))
 
 
-@router.post("/library/classify")
+@router.post("/library/classify", dependencies=[Depends(background)])
 async def classify_library(
     steamid: str = Query(..., description="SteamID64 o vanity URL."),
-    limit: int = Query(default=25, ge=1, le=100, description="Cuántos juegos sin clasificar procesar en esta llamada."),
+    limit: int = Query(default=100, ge=1, le=200, description="Cuántos juegos sin clasificar procesar en esta llamada."),
     db: Session = Depends(get_db),
 ) -> dict:
     """Clasifica hasta `limit` juegos pendientes. Llamar repetidas veces hasta que `remaining` sea 0."""
     return await _unwrap_steam_errors(library_service.classify_library_batch(db, steamid, limit))
+
+
+@router.post("/library/enrich", dependencies=[Depends(background)])
+async def enrich_library(
+    steamid: str = Query(..., description="SteamID64 o vanity URL."),
+    limit: int = Query(default=5, ge=1, le=20, description="Cuántos juegos procesar (duración y logros)."),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Segunda pasada de la clasificación: duración (HowLongToBeat) y progreso de logros."""
+    return await _unwrap_steam_errors(library_service.enrich_library_batch(db, steamid, limit))
+
+
+class StateIn(BaseModel):
+    appid: int
+    state: str | None = Field(default=None, pattern="^(playing|finished|abandoned)$")
+
+
+@router.put("/state")
+async def set_game_state(
+    payload: StateIn, db: Session = Depends(get_db), steam_id: str = Depends(require_steam_id)
+) -> dict:
+    """Marca un juego como jugando, terminado o abandonado (null lo borra). Para el usuario de la sesión."""
+    library_service.set_state(db, steam_id, payload.appid, payload.state)
+    return {"appid": payload.appid, "state": payload.state}
+
+
+@router.get("/states/summary")
+async def get_state_summary(db: Session = Depends(get_db), steam_id: str = Depends(require_steam_id)) -> dict:
+    """Cuántos juegos hay en cada estado y cuántos se terminaron o empezaron este año."""
+    return library_service.state_summary(db, steam_id)
 
 
 # Favoritos: se guardan para el usuario de la sesión (cookie firmada), no para el `steamid`
