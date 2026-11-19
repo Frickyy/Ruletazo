@@ -57,6 +57,10 @@ function Privacy({ contact }) {
           <strong>Lo que publicás en el foro:</strong> reseñas, discusiones, respuestas y denuncias, junto con tu nombre y avatar de
           Steam en el momento de publicar.
         </li>
+        <li>
+          <strong>Los comentarios que mandás con “Mandar comentario”:</strong> el texto, la sección de la página donde estabas y, si tenés
+          la sesión iniciada, tu nombre y tu SteamID. Llegan por mail a quien mantiene la página y no se publican.
+        </li>
       </ul>
 
       <h2>Qué es público</h2>
@@ -169,6 +173,10 @@ function PrivacyEn({ contact }) {
         <li>
           <strong>What you post in the forum:</strong> reviews, discussions, replies and reports, together with your Steam name and avatar
           at the time of posting.
+        </li>
+        <li>
+          <strong>The feedback you send with “Send feedback”:</strong> the text, the section of the site you were on and, if you&apos;re
+          signed in, your Steam name and SteamID. It reaches whoever runs the site by email and is never published.
         </li>
       </ul>
 

@@ -570,6 +570,28 @@ const en = {
   "Steam Web API respondió 429.": "The Steam Web API answered 429 (too many requests).",
   "Steam API Key inválida (revisá STEAM_API_KEY en tu backend/.env).": "Invalid Steam API key (check STEAM_API_KEY in backend/.env).",
   "Falta STEAM_API_KEY: configurala en backend/.env (ver .env.example).": "STEAM_API_KEY is missing: set it in backend/.env (see .env.example).",
+  // ---------- Feedback ----------
+  "¿Ideas o algo que no anda?": "Ideas or something not working?",
+  "Contanos, leemos todo.": "Tell us, we read everything.",
+  "Mandar comentario": "Send feedback",
+  "Mandanos tu comentario": "Send us your feedback",
+  "Cerrar": "Close",
+  "Idea": "Idea",
+  "Algo no anda": "Something's broken",
+  "Otra cosa": "Something else",
+  "Tipo de comentario": "Feedback type",
+  "Ideas, cosas que no andan, juegos mal clasificados o lo que quieras contarnos.":
+    "Ideas, things that don't work, misclassified games or anything you want to tell us.",
+  "Tu comentario": "Your feedback",
+  "¿Qué pasó y en qué parte de la página?": "What happened, and where on the site?",
+  "Contanos…": "Tell us…",
+  "Escribí un poco más (al menos 5 caracteres).": "Write a bit more (at least 5 characters).",
+  "No se pudo enviar. Probá de nuevo en un rato.": "Couldn't send it. Try again in a while.",
+  "¡Gracias! Lo recibimos.": "Thanks! We got it.",
+  "Listo": "Done",
+  "Leemos todo lo que llega.": "We read everything that comes in.",
+  "Se envía como": "Sending as",
+  "Se envía como anónimo. Iniciá sesión con Steam para que sepamos quién sos.": "Sending anonymously. Sign in through Steam so we know who you are.",
 };
 
 export default en;

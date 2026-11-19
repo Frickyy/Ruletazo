@@ -411,7 +411,7 @@ function App() {
         </Suspense>
       </main>
 
-      <SiteFooter config={config} onNavigate={(view) => setActiveView(view)} />
+      <SiteFooter config={config} onNavigate={(view) => setActiveView(view)} user={profile} />
     </div>
   );
 }
