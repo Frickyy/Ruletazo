@@ -1,6 +1,6 @@
 """Formulario de feedback: guarda el comentario y lo manda por mail a FEEDBACK_EMAIL.
 
-El mail sale por SMTP (por defecto Gmail con una contraseña de aplicación, ver README). Si el
+El mail sale por SMTP (por defecto Gmail con una contraseña de aplicación, ver DESARROLLO.md). Si el
 SMTP no está configurado o falla, el comentario igual queda guardado en la tabla `feedback`
 con `emailed = False`, así no se pierde ninguno.
 

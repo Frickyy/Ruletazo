@@ -1,7 +1,7 @@
 # Imagen única: compila el frontend y lo sirve el backend (una sola URL para la página,
 # la API y la vuelta del login de Steam).
 #   docker compose up --build
-# Ver la sección "Docker" del README.
+# Ver la sección "Docker" de DESARROLLO.md.
 
 FROM node:20-alpine AS frontend
 WORKDIR /frontend
