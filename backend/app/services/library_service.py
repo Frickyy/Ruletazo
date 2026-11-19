@@ -11,6 +11,7 @@ from app.models.game import CachedGameDetails, CachedLibraryEntry, GameState, Us
 from app.schemas.game import Game
 from app.services import (
     favorites_service,
+    duration_service,
     game_details_service,
     hidden_service,
     hltb_client,
@@ -60,6 +61,15 @@ async def get_library(db: Session, identifier: str) -> list[Game]:
     return [_to_schema(entry) for entry in cached_entries]
 
 
+# Quien llama desde código interno (tests, servicios) ve todo. Los endpoints pasan el SteamID
+# de la sesión: los favoritos, ocultos, estados y progreso solo se muestran a su dueño.
+ANY_VIEWER = object()
+
+
+def _is_owner(steam_id: str, viewer_steam_id) -> bool:
+    return viewer_steam_id is ANY_VIEWER or viewer_steam_id == steam_id
+
+
 async def get_filtered_library(
     db: Session,
     identifier: str,
@@ -70,6 +80,7 @@ async def get_filtered_library(
     sort_by: str = "name",
     sort_direction: str = "asc",
     playtime_filter: str = "all",
+    viewer_steam_id=ANY_VIEWER,
 ) -> list[Game]:
     """Biblioteca (combinada con la de un familiar si se pasa `friend_identifier`) + favoritos
     y detalles ya cacheados, con el filtro de colección/género aplicado."""
@@ -81,7 +92,8 @@ async def get_filtered_library(
         games = _merge_union(games, friend_games)
 
     steam_id = await resolve_steam_id(identifier)
-    _attach_favorites_and_details(db, games, steam_id)
+    personal = _is_owner(steam_id, viewer_steam_id)
+    _attach_favorites_and_details(db, games, steam_id, personal=personal)
 
     if collection == "favorites":
         games = [game for game in games if game.is_favorite]
@@ -97,7 +109,7 @@ async def get_filtered_library(
 
     if sort_by in {"price", "release_date"}:
         await _ensure_store_metadata(db, games)
-        _attach_favorites_and_details(db, games, steam_id)
+        _attach_favorites_and_details(db, games, steam_id, personal=personal)
 
     reverse = sort_direction == "desc"
     if sort_by == "price":
@@ -126,10 +138,12 @@ async def get_random_from_library(
     sort_by: str = "name",
     sort_direction: str = "asc",
     playtime_filter: str = "all",
+    viewer_steam_id=ANY_VIEWER,
 ) -> Game | None:
     """Elige un juego al azar del pool filtrado y lo enriquece (Store/HLTB/logros) al toque."""
     games = await get_filtered_library(
-        db, identifier, friend_identifier, collection, genre, search, sort_by, sort_direction, playtime_filter
+        db, identifier, friend_identifier, collection, genre, search, sort_by, sort_direction, playtime_filter,
+        viewer_steam_id=viewer_steam_id,
     )
     if not games:
         return None
@@ -175,7 +189,7 @@ def _is_classified(details: CachedGameDetails | None) -> bool:
 
 
 async def get_game_details(
-    db: Session, identifier: str, friend_identifier: str | None, appid: int
+    db: Session, identifier: str, friend_identifier: str | None, appid: int, viewer_steam_id=ANY_VIEWER
 ) -> Game | None:
     """Ficha completa de un juego de la biblioteca (propia o familiar), enriquecida al toque.
 
@@ -200,12 +214,14 @@ async def get_game_details(
         return None
 
     steam_id = await resolve_steam_id(identifier)
-    chosen.is_favorite = appid in favorites_service.get_favorite_appids(db, steam_id)
-    chosen.is_hidden = appid in hidden_service.get_hidden_appids(db, steam_id)
-    chosen.state = get_states(db, steam_id).get(appid)
-    _apply_progress(chosen, _get_progress_map(db, steam_id).get(appid))
+    if _is_owner(steam_id, viewer_steam_id):
+        chosen.is_favorite = appid in favorites_service.get_favorite_appids(db, steam_id)
+        chosen.is_hidden = appid in hidden_service.get_hidden_appids(db, steam_id)
+        chosen.state = get_states(db, steam_id).get(appid)
+        _apply_progress(chosen, _get_progress_map(db, steam_id).get(appid))
     details = await game_details_service.get_or_fetch_details(db, chosen.appid, chosen.name)
     apply_cached_details(chosen, details)
+    apply_durations(db, [chosen])
     return chosen
 
 
@@ -346,11 +362,12 @@ def attach_user_data(db: Session, games: list[Game], steam_id: str) -> None:
     _attach_favorites_and_details(db, games, steam_id)
 
 
-def _attach_favorites_and_details(db: Session, games: list[Game], steam_id: str) -> None:
-    favorite_appids = favorites_service.get_favorite_appids(db, steam_id)
-    hidden_appids = hidden_service.get_hidden_appids(db, steam_id)
-    states = get_states(db, steam_id)
-    progress_map = _get_progress_map(db, steam_id)
+def _attach_favorites_and_details(db: Session, games: list[Game], steam_id: str, personal: bool = True) -> None:
+    """`personal=False`: solo datos públicos del juego (tienda, duración), nada del usuario."""
+    favorite_appids = favorites_service.get_favorite_appids(db, steam_id) if personal else set()
+    hidden_appids = hidden_service.get_hidden_appids(db, steam_id) if personal else set()
+    states = get_states(db, steam_id) if personal else {}
+    progress_map = _get_progress_map(db, steam_id) if personal else {}
     details_map = _get_cached_details_map(db, [game.appid for game in games])
 
     for game in games:
@@ -361,6 +378,16 @@ def _attach_favorites_and_details(db: Session, games: list[Game], steam_id: str)
         details = details_map.get(game.appid)
         if details is not None:
             apply_cached_details(game, details)
+    apply_durations(db, games)
+
+
+def apply_durations(db: Session, games: list[Game]) -> None:
+    found = duration_service.durations(db, [game.appid for game in games])
+    for game in games:
+        duration = found.get(game.appid)
+        game.duration_hours = duration["hours"] if duration else None
+        game.duration_source = duration["source"] if duration else None
+        game.duration_samples = duration["samples"] if duration else 0
 
 
 async def _ensure_store_metadata(db: Session, games: list[Game]) -> None:
@@ -392,8 +419,10 @@ def apply_cached_details(game: Game, details: CachedGameDetails) -> None:
     game.review_total = details.review_total
     game.review_good = game_details_service.split_excerpts(details.review_pros)
     game.review_bad = game_details_service.split_excerpts(details.review_cons)
-    game.hltb_main_hours = details.hltb_main_hours
-    game.hltb_completionist_hours = details.hltb_completionist_hours
+    # Con HowLongToBeat apagado no se muestran ni los datos que hayan quedado guardados.
+    hltb_on = get_settings().hltb_enabled
+    game.hltb_main_hours = details.hltb_main_hours if hltb_on else None
+    game.hltb_completionist_hours = details.hltb_completionist_hours if hltb_on else None
     game.achievement_difficulty = game_details_service.difficulty_label(details)
     game.is_adult = bool(details.is_adult) or looks_adult_by_name(game.name)
     if details.header_image:
@@ -481,6 +510,11 @@ def set_state(db: Session, steam_id: str, appid: int, state: str | None) -> None
     else:
         current.state = state
         current.updated_at = datetime.now(timezone.utc)
+    # Terminado: sus horas de Steam cuentan para la duración que ve la comunidad.
+    if state == "finished":
+        duration_service.record_finish(db, steam_id, appid)
+    else:
+        duration_service.forget_finish(db, steam_id, appid)
     db.commit()
 
 

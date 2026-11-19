@@ -1,4 +1,5 @@
 import api from "./api.js";
+import { t } from "../i18n/index.js";
 
 export async function searchForumGames(query) {
   const { data } = await api.get("/forum/search", { params: { q: query } });
@@ -88,10 +89,10 @@ export async function dismissForumReports(kind, targetId) {
 }
 
 /** Mensaje de error legible: el backend manda el motivo en `detail`. */
-export function forumErrorMessage(err, fallback = "Algo salió mal. Probá de nuevo.") {
+export function forumErrorMessage(err, fallback = t("Algo salió mal. Probá de nuevo.")) {
   const detail = err?.response?.data?.detail;
   if (typeof detail === "string") return detail;
-  if (Array.isArray(detail)) return "Revisá los datos: hay campos vacíos o demasiado largos.";
-  if (err?.request && !err.response) return "No se pudo conectar con el backend. ¿Está corriendo?";
+  if (Array.isArray(detail)) return t("Revisá los datos: hay campos vacíos o demasiado largos.");
+  if (err?.request && !err.response) return t("No se pudo conectar con el backend. ¿Está corriendo?");
   return fallback;
 }

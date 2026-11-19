@@ -22,6 +22,12 @@ describe("rutas con hash", () => {
     }
   });
 
+  it("lee y arma salas en grupo", () => {
+    expect(parseRoute("#/sala/abc234")).toEqual({ view: "room", forumTarget: null, roomCode: "ABC234" });
+    expect(parseRoute("#/sala/<x>").roomCode).toBeNull();
+    expect(buildHash("room", null, "ABC234")).toBe("#/sala/ABC234");
+  });
+
   it("lee y arma perfiles y páginas legales", () => {
     expect(parseRoute("#/perfil")).toEqual({ view: "profile", forumTarget: null, profileId: null });
     expect(parseRoute("#/perfil/76561198000000001").profileId).toBe("76561198000000001");

@@ -9,7 +9,7 @@ const game = (overrides) => ({
   genres: [],
   playtime_forever_minutes: 0,
   last_played: null,
-  hltb_main_hours: null,
+  duration_hours: null,
   is_favorite: false,
   is_hidden: false,
   is_adult: false,
@@ -31,12 +31,12 @@ describe("matchesFilters", () => {
   });
 
   it("filtra por duración según HowLongToBeat y deja afuera los que no tienen dato", () => {
-    expect(matchesFilters(game({ hltb_main_hours: 6 }), { duration: "short" })).toBe(true);
-    expect(matchesFilters(game({ hltb_main_hours: 10 }), { duration: "short" })).toBe(false);
-    expect(matchesFilters(game({ hltb_main_hours: 10 }), { duration: "medium" })).toBe(true);
-    expect(matchesFilters(game({ hltb_main_hours: 45 }), { duration: "long" })).toBe(true);
-    expect(matchesFilters(game({ hltb_main_hours: null }), { duration: "short" })).toBe(false);
-    expect(matchesFilters(game({ hltb_main_hours: null }), { duration: "any" })).toBe(true);
+    expect(matchesFilters(game({ duration_hours: 6 }), { duration: "short" })).toBe(true);
+    expect(matchesFilters(game({ duration_hours: 10 }), { duration: "short" })).toBe(false);
+    expect(matchesFilters(game({ duration_hours: 10 }), { duration: "medium" })).toBe(true);
+    expect(matchesFilters(game({ duration_hours: 45 }), { duration: "long" })).toBe(true);
+    expect(matchesFilters(game({ duration_hours: null }), { duration: "short" })).toBe(false);
+    expect(matchesFilters(game({ duration_hours: null }), { duration: "any" })).toBe(true);
   });
 
   it("abandonados: con horas y sin jugar hace más de 6 meses", () => {

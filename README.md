@@ -10,25 +10,34 @@
 
 ### Ruleta
 - **Rodillo en vivo**: las portadas de tu biblioteca giran y el juego que frena en el centro es el que te toca. La página toma el color que predomina en su portada.
-- **Filtros**: sin estrenar (0 horas), poco jugados (menos de 2 horas), abandonados (jugados, pero no en los últimos 6 meses), favoritos, *Jugando*, *Casi al 100%* (te falta poco para todos los logros), género, duración según HowLongToBeat (cortos, medianos, largos) y modo de juego (un jugador, cooperativo, multijugador, pantalla compartida). Los terminados y los juegos para adultos quedan fuera por defecto.
+- **Filtros**: sin estrenar (0 horas), poco jugados (menos de 2 horas), abandonados (jugados, pero no en los últimos 6 meses), favoritos, *Jugando*, *Casi al 100%* (te falta poco para todos los logros), género, duración (cortos, medianos, largos; ver *Duración* más abajo) y modo de juego (un jugador, cooperativo, multijugador, pantalla compartida). Los terminados y los juegos para adultos quedan fuera por defecto.
 - **Para jugar juntos**: con la familia sumada, *En común con la familia* deja solo los juegos que tienen los dos; combinado con *Cooperativos*, la ruleta elige qué jugar en pareja o con amigos.
 - **Ruleta inteligente** (opcional): todos pueden salir, pero salen más seguido los sin estrenar, los cortos, los bien reseñados, tus favoritos y los que estás jugando.
 - **Barra espaciadora** para girar y **sonido** opcional del rodillo.
-- **Después de girar**: *Jugar ahora* abre Steam y lanza el juego; *Otro* vuelve a girar sin ese juego; *No me lo muestres más* lo saca de la ruleta (se recupera desde Biblioteca → Ocultos); y se puede marcar como *Jugando*, *Terminado* o *Abandonado*.
+- **Sin cuenta**: pegando el link de un perfil público de Steam se gira con esa biblioteca. Para guardar favoritos y estados hace falta iniciar sesión.
+- **Después de girar**: *Jugar ahora* abre Steam y lanza el juego; *Otro* vuelve a girar y ese juego no sale más por hoy (se puede deshacer); *No me lo muestres más* lo saca de la ruleta (se recupera desde Biblioteca → Ocultos); y se puede marcar como *Jugando*, *Terminado* o *Abandonado*.
 - **Historial**: los últimos juegos que salieron, para volver a cualquiera con un clic.
+
+### Salas en grupo
+- **Ruleta grupal** arma una sala (`#/sala/<código>`) con los juegos que hoy entran en tu ruleta. Tus amigos entran con el link e inician sesión con Steam.
+- Cada uno **veta** los juegos que no quiere. Quien armó la sala gira y el backend elige al azar entre los que nadie vetó: todos ven el mismo rodillo al mismo tiempo.
+- Las salas duran 12 horas y entran hasta 8 personas.
 - **Antes del primer giro**: juegos sin estrenar para elegir a mano y tus más jugados.
 
 ### Ficha de cada juego
-Duración estimada (HowLongToBeat), puntaje de la comunidad, **lo bueno y lo malo** en frases cortas tomadas de las reseñas más útiles de Steam (sin groserías ni dibujos con caracteres), dificultad de logros, tu progreso y precio.
+Duración (según quienes lo terminaron en Ruletazo), puntaje de la comunidad, **lo bueno y lo malo** en frases cortas tomadas de las reseñas más útiles de Steam (sin groserías ni dibujos con caracteres), dificultad de logros, tu progreso y precio.
 
 ### Biblioteca
 - Búsqueda instantánea, los mismos filtros que la ruleta y orden por nombre, horas jugadas, última partida, duración, precio o fecha de salida.
-- Los datos se completan **solos en segundo plano**, en dos pasadas: primero los de la tienda (géneros, modos de juego, sinopsis en español, portada, precio), de a 50 juegos por pedido, que tarda segundos; después la duración (HowLongToBeat) y tu progreso de logros, de a un juego. Se puede pausar.
+- Los datos se completan **solos en segundo plano**, en dos pasadas: primero los de la tienda (géneros, modos de juego, sinopsis en español, portada, precio), de a 50 juegos por pedido, que tarda segundos; después tu progreso de logros (y la duración de HowLongToBeat, solo si está activado), de a un juego. Se puede pausar.
 - **Progreso**: cuántos juegos estás jugando, terminaste y abandonaste, y cuántos terminaste y empezaste en el año.
 - **Familia**: combina tu biblioteca con la de hasta 5 familiares e indica de quién es cada juego. Un perfil privado o un ID mal escrito se omite sin romper la tuya.
 
 ### Foro
 Buscador de cualquier juego de Steam, reseñas con puntaje del 1 al 10 y discusiones con respuestas, con formato básico (`**negrita**`, `||spoiler||` y links). Los mensajes propios se pueden **editar**. Cualquiera con sesión puede **denunciar** un mensaje; los **moderadores** (`ADMIN_STEAM_IDS`) ven las denuncias y pueden borrar cualquier mensaje.
+
+### Español e inglés
+Botón **ES / EN** en la barra de arriba. La primera vez se elige según el idioma del navegador y después se recuerda. Los textos se escriben en español en el código y pasan por `t()` (`frontend/src/i18n/`); `en.js` tiene la traducción y un test avisa si falta alguna. Los mensajes de error del backend se traducen en el frontend.
 
 ### Instalable
 En el celular se puede agregar a la pantalla de inicio y se abre como una app (PWA).
@@ -38,7 +47,10 @@ En el celular se puede agregar a la pantalla de inicio y se abre como una app (P
 - **Privado por defecto**: solo lo ves vos hasta que lo hacés público y compartís el link.
 - En el perfil de otra persona, **"¿Qué tenemos en común?"** compara las bibliotecas (filtrable por cooperativo o multijugador) y permite sumarla a tu familia para girar entre los juegos en común.
 - El seguimiento del progreso de logros (para *Casi al 100%*) se activa desde el perfil.
-- **Borrar mis datos** elimina todo lo que la página guarda de vos.
+- **Pila de pendientes y desafíos del mes** (empezar algo nuevo, terminar uno cortito, terminar 3 juegos), calculados con los estados que marcás.
+- **Compartir mi año**: genera una imagen con tus números y tus últimos terminados (en el celular abre el menú de compartir).
+- Tus favoritos, ocultos, estados y progreso solo los ves vos, aunque alguien conozca tu SteamID.
+- **Borrar mis datos** elimina todo lo que la página guarda de vos y cierra las sesiones abiertas en otros dispositivos.
 
 ### Cuenta
 **Inicio de sesión con Steam** (OpenID, con el botón oficial): no se piden ni se guardan contraseñas. La sesión queda en una cookie firmada por el backend.
@@ -98,8 +110,10 @@ Completá `backend/.env`:
 | `CORS_ORIGINS` | Orígenes permitidos, separados por coma. |
 | `ADMIN_STEAM_IDS` | SteamID64 de los moderadores del foro, separados por coma. |
 | `ENVIRONMENT` | `development` o `production` (en producción `SESSION_SECRET` es obligatoria). |
-| `CONTACT_EMAIL` | Mail de contacto de la política de privacidad y los términos. |
-| `HLTB_ENABLED` | `true` (por defecto) o `false` para dejar de usar HowLongToBeat y ocultar la duración. |
+| `CONTACT_EMAIL` | Mail de contacto de la política de privacidad y los términos (por defecto `ruletazo007@gmail.com`). |
+| `FEEDBACK_EMAIL` | Adónde llegan los comentarios del botón "Mandar comentario" (por defecto `ruletazo007@gmail.com`). |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` | Cuenta que manda esos mails. Con Gmail: `smtp.gmail.com`, `587`, la cuenta y una [contraseña de aplicación](https://myaccount.google.com/apppasswords) (hace falta la verificación en dos pasos). Sin usuario y contraseña, los comentarios solo quedan en la tabla `feedback`. |
+| `HLTB_ENABLED` | `false` (por defecto). Prenderlo solo con permiso por escrito de Ziff Davis (ver *Riesgos antes de monetizar*). |
 | `SUPPORT_LINKS` | Links para apoyar el proyecto en el pie de página: `Cafecito|https://cafecito.app/usuario,Ko-fi|https://ko-fi.com/usuario`. |
 | `SUPPORTER_STEAM_IDS` | SteamID64 de quienes apoyan el proyecto: muestran la insignia "Supporter" en su perfil y el foro. |
 | `AFFILIATE_STORES` | Tiendas con link de afiliado en el foro de cada juego: `Humble|https://www.humblebundle.com/store/search?search={query}&partner=TU_ID`. |
@@ -134,7 +148,7 @@ Con las dependencias ya instaladas, `iniciar.bat` levanta el backend y el fronte
 docker compose up --build
 ```
 
-Abrí <http://localhost:8000>. La imagen compila el frontend y lo sirve desde el backend; la base queda en el volumen `data`, con una copia de seguridad por día en `data/backups`. Usa las variables de `backend/.env` (necesita al menos `STEAM_API_KEY` y un `SESSION_SECRET` de 32 caracteres o más). Si la publicás en otro dominio, poné su URL en `FRONTEND_URL`.
+Abrí <http://localhost:8000>. La imagen compila el frontend y lo sirve desde el backend; la base queda en el volumen `data`, con una copia de seguridad por día en `data/backups`. Usa las variables de `backend/.env` (necesita al menos `STEAM_API_KEY` y un `SESSION_SECRET` de 32 caracteres o más). Si la publicás en otro dominio, poné su URL en `FRONTEND_URL`. Esa misma URL se usa al compilar para la vista previa del link al compartirlo (imagen `frontend/public/og-image.png`, que se regenera desde `frontend/scripts/og-image.html`); sin Docker, compilá con `SITE_URL=https://tu-dominio npm run build`.
 
 ## Tests
 
@@ -155,9 +169,12 @@ Pensada para no tocar la experiencia: **la plata nunca influye en qué juego sal
 
 ### Riesgos antes de monetizar
 - **Steam Web API**: sus términos (de 2010) licencian los datos para el "uso personal" de los usuarios, prohíben dar a entender una relación con Valve y piden una política de privacidad, informar qué datos se guardan y consultar datos de un usuario solo cuando él lo pide. Varios endpoints que usa la app (biblioteca, tienda) no figuran en la documentación oficial. Lo más prudente es **pedir permiso por escrito a Valve** (webapi@valvesoftware.com) antes de monetizar, y no ofrecer planes pagos que den acceso a datos de Steam.
-- **HowLongToBeat**: no tiene API oficial y la app lee su búsqueda interna. Antes de monetizar, pedí permiso o apagalo con `HLTB_ENABLED=false`.
+- **HowLongToBeat**: los términos de uso de Ziff Davis, su dueña, prohíben usar robots o programas para extraer datos del sitio y mostrarlos en otro programa, con o sin fines comerciales. Por eso viene **apagado** (`HLTB_ENABLED=false`) y solo debería prenderse con permiso por escrito.
+
+### Duración
+Cuando alguien marca un juego como *Terminado*, se guardan sus horas en Steam en ese momento. La duración de cada juego es la **mediana** de esas horas y se muestra recién cuando lo terminaron al menos 3 personas (nunca por persona). Las horas de menos de 30 minutos no cuentan. Al principio casi ningún juego tiene duración, así que el filtro por duración aparece recién cuando hay datos.
 - **El nombre**: la app se llama Ruletazo, sin "Steam", para no dar a entender una relación con Valve. Internamente se conservan algunos nombres viejos (la base `steam_roulette.db`, las claves `steamRoulette.*` del navegador) para no perder datos ni preferencias.
-- La política de privacidad y los términos (`#/privacidad`, `#/terminos`) son un **borrador**: revisalos con alguien con conocimiento legal de tu país y completá el país del servidor (`frontend/src/pages/LegalPage.jsx`) y `CONTACT_EMAIL`.
+- La política de privacidad y los términos (`#/privacidad`, `#/terminos`) son un **borrador**: revisalos con alguien con conocimiento legal de tu país y completá el país del servidor (`DATA_LOCATION` en `frontend/src/pages/LegalPage.jsx`).
 
 ## Limitaciones conocidas
 
@@ -165,6 +182,7 @@ Pensada para no tocar la experiencia: **la plata nunca influye en qué juego sal
 - **HowLongToBeat** no tiene una API oficial: se busca por nombre y, si el sitio cambia, la duración puede faltar.
 - **Reseñas**: Steam limita los pedidos de reseñas; si se pasa, se reintenta más tarde y mientras tanto la ficha sale sin "lo bueno y lo malo".
 - **Contenido +18**: se detecta con los descriptores de contenido de la tienda. Hasta que un juego tiene esos datos, se usa una aproximación por el nombre.
+- **Inglés**: las sinopsis de los juegos y las frases de reseñas vienen de Steam en español, así que en inglés esas partes siguen en español.
 - **Logros**: el filtro *Casi al 100%* necesita que tus logros sean públicos en Steam; si son privados, esos juegos cuentan como "sin logros".
 - **Límite por visitante y rate limits**: viven en memoria, así que valen para un solo proceso del backend.
 

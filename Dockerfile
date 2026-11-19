@@ -8,6 +8,9 @@ WORKDIR /frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend/ ./
+# URL pública (ej. https://ruletazo.com) para la vista previa al compartir el link.
+ARG SITE_URL=""
+ENV SITE_URL=${SITE_URL}
 RUN npm run build
 
 FROM python:3.13-slim

@@ -141,7 +141,74 @@
 }
 
 .topbar__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   justify-self: end;
+}
+
+/* ES | EN: píldora del mismo alto que los otros botones de la barra. */
+.lang-switch {
+  display: inline-flex;
+  min-height: 40px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+}
+
+.lang-switch button {
+  min-width: 34px;
+  padding: 0 0.5rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+
+.lang-switch button:hover {
+  color: var(--text);
+}
+
+.lang-switch button[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.lang-switch button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.support-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 40px;
+  padding: 0 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--line));
+  border-radius: 999px;
+  color: var(--accent);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 140ms ease;
+}
+
+.support-button:hover {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.support-button svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
 }
 
 .account-button {
@@ -411,5 +478,41 @@
 @media (max-width: 420px) {
   .account-button__name {
     max-width: 7rem;
+  }
+
+  /* Idioma, apoyar y cuenta tienen que entrar al lado del logo en 360px: queda solo el ícono
+     del logo, la píldora de idioma se achica y el botón de Steam se escala (misma proporción). */
+  .brand__name {
+    display: none;
+  }
+
+  .topbar__meta {
+    gap: 0.375rem;
+  }
+
+  .lang-switch button {
+    min-width: 28px;
+    padding: 0 0.35rem;
+  }
+
+  .steam-login img {
+    width: 154px;
+    height: 30px;
+  }
+
+  /* En pantallas chicas queda solo el corazón, con el mismo alto que el botón de la cuenta. */
+  .support-button {
+    width: 40px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .support-button__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
   }
 }

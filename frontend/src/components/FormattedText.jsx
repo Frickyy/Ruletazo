@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { t } from "../i18n/index.js";
 import "./FormattedText.css";
 
 /**
@@ -8,7 +9,8 @@ import "./FormattedText.css";
  */
 const TOKEN_RE = /(\*\*[^*\n]+?\*\*|\|\|[^|\n]+?\|\||https?:\/\/[^\s<>"]+)/g;
 
-export const FORMAT_HELP = "**negrita** · ||spoiler|| · los links se activan solos";
+/** Ayuda de formato debajo de los campos de texto (es una función para que siga el idioma). */
+export const formatHelp = () => t("**negrita** · ||spoiler|| · los links se activan solos");
 
 function FormattedText({ text, className = "", as: Tag = "p" }) {
   return (
@@ -62,7 +64,7 @@ function Spoiler({ text }) {
       type="button"
       className={`spoiler${revealed ? " spoiler--revealed" : ""}`}
       onClick={() => setRevealed(true)}
-      aria-label={revealed ? undefined : "Spoiler oculto, tocá para verlo"}
+      aria-label={revealed ? undefined : t("Spoiler oculto, tocá para verlo")}
       aria-expanded={revealed}
     >
       <span aria-hidden={!revealed}>{text}</span>

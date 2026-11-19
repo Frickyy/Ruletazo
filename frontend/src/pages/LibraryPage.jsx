@@ -1,3 +1,4 @@
+import SteamLoginButton from "../components/SteamLoginButton.jsx";
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { addFavorite, fetchStateSummary, removeFavorite, unhideGame } from "../services/gameService.js";
 import {
@@ -12,6 +13,7 @@ import {
   sortGames,
 } from "../services/libraryFilters.js";
 import ClassificationBanner from "../components/ClassificationBanner.jsx";
+import { formatNumber, locale, t } from "../i18n/index.js";
 import "./LibraryPage.css";
 
 // Filas que se dibujan de entrada; al llegar al final se suman de a tanto (con 1000+ juegos,
@@ -33,6 +35,8 @@ function LibraryPage({
   onIncludeFamilyChange,
   onManageFamily,
   hltbEnabled = true,
+  guest = null,
+  onLogin,
 }) {
   const { games, status, error: loadError, updateGame, classification, setClassificationPaused } = library;
   const [collection, setCollection] = useState("all");
@@ -51,6 +55,9 @@ function LibraryPage({
   const deferredSearch = useDeferredValue(search);
 
   const genres = useMemo(() => genresOf(games), [games]);
+  // La duración sale de HowLongToBeat (si está activado) o de quienes terminaron el juego en
+  // Ruletazo. Sin ningún dato todavía, el filtro no se muestra para no dejarlo siempre vacío.
+  const durationEnabled = useMemo(() => hltbEnabled || games.some((game) => game.duration_hours != null), [hltbEnabled, games]);
   const hiddenCount = useMemo(() => games.filter((game) => game.is_hidden).length, [games]);
   const filtered = useMemo(() => {
     const filters = { collection, genre, playtimeFilter, duration, hideAdult, mode, state: stateFilter, search: deferredSearch };
@@ -93,7 +100,7 @@ function LibraryPage({
       else await addFavorite(steamId, game.appid);
       updateGame(game.appid, { is_favorite: !game.is_favorite });
     } catch (err) {
-      setActionError(err.response?.data?.detail ?? "No se pudo actualizar favoritos.");
+      setActionError(err.response?.data?.detail ?? t("No se pudo actualizar favoritos."));
     }
   }
 
@@ -103,15 +110,22 @@ function LibraryPage({
       await unhideGame(game.appid);
       updateGame(game.appid, { is_hidden: false });
     } catch (err) {
-      setActionError(err.response?.data?.detail ?? "No se pudo volver a mostrar el juego.");
+      setActionError(err.response?.data?.detail ?? t("No se pudo volver a mostrar el juego."));
     }
   }
 
   if (!steamId) {
     return (
       <section className="library-page">
-        <h1>Biblioteca</h1>
-        <p className="hint">Iniciá sesión con Steam para ver tu biblioteca.</p>
+        <h1>{t("Biblioteca")}</h1>
+        <p className="hint">
+          {guest
+            ? t("En la ruleta estás usando la biblioteca de {name}. Iniciá sesión con Steam para explorarla, marcar favoritos y guardar qué estás jugando.", {
+                name: guest.name || t("un perfil público"),
+              })
+            : t("Iniciá sesión con Steam para ver tu biblioteca.")}
+        </p>
+        {onLogin && <SteamLoginButton onClick={onLogin} />}
       </section>
     );
   }
@@ -121,10 +135,10 @@ function LibraryPage({
   return (
     <section className="library-page" aria-labelledby="library-title">
       <div className="library-page__heading">
-        <h1 id="library-title">Biblioteca</h1>
+        <h1 id="library-title">{t("Biblioteca")}</h1>
         {!isLoading && (
           <p className="library-page__count mono">
-            {filtered.length.toLocaleString("es-AR")} de {games.length.toLocaleString("es-AR")} juegos
+            {t("{shown} de {total} juegos", { shown: formatNumber(filtered.length), total: formatNumber(games.length) })}
           </p>
         )}
       </div>
@@ -132,100 +146,101 @@ function LibraryPage({
       {summary && Object.values(summary.counts).some(Boolean) && (
         <dl className="library-summary">
           <div>
-            <dt>Jugando</dt>
+            <dt>{t("Jugando")}</dt>
             <dd>{summary.counts.playing}</dd>
           </div>
           <div>
-            <dt>Terminados</dt>
+            <dt>{t("Terminados")}</dt>
             <dd>{summary.counts.finished}</dd>
           </div>
           <div>
-            <dt>Abandonados</dt>
+            <dt>{t("Abandonados")}</dt>
             <dd>{summary.counts.abandoned}</dd>
           </div>
           <p className="library-summary__year">
-            En {summary.year} terminaste <strong>{summary.finished_this_year}</strong>{" "}
-            {summary.finished_this_year === 1 ? "juego" : "juegos"} y empezaste <strong>{summary.started_this_year}</strong>.
+            {summary.finished_this_year === 1
+              ? t("En {year} terminaste {finished} juego y empezaste {started}.", yearVars(summary))
+              : t("En {year} terminaste {finished} juegos y empezaste {started}.", yearVars(summary))}
           </p>
         </dl>
       )}
 
       <div className="library-page__tools">
         <div className="library-page__search">
-          <label htmlFor="library-search" className="visually-hidden">Buscar por nombre</label>
+          <label htmlFor="library-search" className="visually-hidden">{t("Buscar por nombre")}</label>
           <input
             id="library-search"
             className="text-input"
             type="search"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Buscar por nombre"
+            placeholder={t("Buscar por nombre")}
             autoComplete="off"
           />
         </div>
 
-        <div className="segmented" role="group" aria-label="Colección">
+        <div className="segmented" role="group" aria-label={t("Colección")}>
           <button type="button" aria-pressed={collection === "all"} onClick={() => setCollection("all")}>
-            Todos
+            {t("Todos")}
           </button>
           <button type="button" aria-pressed={collection === "favorites"} onClick={() => setCollection("favorites")}>
-            Favoritos
+            {t("Favoritos")}
           </button>
           <button type="button" aria-pressed={collection === "hidden"} onClick={() => setCollection("hidden")}>
-            Ocultos{hiddenCount > 0 ? ` (${hiddenCount})` : ""}
+            {t("Ocultos")}{hiddenCount > 0 ? ` (${hiddenCount})` : ""}
           </button>
         </div>
 
-        <select className="select" value={playtimeFilter} onChange={(event) => onPlaytimeFilterChange?.(event.target.value)} aria-label="Horas jugadas">
+        <select className="select" value={playtimeFilter} onChange={(event) => onPlaytimeFilterChange?.(event.target.value)} aria-label={t("Horas jugadas")}>
           {PLAYTIME_OPTIONS.map((option) => (
             <option key={option.id} value={option.id}>
-              {option.label}
+              {t(option.label)}
             </option>
           ))}
         </select>
 
-        <select className="select" value={stateFilter} onChange={(event) => setStateFilter(event.target.value)} aria-label="Estado">
+        <select className="select" value={stateFilter} onChange={(event) => setStateFilter(event.target.value)} aria-label={t("Estado")}>
           {STATE_OPTIONS.map((option) => (
             <option key={option.id} value={option.id}>
-              {option.label}
+              {t(option.label)}
             </option>
           ))}
         </select>
 
-        <select className="select" value={mode} onChange={(event) => setMode(event.target.value)} aria-label="Modo de juego">
+        <select className="select" value={mode} onChange={(event) => setMode(event.target.value)} aria-label={t("Modo de juego")}>
           {MODE_OPTIONS.map((option) => (
             <option key={option.id} value={option.id}>
-              {option.label}
+              {t(option.label)}
             </option>
           ))}
         </select>
 
-        {hltbEnabled && (
-          <select className="select" value={duration} onChange={(event) => setDuration(event.target.value)} aria-label="Duración">
+        {durationEnabled && (
+          <select className="select" value={duration} onChange={(event) => setDuration(event.target.value)} aria-label={t("Duración")}>
             {DURATION_OPTIONS.map((option) => (
               <option key={option.id} value={option.id}>
-                {option.label}
+                {t(option.label)}
               </option>
             ))}
           </select>
         )}
 
         {genres.length > 0 && (
-          <select className="select" value={genre} onChange={(event) => setGenre(event.target.value)} aria-label="Filtrar por género">
-            <option value="">Todos los géneros</option>
+          <select className="select" value={genre} onChange={(event) => setGenre(event.target.value)} aria-label={t("Filtrar por género")}>
+            <option value="">{t("Todos los géneros")}</option>
             {genres.map((genreOption) => (
               <option key={genreOption} value={genreOption}>
-                {genreOption}
+                {t(genreOption)}
               </option>
             ))}
           </select>
         )}
 
         <div className="library-page__sort">
-          <select className="select" value={sortBy} onChange={(event) => setSortBy(event.target.value)} aria-label="Ordenar por">
-            {SORT_OPTIONS.filter((option) => hltbEnabled || option.id !== "duration").map((option) => (
+          <select className="select" value={sortBy} onChange={(event) => setSortBy(event.target.value)} aria-label={t("Ordenar por")}>
+            {SORT_OPTIONS.filter((option) => durationEnabled || option.id !== "duration").map((option) => (
               <option key={option.id} value={option.id}>
-                {option.label}
+                {t(option.label)}
               </option>
             ))}
           </select>
@@ -233,23 +248,23 @@ function LibraryPage({
             type="button"
             className="button"
             onClick={() => setSortDirection((direction) => (direction === "asc" ? "desc" : "asc"))}
-            aria-label={sortDirection === "asc" ? "Orden ascendente, cambiar a descendente" : "Orden descendente, cambiar a ascendente"}
+            aria-label={sortDirection === "asc" ? t("Orden ascendente, cambiar a descendente") : t("Orden descendente, cambiar a ascendente")}
           >
-            {sortDirection === "asc" ? "↑ Asc" : "↓ Desc"}
+            {sortDirection === "asc" ? `↑ ${t("Asc")}` : `↓ ${t("Desc")}`}
           </button>
         </div>
 
         <div className="library-page__family">
           <label className="checkbox">
             <input type="checkbox" checked={hideAdult} onChange={(event) => onHideAdultChange?.(event.target.checked)} />
-            Ocultar +18
+            {t("Ocultar +18")}
           </label>
           <label className="checkbox">
             <input type="checkbox" checked={includeFamily} onChange={(event) => onIncludeFamilyChange?.(event.target.checked)} />
-            Incluir Familia
+            {t("Incluir Familia")}
           </label>
           <button type="button" className="text-button" onClick={onManageFamily}>
-            Administrar
+            {t("Administrar")}
           </button>
         </div>
       </div>
@@ -257,7 +272,7 @@ function LibraryPage({
       <ClassificationBanner classification={classification} onPause={setClassificationPaused} />
 
       {(loadError || actionError) && <p className="error-text">{actionError ?? loadError}</p>}
-      {isLoading && <p className="hint">Cargando biblioteca…</p>}
+      {isLoading && <p className="hint">{t("Cargando biblioteca…")}</p>}
 
       <ul className="library-page__list">
         {filtered.slice(0, visibleCount).map((game) => (
@@ -266,28 +281,28 @@ function LibraryPage({
             <div className="library-row__body">
               <p className="library-row__name">
                 {game.name}
-                {game.source === "friend" && <span className="tag">Familia</span>}
-                {game.source === "both" && <span className="tag">Ambas</span>}
-                {game.state && <span className={`tag tag--state tag--${game.state}`}>{STATE_LABELS[game.state]}</span>}
-                {game.coop && <span className="tag">Coop</span>}
+                {game.source === "friend" && <span className="tag">{t("Familia")}</span>}
+                {game.source === "both" && <span className="tag">{t("Ambas")}</span>}
+                {game.state && <span className={`tag tag--state tag--${game.state}`}>{t(STATE_LABELS[game.state])}</span>}
+                {game.coop && <span className="tag">{t("Coop")}</span>}
               </p>
               <p className="library-row__genres">
-                {[game.genres.join(" · "), game.hltb_main_hours != null ? `${Math.round(game.hltb_main_hours)} h de historia` : ""]
+                {[game.genres.map((genre) => t(genre)).join(" · "), game.duration_hours != null ? t("{hours} h para terminarlo", { hours: Math.round(game.duration_hours) }) : ""]
                   .filter(Boolean)
                   .join(" — ")}
               </p>
             </div>
             <p className="library-row__meta mono">
               <span>
-                {Math.round(game.playtime_forever_minutes / 60)} h jugadas
-                {game.achievements_total ? ` · ${game.achievements_unlocked}/${game.achievements_total} logros` : ""}
+                {t("{hours} h jugadas", { hours: Math.round(game.playtime_forever_minutes / 60) })}
+                {game.achievements_total ? ` · ${t("{unlocked}/{total} logros", { unlocked: game.achievements_unlocked, total: game.achievements_total })}` : ""}
               </span>
               <span>{game.price_cents != null ? formatPrice(game.price_cents) : ""}</span>
               <span>{game.release_date ? formatReleaseDate(game.release_date) : ""}</span>
             </p>
             {game.is_hidden ? (
               <button type="button" className="button library-row__unhide" onClick={() => handleUnhide(game)}>
-                Volver a mostrar
+                {t("Volver a mostrar")}
               </button>
             ) : (
               <button
@@ -295,7 +310,7 @@ function LibraryPage({
                 className="favorite-button"
                 onClick={() => handleToggleFavorite(game)}
                 aria-pressed={game.is_favorite}
-                aria-label={game.is_favorite ? `Quitar ${game.name} de favoritos` : `Agregar ${game.name} a favoritos`}
+                aria-label={game.is_favorite ? t("Quitar {name} de favoritos", { name: game.name }) : t("Agregar {name} a favoritos", { name: game.name })}
               >
                 {game.is_favorite ? "★" : "☆"}
               </button>
@@ -307,21 +322,25 @@ function LibraryPage({
 
       {!isLoading && filtered.length === 0 && !loadError && (
         <p className="hint">
-          {collection === "hidden" ? "No ocultaste ningún juego." : "No hay juegos que coincidan con esos filtros."}
+          {collection === "hidden" ? t("No ocultaste ningún juego.") : t("No hay juegos que coincidan con esos filtros.")}
         </p>
       )}
     </section>
   );
 }
 
+function yearVars(summary) {
+  return { year: summary.year, finished: summary.finished_this_year, started: summary.started_this_year };
+}
+
 function formatPrice(priceCents) {
-  if (priceCents === 0) return "Gratis";
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "USD" }).format(priceCents / 100);
+  if (priceCents === 0) return t("Gratis");
+  return new Intl.NumberFormat(locale(), { style: "currency", currency: "USD" }).format(priceCents / 100);
 }
 
 function formatReleaseDate(value) {
   const date = new Date(`${value}T00:00:00`);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString("es-AR");
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString(locale());
 }
 
 export default LibraryPage;

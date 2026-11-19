@@ -24,7 +24,8 @@ class Settings(BaseSettings):
     backup_keep: int = 7
     # Usar HowLongToBeat para la duración. Antes de monetizar conviene tener su permiso (ver README);
     # en "false" se dejan de pedir duraciones y la página oculta el filtro de duración.
-    hltb_enabled: bool = True
+    # Apagado por defecto: los términos de Ziff Davis (dueña de HLTB) prohíben el acceso automatizado.
+    hltb_enabled: bool = False
     # Monetización (todo opcional; vacío = no se muestra):
     # links para apoyar el proyecto, "Nombre|URL" separados por coma (ej. "Cafecito|https://cafecito.app/x").
     support_links: str = ""
@@ -34,7 +35,15 @@ class Settings(BaseSettings):
     # {query} se reemplaza por el nombre del juego (ej. "Humble|https://www.humblebundle.com/store/search?search={query}&partner=TU_ID").
     affiliate_stores: str = ""
     # Mail de contacto que se muestra en la política de privacidad y los términos.
-    contact_email: str = ""
+    contact_email: str = "ruletazo007@gmail.com"
+    # Formulario de feedback: los comentarios se mandan a FEEDBACK_EMAIL por SMTP. Con Gmail,
+    # SMTP_USER es la cuenta y SMTP_PASSWORD una "contraseña de aplicación" (no la contraseña
+    # normal). Sin SMTP_USER/SMTP_PASSWORD los comentarios solo se guardan en la base.
+    feedback_email: str = "ruletazo007@gmail.com"
+    smtp_host: str = "smtp.gmail.com"
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
@@ -46,6 +55,10 @@ class Settings(BaseSettings):
     @property
     def has_steam_api_key(self) -> bool:
         return bool(self.steam_api_key)
+
+    @property
+    def smtp_configured(self) -> bool:
+        return bool(self.smtp_user and self.smtp_password and self.feedback_email)
 
     @property
     def is_production(self) -> bool:

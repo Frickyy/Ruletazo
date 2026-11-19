@@ -209,3 +209,21 @@ async def test_get_game_details_finds_family_game(db_session, monkeypatch):
     assert game.name == "Team Fortress"
     assert game.source == "friend"
     assert game.genres == ["Acción"]
+
+
+async def test_personal_data_is_only_shown_to_its_owner(db_session, monkeypatch):
+    fake_client = _MultiUserFakeSteamClient(
+        steam_ids_by_identifier={"me": "1111"},
+        games_by_steam_id={"1111": [{"appid": 10, "name": "Counter-Strike", "playtime_forever": 100}]},
+    )
+    monkeypatch.setattr(library_service, "SteamClient", lambda: fake_client)
+    favorites_service.add_favorite(db_session, "1111", 10)
+    library_service.set_state(db_session, "1111", 10, "playing")
+
+    owner = await library_service.get_filtered_library(db_session, "me", None, "all", None, viewer_steam_id="1111")
+    stranger = await library_service.get_filtered_library(db_session, "me", None, "all", None, viewer_steam_id=None)
+    detail = await library_service.get_game_details(db_session, "me", None, 10, viewer_steam_id="2222")
+
+    assert (owner[0].is_favorite, owner[0].state) == (True, "playing")
+    assert (stranger[0].is_favorite, stranger[0].state) == (False, None)
+    assert (detail.is_favorite, detail.state) == (False, None)

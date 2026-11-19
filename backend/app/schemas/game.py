@@ -46,4 +46,11 @@ class Game(BaseModel):
     review_bad: list[str] = Field(default_factory=list)
     hltb_main_hours: float | None = None
     hltb_completionist_hours: float | None = None
+    # Duración que muestra la página: "hltb" o "community" (mediana de quienes lo terminaron).
+    duration_hours: float | None = None
+    duration_source: str | None = None
+    duration_samples: int = 0
     achievement_difficulty: str = "Sin datos"
+    # Reseñas del foro de Ruletazo (solo en la ficha: /games/details).
+    community_review_count: int = 0
+    community_average_score: float | None = None

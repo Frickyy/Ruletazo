@@ -190,6 +190,27 @@
   font-size: 0.875rem;
 }
 
+.idle-guest {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.idle-guest .text-input {
+  width: 100%;
+  min-height: 44px;
+}
+
+.idle-cta .idle-guest .button {
+  align-self: stretch;
+  min-height: 44px;
+}
+
+.idle-cta__divider {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
 .idle-cta .button {
   align-self: flex-start;
 }

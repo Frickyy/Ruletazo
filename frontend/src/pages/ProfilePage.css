@@ -149,6 +149,82 @@
   font-size: 1.125rem;
 }
 
+.profile-section__heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.profile-section__heading .muted {
+  font-size: 0.8125rem;
+}
+
+.challenges {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.challenge {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.challenge small {
+  flex: 1 1 auto;
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.challenge--done {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+}
+
+.challenge--done strong {
+  color: var(--accent);
+}
+
+.challenge__number {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--accent);
+}
+
+.challenge__bar {
+  display: block;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--line);
+}
+
+.challenge__bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 300ms ease;
+}
+
+.challenge__count {
+  align-self: flex-end;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
 .profile-shelf {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));

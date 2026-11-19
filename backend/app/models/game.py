@@ -114,6 +114,17 @@ class UserGameProgress(Base):
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 
+class CompletionSample(Base):
+    """Horas en Steam de alguien al marcar un juego como terminado (ver duration_service)."""
+
+    __tablename__ = "completion_samples"
+
+    steam_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    appid: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    minutes: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
 class UserProfile(Base):
     """Preferencias del perfil de un usuario. Sin fila = valores por defecto (perfil privado)."""
 
@@ -127,3 +138,20 @@ class UserProfile(Base):
     # Epoch del último "borrar mis datos": las sesiones emitidas hasta ese momento quedan inválidas.
     sessions_valid_after: Mapped[int | None] = mapped_column(Integer, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+class Feedback(Base):
+    """Comentarios que deja la gente desde el formulario de feedback. Se guardan siempre, aunque
+    el mail no salga (SMTP sin configurar o caído), para no perder ninguno."""
+
+    __tablename__ = "feedback"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    kind: Mapped[str] = mapped_column(String(16))
+    message: Mapped[str] = mapped_column(Text)
+    # Nombre de Steam al momento de mandarlo (None sin sesión): va en el asunto del mail.
+    steam_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    steam_id: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
+    page: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    emailed: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)

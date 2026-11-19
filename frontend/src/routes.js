@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
  *   #/foro/juego/<appid>/hilo/<id>     un hilo
  *   #/perfil                           tu perfil
  *   #/perfil/<steamid>                 el perfil de otra persona
+ *   #/sala/<código>                    una sala para elegir en grupo
  *   #/privacidad · #/terminos
  */
 const VIEW_SLUGS = {
@@ -21,12 +22,16 @@ const VIEW_SLUGS = {
   profile: "perfil",
   privacy: "privacidad",
   terms: "terminos",
+  room: "sala",
 };
 const SLUG_VIEWS = Object.fromEntries(Object.entries(VIEW_SLUGS).map(([view, slug]) => [slug, view]));
 
 export function parseRoute(hash) {
   const parts = hash.replace(/^#\/?/, "").split("/").filter(Boolean);
   const view = SLUG_VIEWS[parts[0]] ?? "roulette";
+  if (view === "room") {
+    return { view, forumTarget: null, roomCode: /^[A-Za-z0-9]{4,12}$/.test(parts[1] ?? "") ? parts[1].toUpperCase() : null };
+  }
   if (view === "profile") {
     return { view, forumTarget: null, profileId: /^[\w.-]{2,64}$/.test(parts[1] ?? "") ? parts[1] : null };
   }
@@ -43,6 +48,7 @@ export function parseRoute(hash) {
 export function buildHash(view, forumTarget = null, profileId = null) {
   let hash = `#/${VIEW_SLUGS[view] ?? VIEW_SLUGS.roulette}`;
   if (view === "profile" && profileId) return `${hash}/${profileId}`;
+  if (view === "room" && profileId) return `${hash}/${profileId}`;
   if (view === "forum" && forumTarget?.appid) {
     hash += `/juego/${forumTarget.appid}`;
     if (forumTarget.threadId) hash += `/hilo/${forumTarget.threadId}`;
@@ -72,7 +78,13 @@ export function useHashRoute() {
   function navigate(view, forumTarget = null, profileId = null) {
     const hash = buildHash(view, forumTarget, profileId);
     // El nombre del juego no está en la URL; se conserva en memoria mientras dure la navegación.
-    setRoute({ view, forumTarget, profileId: view === "profile" ? profileId : undefined });
+    // El tercer parámetro es el SteamID en #/perfil y el código en #/sala.
+    setRoute({
+      view,
+      forumTarget,
+      profileId: view === "profile" ? profileId : undefined,
+      roomCode: view === "room" ? profileId : undefined,
+    });
     if (window.location.hash !== hash) window.location.hash = hash;
   }
 

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { t } from "../i18n/index.js";
 import "./SpinHistory.css";
 
 const MAX_ITEMS = 8;
@@ -34,7 +35,7 @@ export function useSpinHistory(steamId) {
 function SpinHistory({ items, onPick, disabled, currentAppid }) {
   return (
     <section className="spin-history" aria-labelledby="spin-history-title">
-      <h2 id="spin-history-title">Últimos que salieron</h2>
+      <h2 id="spin-history-title">{t("Últimos que salieron")}</h2>
       <ul>
         {items.map((game) => (
           <li key={game.appid}>

@@ -13,10 +13,13 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.models.forum import ForumPost, ForumReport, ForumReview, ForumThread
+from app.models.room import Room
 from app.models.game import (
     CachedGameDetails,
     CachedLibraryEntry,
+    CompletionSample,
     FavoriteGame,
+    Feedback,
     GameState,
     HiddenGame,
     UserGameProgress,
@@ -64,7 +67,7 @@ def update_preferences(
 
 def build_profile(db: Session, target_steam_id: str, viewer_steam_id: str | None, steam_profile: dict) -> dict:
     """Todo lo que muestra la página de perfil. Quien llama ya verificó `can_view`."""
-    from app.services import library_service  # evita la importación circular
+    from app.services import challenge_service, library_service  # evita la importación circular
 
     is_me = target_steam_id == viewer_steam_id
     preferences = get_preferences(db, target_steam_id)
@@ -100,6 +103,8 @@ def build_profile(db: Session, target_steam_id: str, viewer_steam_id: str | None
         "is_supporter": target_steam_id in get_settings().supporter_steam_id_set,
         "library_size": len(names),
         "summary": library_service.state_summary(db, target_steam_id),
+        "backlog": challenge_service.backlog(db, target_steam_id),
+        "challenges": challenge_service.monthly_challenges(db, target_steam_id),
         "playing": [game(row.appid) for row in states if row.state == "playing"][:MAX_GAMES_PER_SECTION],
         "finished": [game(row.appid) for row in states if row.state == "finished"][:MAX_GAMES_PER_SECTION],
         "favorites": [game(row.appid) for row in favorites][:MAX_GAMES_PER_SECTION],
@@ -141,6 +146,8 @@ def delete_user_data(db: Session, steam_id: str) -> dict:
         ("states", GameState),
         ("achievement_progress", UserGameProgress),
         ("library", CachedLibraryEntry),
+        ("completion_samples", CompletionSample),
+        ("feedback", Feedback),
     ):
         counts[name] = db.execute(delete(model).where(model.steam_id == steam_id)).rowcount
     counts["reports_made"] = db.execute(delete(ForumReport).where(ForumReport.reporter_steam_id == steam_id)).rowcount
@@ -173,6 +180,17 @@ def delete_user_data(db: Session, steam_id: str) -> dict:
     db.flush()
     for thread in db.execute(select(ForumThread).where(ForumThread.id.in_(touched_thread_ids))).scalars():
         refresh_last_activity(db, thread)
+
+    # Salas en grupo: las suyas se cierran; de las ajenas sale (con sus vetos).
+    counts["rooms"] = db.execute(delete(Room).where(Room.host_steam_id == steam_id)).rowcount
+    for room in db.execute(select(Room)).scalars():
+        if any(member["steam_id"] == steam_id for member in room.members):
+            room.members = [member for member in room.members if member["steam_id"] != steam_id]
+            room.vetoes = {
+                appid: [voter for voter in voters if voter != steam_id]
+                for appid, voters in room.vetoes.items()
+                if any(voter != steam_id for voter in voters)
+            }
 
     row = get_preferences(db, steam_id)
     if row is None:

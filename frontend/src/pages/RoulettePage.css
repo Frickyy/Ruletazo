@@ -121,6 +121,40 @@
   grid-column: 1 / span 2;
 }
 
+/* Invitado: en el lugar de "Colección", de quién es la biblioteca y cómo cambiarla. */
+.roulette__guest {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: var(--control-height);
+  padding: 0 0.875rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  min-width: 0;
+}
+
+.roulette__guest img,
+.roulette__guest-avatar {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--surface);
+}
+
+.roulette__guest-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roulette__guest .text-button {
+  flex: 0 0 auto;
+}
+
 /* Sin duración (HowLongToBeat apagado), el modo ocupa su lugar para no dejar un hueco. */
 .roulette__mode--wide {
   grid-column: span 2;
@@ -194,6 +228,19 @@
 .toggle:hover {
   border-color: var(--line-strong);
   color: var(--text);
+}
+
+/* Acción (no on/off) en la fila de opciones: mismo tamaño, con el acento. */
+.toggle--action {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+  background: transparent;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.toggle--action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .toggle--on {
