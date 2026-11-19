@@ -22,6 +22,19 @@ class Settings(BaseSettings):
     # Carpeta para copias de seguridad diarias de la base SQLite (vacío = sin copias) y cuántas conservar.
     backup_dir: str = ""
     backup_keep: int = 7
+    # Usar HowLongToBeat para la duración. Antes de monetizar conviene tener su permiso (ver README);
+    # en "false" se dejan de pedir duraciones y la página oculta el filtro de duración.
+    hltb_enabled: bool = True
+    # Monetización (todo opcional; vacío = no se muestra):
+    # links para apoyar el proyecto, "Nombre|URL" separados por coma (ej. "Cafecito|https://cafecito.app/x").
+    support_links: str = ""
+    # SteamID64 de quienes apoyan el proyecto (insignia en el perfil y el foro), separados por coma.
+    supporter_steam_ids: str = ""
+    # Tiendas con link de afiliado para el foro de cada juego: "Nombre|URL con {query}" separados por coma.
+    # {query} se reemplaza por el nombre del juego (ej. "Humble|https://www.humblebundle.com/store/search?search={query}&partner=TU_ID").
+    affiliate_stores: str = ""
+    # Mail de contacto que se muestra en la política de privacidad y los términos.
+    contact_email: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
@@ -39,6 +52,18 @@ class Settings(BaseSettings):
         return self.environment.strip().casefold() == "production"
 
     @property
+    def supporter_steam_id_set(self) -> set[str]:
+        return {steam_id.strip() for steam_id in self.supporter_steam_ids.split(",") if steam_id.strip()}
+
+    @property
+    def support_link_list(self) -> list[dict]:
+        return _named_urls(self.support_links)
+
+    @property
+    def affiliate_store_list(self) -> list[dict]:
+        return [store for store in _named_urls(self.affiliate_stores) if "{query}" in store["url"]]
+
+    @property
     def admin_steam_id_set(self) -> set[str]:
         return {steam_id.strip() for steam_id in self.admin_steam_ids.split(",") if steam_id.strip()}
 
@@ -47,6 +72,16 @@ class Settings(BaseSettings):
         cada reinicio (o cada worker) invalidaría todas las sesiones."""
         if self.is_production and len(self.session_secret) < 32:
             raise RuntimeError("En producción SESSION_SECRET es obligatoria (al menos 32 caracteres).")
+
+
+def _named_urls(value: str) -> list[dict]:
+    """ "Nombre|https://..." separados por coma → [{"name", "url"}]. Solo URLs https."""
+    result = []
+    for item in value.split(","):
+        name, _, url = item.partition("|")
+        if name.strip() and url.strip().startswith("https://"):
+            result.append({"name": name.strip(), "url": url.strip()})
+    return result
 
 
 @lru_cache

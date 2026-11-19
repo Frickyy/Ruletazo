@@ -6,9 +6,18 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.models.game import CachedGameDetails, CachedLibraryEntry, GameState, UserGameProgress
 from app.schemas.game import Game
-from app.services import favorites_service, game_details_service, hidden_service, hltb_client, store_browse, throttle
+from app.services import (
+    favorites_service,
+    game_details_service,
+    hidden_service,
+    hltb_client,
+    profile_service,
+    store_browse,
+    throttle,
+)
 from app.services.steam_client import SteamAPIError, SteamClient
 from app.services.store_client import looks_adult_by_name, normalize_genres
 
@@ -259,13 +268,20 @@ async def enrich_library_batch(db: Session, identifier: str, limit: int) -> dict
     details_map = _get_cached_details_map(db, [entry.appid for entry in entries])
     progress_map = _get_progress_map(db, steam_id)
 
+    hltb_enabled = get_settings().hltb_enabled
+    # Tu progreso de logros solo se pide si lo activaste en tu perfil (Steam pide consultar datos
+    # de un usuario solo cuando él lo pide).
+    track_achievements = profile_service.tracks_achievements(db, steam_id)
+
     def needs_hltb(entry) -> bool:
+        if not hltb_enabled:
+            return False
         details = details_map.get(entry.appid)
         return details is not None and _is_classified(details) and not game_details_service.has_hltb_lookup(details)
 
     def needs_progress(entry) -> bool:
         # Solo los que jugaste: sin horas no hay logros desbloqueados que contar.
-        return entry.playtime_forever_minutes > 0 and entry.appid not in progress_map
+        return track_achievements and entry.playtime_forever_minutes > 0 and entry.appid not in progress_map
 
     now = time.monotonic()
     pending = [entry for entry in entries if needs_hltb(entry) or needs_progress(entry)]
@@ -323,6 +339,11 @@ def _merge_union(primary: list[Game], friend: list[Game]) -> list[Game]:
         else:
             by_appid[friend_game.appid] = friend_game
     return list(by_appid.values())
+
+
+def attach_user_data(db: Session, games: list[Game], steam_id: str) -> None:
+    """Favoritos, ocultos, estados, progreso y datos de la tienda ya guardados, para `steam_id`."""
+    _attach_favorites_and_details(db, games, steam_id)
 
 
 def _attach_favorites_and_details(db: Session, games: list[Game], steam_id: str) -> None:
@@ -418,6 +439,10 @@ def _replace_cache(db: Session, steam_id: str, games_raw: list[dict]) -> None:
             )
         )
     db.commit()
+
+
+def _to_schema_list(entries: list[CachedLibraryEntry]) -> list[Game]:
+    return [_to_schema(entry) for entry in entries]
 
 
 def _to_schema(entry: CachedLibraryEntry) -> Game:

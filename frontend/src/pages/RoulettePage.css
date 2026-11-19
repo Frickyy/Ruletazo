@@ -121,6 +121,11 @@
   grid-column: 1 / span 2;
 }
 
+/* Sin duración (HowLongToBeat apagado), el modo ocupa su lugar para no dejar un hueco. */
+.roulette__mode--wide {
+  grid-column: span 2;
+}
+
 .roulette__spin-group {
   display: flex;
   gap: 0.5rem;

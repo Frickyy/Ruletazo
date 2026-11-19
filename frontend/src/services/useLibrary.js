@@ -24,6 +24,8 @@ export function useLibrary(steamId, friendSteamId) {
   // { phase: "store" | "enrich" | "done", classified, total, withDuration, running }
   const [classification, setClassification] = useState(null);
   const [paused, setPaused] = useState(false);
+  // Se incrementa para volver a correr la clasificación/enriquecimiento (p. ej. al activar logros).
+  const [enrichRun, setEnrichRun] = useState(0);
   const requestId = useRef(0);
 
   const reload = useCallback(
@@ -134,7 +136,10 @@ export function useLibrary(steamId, friendSteamId) {
     };
     // `reload` cambia con los mismos datos que ya están en las dependencias.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [steamId, status === "ready", paused]);
+  }, [steamId, status === "ready", paused, enrichRun]);
+
+  /** Vuelve a correr la segunda pasada (duración y logros) aunque ya haya terminado. */
+  const restartEnrichment = useCallback(() => setEnrichRun((run) => run + 1), []);
 
   /** Cambia campos de un juego en la lista (favorito, oculto, estado…) sin volver a pedirla. */
   const updateGame = useCallback((appid, patch) => {
@@ -146,6 +151,7 @@ export function useLibrary(steamId, friendSteamId) {
     status,
     error,
     reload,
+    restartEnrichment,
     updateGame,
     classification: classification && { ...classification, paused },
     setClassificationPaused: setPaused,

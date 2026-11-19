@@ -1,6 +1,6 @@
-# Steam Roulette
+# Ruletazo
 
-**¿No sabés qué jugar?** Steam Roulette elige por vos un juego de tu biblioteca de Steam (y, si querés, de la de tu familia), con la información necesaria para decidir si es el momento de empezarlo: cuánto dura, qué opina la comunidad y cuántos logros te faltan.
+**¿No sabés qué jugar?** Ruletazo elige por vos un juego de tu biblioteca de Steam (y, si querés, de la de tu familia), con la información necesaria para decidir si es el momento de empezarlo: cuánto dura, qué opina la comunidad y cuántos logros te faltan.
 
 > Proyecto personal sin afiliación con Valve Corporation ni Steam.
 
@@ -33,8 +33,15 @@ Buscador de cualquier juego de Steam, reseñas con puntaje del 1 al 10 y discusi
 ### Instalable
 En el celular se puede agregar a la pantalla de inicio y se abre como una app (PWA).
 
+### Perfiles
+- Página `#/perfil/<steamid>` con lo que estás jugando, lo que terminaste, tus favoritos y tus reseñas del foro.
+- **Privado por defecto**: solo lo ves vos hasta que lo hacés público y compartís el link.
+- En el perfil de otra persona, **"¿Qué tenemos en común?"** compara las bibliotecas (filtrable por cooperativo o multijugador) y permite sumarla a tu familia para girar entre los juegos en común.
+- El seguimiento del progreso de logros (para *Casi al 100%*) se activa desde el perfil.
+- **Borrar mis datos** elimina todo lo que la página guarda de vos.
+
 ### Cuenta
-**Inicio de sesión con Steam** (OpenID): no se piden ni se guardan contraseñas. La sesión queda en una cookie firmada por el backend.
+**Inicio de sesión con Steam** (OpenID, con el botón oficial): no se piden ni se guardan contraseñas. La sesión queda en una cookie firmada por el backend.
 
 ## Tecnologías
 
@@ -91,6 +98,11 @@ Completá `backend/.env`:
 | `CORS_ORIGINS` | Orígenes permitidos, separados por coma. |
 | `ADMIN_STEAM_IDS` | SteamID64 de los moderadores del foro, separados por coma. |
 | `ENVIRONMENT` | `development` o `production` (en producción `SESSION_SECRET` es obligatoria). |
+| `CONTACT_EMAIL` | Mail de contacto de la política de privacidad y los términos. |
+| `HLTB_ENABLED` | `true` (por defecto) o `false` para dejar de usar HowLongToBeat y ocultar la duración. |
+| `SUPPORT_LINKS` | Links para apoyar el proyecto en el pie de página: `Cafecito|https://cafecito.app/usuario,Ko-fi|https://ko-fi.com/usuario`. |
+| `SUPPORTER_STEAM_IDS` | SteamID64 de quienes apoyan el proyecto: muestran la insignia "Supporter" en su perfil y el foro. |
+| `AFFILIATE_STORES` | Tiendas con link de afiliado en el foro de cada juego: `Humble|https://www.humblebundle.com/store/search?search={query}&partner=TU_ID`. |
 | `BACKUP_DIR` | Carpeta para una copia diaria de la base (vacío = sin copias). `BACKUP_KEEP` dice cuántas conservar (7). |
 
 Levantá la API:
@@ -133,6 +145,20 @@ cd frontend && npm test       # frontend (Vitest)
 
 El CI (GitHub Actions) corre los dos, verifica que las migraciones coincidan con los modelos y que la imagen de Docker compile.
 
+## Monetización
+
+Pensada para no tocar la experiencia: **la plata nunca influye en qué juego sale en la ruleta** y no se venden datos.
+
+- **Apoyo voluntario** (`SUPPORT_LINKS`): botones en el pie de página. Quien aporta puede recibir la insignia "Supporter" (`SUPPORTER_STEAM_IDS`, por ahora se carga a mano).
+- **Links de afiliado** (`AFFILIATE_STORES`): en el foro de cada juego, "Buscar en otras tiendas", marcados como afiliados y con `rel="sponsored"`.
+- Sin publicidad ni planes pagos por ahora.
+
+### Riesgos antes de monetizar
+- **Steam Web API**: sus términos (de 2010) licencian los datos para el "uso personal" de los usuarios, prohíben dar a entender una relación con Valve y piden una política de privacidad, informar qué datos se guardan y consultar datos de un usuario solo cuando él lo pide. Varios endpoints que usa la app (biblioteca, tienda) no figuran en la documentación oficial. Lo más prudente es **pedir permiso por escrito a Valve** (webapi@valvesoftware.com) antes de monetizar, y no ofrecer planes pagos que den acceso a datos de Steam.
+- **HowLongToBeat**: no tiene API oficial y la app lee su búsqueda interna. Antes de monetizar, pedí permiso o apagalo con `HLTB_ENABLED=false`.
+- **El nombre**: la app se llama Ruletazo, sin "Steam", para no dar a entender una relación con Valve. Internamente se conservan algunos nombres viejos (la base `steam_roulette.db`, las claves `steamRoulette.*` del navegador) para no perder datos ni preferencias.
+- La política de privacidad y los términos (`#/privacidad`, `#/terminos`) son un **borrador**: revisalos con alguien con conocimiento legal de tu país y completá el país del servidor (`frontend/src/pages/LegalPage.jsx`) y `CONTACT_EMAIL`.
+
 ## Limitaciones conocidas
 
 - **Juegos gratis que nunca abriste**: la Steam Web API solo devuelve los free-to-play que jugaste al menos una vez, así que los que agregaste y nunca abriste (por ejemplo *Wuthering Waves* o *The First Descendant*) no aparecen en la biblioteca. Alcanza con abrirlos una vez desde Steam para que aparezcan.
@@ -162,6 +188,10 @@ El CI (GitHub Actions) corre los dos, verifica que las migraciones coincidan con
 | `GET` | `/api/auth/me` | Usuario de la sesión actual (incluye si es moderador) |
 | `POST` | `/api/auth/logout` | Cierra la sesión |
 | `GET` | `/api/auth/profile` | Nombre y avatar de un perfil |
+| `GET` | `/api/config` | Configuración pública (links de apoyo, afiliados, si hay duración) |
+| `GET` | `/api/profiles/{steamid}` | Perfil de un usuario (los privados solo los ve su dueño) |
+| `GET` | `/api/profiles/{steamid}/common` | Juegos en común con el dueño del perfil (requiere sesión) |
+| `PUT` / `DELETE` | `/api/profiles/me` | Cambiar las preferencias del perfil / borrar todos tus datos |
 | `GET` | `/api/forum/search` | Busca juegos en la tienda de Steam |
 | `GET` | `/api/forum/recent` | Últimas reseñas y discusiones |
 | `GET` | `/api/forum/games/{appid}` | Puntaje promedio y totales del foro de un juego |

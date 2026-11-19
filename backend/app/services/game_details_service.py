@@ -11,6 +11,7 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.models.game import CachedGameDetails
 from app.services import hltb_client, store_browse, throttle
 from app.services.steam_client import SteamClient
@@ -99,7 +100,7 @@ async def get_or_fetch_details(db: Session, appid: int, name: str) -> CachedGame
     cached = get_cached_details(db, appid)
     expired = cached is None or not is_fresh(cached)
     needs_store = expired or not has_store_metadata(cached)
-    needs_hltb = expired or not has_hltb_lookup(cached)
+    needs_hltb = (expired or not has_hltb_lookup(cached)) and get_settings().hltb_enabled
     needs_reviews = (expired or not has_review_highlights(cached)) and not throttle.is_cooling_down("reviews")
     needs_achievements = expired
     if not (needs_store or needs_hltb or needs_reviews or needs_achievements):

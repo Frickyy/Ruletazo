@@ -21,4 +21,13 @@ describe("rutas con hash", () => {
       expect(buildHash(view, forumTarget)).toBe(hash);
     }
   });
+
+  it("lee y arma perfiles y páginas legales", () => {
+    expect(parseRoute("#/perfil")).toEqual({ view: "profile", forumTarget: null, profileId: null });
+    expect(parseRoute("#/perfil/76561198000000001").profileId).toBe("76561198000000001");
+    expect(parseRoute("#/perfil/<script>").profileId).toBeNull();
+    expect(buildHash("profile", null, "gaben")).toBe("#/perfil/gaben");
+    expect(parseRoute("#/privacidad").view).toBe("privacy");
+    expect(parseRoute("#/terminos").view).toBe("terms");
+  });
 });

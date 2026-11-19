@@ -114,10 +114,13 @@ class SteamClient:
         if not players:
             raise InvalidSteamIDError("No se encontró el perfil de Steam.")
         player = players[0]
+        profile_url = player.get("profileurl", "").rstrip("/")
         return {
             "steam_id": player.get("steamid", steam_id),
             "name": player.get("personaname", "Jugador de Steam"),
             "avatar": player.get("avatarfull", player.get("avatarmedium", "")),
+            # steamcommunity.com/id/<vanity>/ si el usuario eligió una URL personalizada.
+            "vanity": profile_url.rsplit("/", 1)[-1] if "/id/" in profile_url else "",
         }
 
     async def get_achievement_difficulty(self, appid: int) -> dict:

@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import SteamLoginButton from "./SteamLoginButton.jsx";
 import "./IdlePanel.css";
 
 const UNPLAYED_COUNT = 6;
@@ -106,11 +107,7 @@ function DemoPanel({ onLogin }) {
       <section className="idle-panel__block idle-panel__block--side idle-cta" aria-labelledby="idle-cta">
         <h2 id="idle-cta">Usá tu propia biblioteca</h2>
         <p className="hint">Ahora estás girando con 5 juegos de ejemplo. Con tu cuenta entran todos los tuyos.</p>
-        {onLogin && (
-          <button type="button" className="button button--primary" onClick={onLogin}>
-            Iniciar sesión con Steam <span aria-hidden="true">→</span>
-          </button>
-        )}
+        {onLogin && <SteamLoginButton onClick={onLogin} />}
       </section>
     </div>
   );

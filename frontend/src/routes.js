@@ -9,13 +9,27 @@ import { useEffect, useState } from "react";
  *   #/foro/juego/<appid>               reseñas del juego
  *   #/foro/juego/<appid>/discusiones   discusiones del juego
  *   #/foro/juego/<appid>/hilo/<id>     un hilo
+ *   #/perfil                           tu perfil
+ *   #/perfil/<steamid>                 el perfil de otra persona
+ *   #/privacidad · #/terminos
  */
-const VIEW_SLUGS = { roulette: "ruleta", library: "biblioteca", family: "familia", forum: "foro" };
+const VIEW_SLUGS = {
+  roulette: "ruleta",
+  library: "biblioteca",
+  family: "familia",
+  forum: "foro",
+  profile: "perfil",
+  privacy: "privacidad",
+  terms: "terminos",
+};
 const SLUG_VIEWS = Object.fromEntries(Object.entries(VIEW_SLUGS).map(([view, slug]) => [slug, view]));
 
 export function parseRoute(hash) {
   const parts = hash.replace(/^#\/?/, "").split("/").filter(Boolean);
   const view = SLUG_VIEWS[parts[0]] ?? "roulette";
+  if (view === "profile") {
+    return { view, forumTarget: null, profileId: /^[\w.-]{2,64}$/.test(parts[1] ?? "") ? parts[1] : null };
+  }
   if (view !== "forum" || parts[1] !== "juego") return { view, forumTarget: null };
 
   const appid = Number(parts[2]);
@@ -26,8 +40,9 @@ export function parseRoute(hash) {
   return { view, forumTarget: { appid, tab: parts[3] === "discusiones" ? "threads" : "reviews" } };
 }
 
-export function buildHash(view, forumTarget = null) {
+export function buildHash(view, forumTarget = null, profileId = null) {
   let hash = `#/${VIEW_SLUGS[view] ?? VIEW_SLUGS.roulette}`;
+  if (view === "profile" && profileId) return `${hash}/${profileId}`;
   if (view === "forum" && forumTarget?.appid) {
     hash += `/juego/${forumTarget.appid}`;
     if (forumTarget.threadId) hash += `/hilo/${forumTarget.threadId}`;
@@ -54,10 +69,10 @@ export function useHashRoute() {
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
 
-  function navigate(view, forumTarget = null) {
-    const hash = buildHash(view, forumTarget);
+  function navigate(view, forumTarget = null, profileId = null) {
+    const hash = buildHash(view, forumTarget, profileId);
     // El nombre del juego no está en la URL; se conserva en memoria mientras dure la navegación.
-    setRoute({ view, forumTarget });
+    setRoute({ view, forumTarget, profileId: view === "profile" ? profileId : undefined });
     if (window.location.hash !== hash) window.location.hash = hash;
   }
 

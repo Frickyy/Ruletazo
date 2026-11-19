@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from app.core.config import get_settings
 from app.db.backup import backup_loop
 from app.db.session import init_db
-from app.routers import auth, forum, games
+from app.routers import auth, forum, games, profiles
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 # httpx registra cada URL completa en nivel INFO, incluida la STEAM_API_KEY que viaja como parámetro.
@@ -33,7 +33,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(
-    title="Steam Roulette API",
+    title="Ruletazo API",
     description="Backend de la Ruleta de Juegos y Analizador de Biblioteca de Steam.",
     version="0.1.0",
     lifespan=lifespan,
@@ -51,6 +51,7 @@ app.add_middleware(
 app.include_router(games.router)
 app.include_router(auth.router)
 app.include_router(forum.router)
+app.include_router(profiles.router)
 
 
 @app.get("/api/health", tags=["health"])

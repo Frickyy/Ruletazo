@@ -2,6 +2,11 @@ import { useEffect, useState } from "react";
 import RoulettePage from "./pages/RoulettePage.jsx";
 import LibraryPage from "./pages/LibraryPage.jsx";
 import ForumPage from "./pages/ForumPage.jsx";
+import LegalPage from "./pages/LegalPage.jsx";
+import ProfilePage from "./pages/ProfilePage.jsx";
+import SiteFooter from "./components/SiteFooter.jsx";
+import SteamLoginButton from "./components/SteamLoginButton.jsx";
+import { fetchPublicConfig } from "./services/profileService.js";
 import SteamIdInput from "./components/SteamIdInput.jsx";
 import { fetchSession, fetchSteamProfile, logoutSession } from "./services/gameService.js";
 import { useHashRoute } from "./routes.js";
@@ -35,7 +40,12 @@ function App() {
     const legacyId = localStorage.getItem(FRIEND_STEAM_ID_KEY) ?? "";
     return legacyId ? [legacyId] : [""];
   });
-  const [{ view: activeView, forumTarget }, navigate] = useHashRoute();
+  const [{ view: activeView, forumTarget, profileId }, navigate] = useHashRoute();
+  // Configuración pública: links para apoyar, tiendas con afiliados, si hay duración (HLTB).
+  const [config, setConfig] = useState(null);
+  useEffect(() => {
+    fetchPublicConfig().then(setConfig).catch(() => setConfig(null));
+  }, []);
   const [authMessage, setAuthMessage] = useState("");
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [includeFamily, setIncludeFamily] = useState(() => localStorage.getItem("steamRoulette.includeFamily") !== "false");
@@ -114,6 +124,29 @@ function App() {
     setFamilyIds((current) => current.length < 5 ? [...current, ""] : current);
   }
 
+  /** Desde un perfil: suma a esa persona a la familia y activa la biblioteca combinada. */
+  function addToFamily(steamId) {
+    setFamilyIds((current) => {
+      const filled = current.filter(Boolean);
+      if (filled.includes(steamId) || filled.length >= 5) return current;
+      return [...filled, steamId];
+    });
+    setIncludeFamily(true);
+  }
+
+  function openProfile(steamId = null) {
+    setProfileMenuOpen(false);
+    navigate("profile", null, steamId);
+    window.scrollTo({ top: 0 });
+  }
+
+  /** Cambios de preferencias del perfil (público, seguir logros) reflejados en la sesión. */
+  function handlePreferencesChange(preferences) {
+    setProfile((current) => (current ? { ...current, ...preferences } : current));
+    // Recién activado el seguimiento de logros: se vuelve a correr la segunda pasada para pedirlos.
+    if (preferences.track_achievements && !profile?.track_achievements) library.restartEnrichment();
+  }
+
   function removeFamilyId(index) {
     setFamilyIds((current) => current.filter((_, currentIndex) => currentIndex !== index));
   }
@@ -153,9 +186,9 @@ function App() {
     <div className="app-shell">
       <header className="topbar">
         <div className="topbar__inner">
-          <button type="button" className="brand" onClick={() => setActiveView("roulette")} aria-label="Steam Roulette, ir a la ruleta">
+          <button type="button" className="brand" onClick={() => setActiveView("roulette")} aria-label="Ruletazo, ir a la ruleta">
             <BrandMark />
-            <span className="brand__name">Steam Roulette</span>
+            <span className="brand__name">Ruletazo</span>
           </button>
 
           <nav className="topbar__nav" aria-label="Secciones">
@@ -200,6 +233,9 @@ function App() {
                       <strong>{profile.name}</strong>
                       <span>Cuenta de Steam</span>
                     </div>
+                    <button type="button" className="profile-menu__item" onClick={() => openProfile(null)} role="menuitem">
+                      Mi perfil
+                    </button>
                     <button type="button" className="profile-menu__logout" onClick={handleLogout} role="menuitem">
                       Cerrar sesión
                     </button>
@@ -207,10 +243,7 @@ function App() {
                 )}
               </div>
             ) : (
-              <button type="button" className="account-button account-button--login" onClick={handleSteamLogin}>
-                <span>Iniciar sesión</span>
-                <span className="account-button__extra">con Steam</span>
-              </button>
+              <SteamLoginButton onClick={handleSteamLogin} />
             )}
           </div>
         </div>
@@ -234,11 +267,21 @@ function App() {
             onIncludeFamilyChange={setIncludeFamily}
             onOpenForum={openForum}
             onLogin={handleSteamLogin}
+            trackAchievements={Boolean(profile?.track_achievements)}
+            onOpenProfile={() => openProfile(null)}
+            hltbEnabled={config?.hltb_enabled !== false}
           />
         )}
 
         {activeView === "forum" && (
-          <ForumPage target={forumTarget} onTargetChange={openForum} viewer={profile} onLogin={handleSteamLogin} />
+          <ForumPage
+            target={forumTarget}
+            onTargetChange={openForum}
+            viewer={profile}
+            onLogin={handleSteamLogin}
+            onOpenProfile={openProfile}
+            affiliateStores={config?.affiliate_stores ?? []}
+          />
         )}
 
         {activeView === "library" && (
@@ -252,8 +295,28 @@ function App() {
             includeFamily={includeFamily}
             onIncludeFamilyChange={setIncludeFamily}
             onManageFamily={() => setActiveView("family")}
+            hltbEnabled={config?.hltb_enabled !== false}
           />
         )}
+
+        {activeView === "profile" && (
+          <ProfilePage
+            profileId={profileId}
+            viewer={profile}
+            onLogin={handleSteamLogin}
+            onOpenForum={openForum}
+            onAddToFamily={addToFamily}
+            familyIds={familyIdsValue}
+            onPreferencesChange={handlePreferencesChange}
+            onDeleted={() => {
+              setProfile(null);
+              setAuthMessage("Borramos todos tus datos y cerramos tu sesión.");
+              navigate("roulette");
+            }}
+          />
+        )}
+
+        {(activeView === "privacy" || activeView === "terms") && <LegalPage kind={activeView} config={config} />}
 
         {activeView === "family" && (
           <section className="family-page">
@@ -296,6 +359,8 @@ function App() {
           </section>
         )}
       </main>
+
+      <SiteFooter config={config} onNavigate={(view) => setActiveView(view)} />
     </div>
   );
 }

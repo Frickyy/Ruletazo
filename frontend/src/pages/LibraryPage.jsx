@@ -32,6 +32,7 @@ function LibraryPage({
   includeFamily,
   onIncludeFamilyChange,
   onManageFamily,
+  hltbEnabled = true,
 }) {
   const { games, status, error: loadError, updateGame, classification, setClassificationPaused } = library;
   const [collection, setCollection] = useState("all");
@@ -199,13 +200,15 @@ function LibraryPage({
           ))}
         </select>
 
-        <select className="select" value={duration} onChange={(event) => setDuration(event.target.value)} aria-label="Duración">
-          {DURATION_OPTIONS.map((option) => (
-            <option key={option.id} value={option.id}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+        {hltbEnabled && (
+          <select className="select" value={duration} onChange={(event) => setDuration(event.target.value)} aria-label="Duración">
+            {DURATION_OPTIONS.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        )}
 
         {genres.length > 0 && (
           <select className="select" value={genre} onChange={(event) => setGenre(event.target.value)} aria-label="Filtrar por género">
@@ -220,7 +223,7 @@ function LibraryPage({
 
         <div className="library-page__sort">
           <select className="select" value={sortBy} onChange={(event) => setSortBy(event.target.value)} aria-label="Ordenar por">
-            {SORT_OPTIONS.map((option) => (
+            {SORT_OPTIONS.filter((option) => hltbEnabled || option.id !== "duration").map((option) => (
               <option key={option.id} value={option.id}>
                 {option.label}
               </option>

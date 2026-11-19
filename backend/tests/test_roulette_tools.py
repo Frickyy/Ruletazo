@@ -189,7 +189,7 @@ def test_migrations_create_a_fresh_database(tmp_path):
     connection = sqlite3.connect(db_file)
     tables = {row[0] for row in connection.execute("select name from sqlite_master where type='table'")}
     assert {"hidden_games", "forum_reports", "cached_game_details"} <= tables
-    assert connection.execute("select version_num from alembic_version").fetchone() == ("0004",)
+    assert connection.execute("select version_num from alembic_version").fetchone() == ("0006",)
     connection.close()
 
 
