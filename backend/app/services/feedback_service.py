@@ -1,5 +1,8 @@
 """Formulario de feedback: guarda el comentario y lo manda por mail a FEEDBACK_EMAIL.
 
+FEEDBACK_EMAIL acepta varias direcciones separadas por comas (p. ej. la casilla de la página y
+una personal para enterarse al toque); a todas les llega el mismo mail.
+
 El mail sale por SMTP (por defecto Gmail con una contraseña de aplicación, ver DESARROLLO.md). Si el
 SMTP no está configurado o falla, el comentario igual queda guardado en la tabla `feedback`
 con `emailed = False`, así no se pierde ninguno.
@@ -55,6 +58,16 @@ def sender_name(feedback: Feedback) -> str:
     return feedback.steam_name or "Jugador de Steam"
 
 
+def recipients(value: str) -> str:
+    """Normaliza la lista: "a@x.com,  b@y.com" -> "a@x.com, b@y.com" (sin vacíos ni repetidos)."""
+    seen: list[str] = []
+    for address in value.split(","):
+        address = address.strip()
+        if address and address.lower() not in (a.lower() for a in seen):
+            seen.append(address)
+    return ", ".join(seen)
+
+
 def build_email(feedback: Feedback, sender: str, recipient: str) -> EmailMessage:
     name = sender_name(feedback)
     kind = KINDS.get(feedback.kind, "Otra cosa")
@@ -63,7 +76,7 @@ def build_email(feedback: Feedback, sender: str, recipient: str) -> EmailMessage
     email = EmailMessage()
     email["Subject"] = f"{name} mandó un feedback"
     email["From"] = sender
-    email["To"] = recipient
+    email["To"] = recipients(recipient)
     email["Date"] = formatdate(localtime=True)
     email["Message-ID"] = make_msgid(domain="ruletazo")
 
