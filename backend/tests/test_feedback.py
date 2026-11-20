@@ -61,6 +61,13 @@ def test_feedback_is_saved_and_trimmed(db_session):
     assert feedback.emailed is False
 
 
+def test_feedback_email_goes_to_every_address(db_session, smtp_settings, monkeypatch):
+    monkeypatch.setattr(get_settings(), "feedback_email", "ruletazo007@gmail.com, otra@gmail.com,,RULETAZO007@gmail.com")
+    feedback = _save(db_session)
+    assert feedback_service.send_feedback_email(db_session, feedback.id) is True
+    assert FakeSMTP.sent[0]["To"] == "ruletazo007@gmail.com, otra@gmail.com"
+
+
 def test_feedback_email_goes_to_the_inbox(db_session, smtp_settings):
     feedback = _save(db_session)
     assert feedback_service.send_feedback_email(db_session, feedback.id) is True
