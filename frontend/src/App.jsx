@@ -82,6 +82,8 @@ function App() {
   const [playtimeFilter, setPlaytimeFilter] = useState("all");
   // Ocultar juegos +18: activado por defecto.
   const [hideAdult, setHideAdult] = useState(() => readStorage("steamRoulette.hideAdult") !== "false");
+  // Ocultar programas (Soundpad, Wallpaper Engine…): activado por defecto.
+  const [hideSoftware, setHideSoftware] = useState(() => readStorage("steamRoulette.hideSoftware") !== "false");
 
   useEffect(() => {
     LEGACY_SESSION_KEYS.forEach((key) => localStorage.removeItem(key));
@@ -114,6 +116,10 @@ function App() {
   useEffect(() => {
     writeStorage("steamRoulette.hideAdult", String(hideAdult));
   }, [hideAdult]);
+
+  useEffect(() => {
+    writeStorage("steamRoulette.hideSoftware", String(hideSoftware));
+  }, [hideSoftware]);
 
   // Perfiles de la familia (nombre y foto) por ID. Se guardan en este navegador: si Steam no
   // responde en un momento dado (por ejemplo, por exceso de pedidos), se sigue mostrando el último.
@@ -303,6 +309,8 @@ function App() {
             library={library}
             hideAdult={hideAdult}
             onHideAdultChange={setHideAdult}
+            hideSoftware={hideSoftware}
+            onHideSoftwareChange={setHideSoftware}
             hasFamily={familyIdsValue.length > 0}
             playtimeFilter={playtimeFilter}
             onPlaytimeFilterChange={setPlaytimeFilter}
@@ -340,6 +348,8 @@ function App() {
             library={library}
             hideAdult={hideAdult}
             onHideAdultChange={setHideAdult}
+            hideSoftware={hideSoftware}
+            onHideSoftwareChange={setHideSoftware}
             playtimeFilter={playtimeFilter}
             onPlaytimeFilterChange={setPlaytimeFilter}
             includeFamily={includeFamily}

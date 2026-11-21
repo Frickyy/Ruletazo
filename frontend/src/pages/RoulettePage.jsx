@@ -43,6 +43,8 @@ function RoulettePage({
   library,
   hideAdult,
   onHideAdultChange,
+  hideSoftware = true,
+  onHideSoftwareChange,
   hasFamily,
   playtimeFilter = "all",
   onPlaytimeFilterChange,
@@ -82,7 +84,7 @@ function RoulettePage({
   const durationEnabled = useMemo(() => hltbEnabled || games.some((game) => game.duration_hours != null), [hltbEnabled, games]);
   // "En común" solo tiene sentido con la familia sumada.
   const commonOnly = inCommon && hasFamily && includeFamily;
-  const filters = { collection, genre, playtimeFilter, duration, hideAdult, mode, inCommon: commonOnly, includeFinished };
+  const filters = { collection, genre, playtimeFilter, duration, hideAdult, hideSoftware, mode, inCommon: commonOnly, includeFinished };
   const gamesById = useMemo(() => new Map(games.map((game) => [game.appid, game])), [games]);
 
   // Los juegos que pueden salir: exactamente los que cumplen los filtros actuales.
@@ -90,7 +92,7 @@ function RoulettePage({
     if (!steamId) return DEMO_GAMES;
     return games.filter((game) => matchesFilters(game, filters)).map(toReelGame);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [steamId, games, collection, genre, playtimeFilter, duration, hideAdult, mode, commonOnly, includeFinished]);
+  }, [steamId, games, collection, genre, playtimeFilter, duration, hideAdult, hideSoftware, mode, commonOnly, includeFinished]);
   // Los descartados por hoy siguen pasando por el rodillo (si no, la tira se rearmaba de golpe
   // justo al girar), pero no pueden ganar.
   const spinnable = useMemo(() => pool.filter((game) => !skipped.has(game.appid)), [pool, skipped]);
@@ -466,6 +468,13 @@ function RoulettePage({
 
             <div className="roulette__toggles" role="group" aria-label={t("Opciones")}>
               <Toggle checked={hideAdult} onChange={onHideAdultChange} disabled={isSpinning} label={t("Ocultar +18")} />
+              <Toggle
+                checked={hideSoftware}
+                onChange={onHideSoftwareChange}
+                disabled={isSpinning}
+                label={t("Ocultar programas")}
+                title={t("Deja afuera lo que Steam lista como software, como Soundpad o Wallpaper Engine")}
+              />
               {isLoggedIn && (
                 <Toggle
                   checked={includeFinished}

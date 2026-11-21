@@ -23,6 +23,8 @@ class Game(BaseModel):
     is_hidden: bool = False
     # Contenido sexual para adultos según la tienda (o, si todavía no hay datos, por el nombre).
     is_adult: bool = False
+    # La tienda lo lista como software (programas, utilidades), no como juego.
+    is_software: bool = False
     # Última vez que se jugó (timestamp Unix). None si nunca.
     last_played: int | None = None
     # "playing", "finished", "abandoned" o None.

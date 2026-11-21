@@ -33,6 +33,9 @@ GENRE_TAGS = {
 }
 MAX_GENRES = 5
 
+# Tipos de ítem de la tienda (EStoreAppType) que no son juegos: 6 = software, 13 = herramienta.
+SOFTWARE_TYPES = {6, 13}
+
 # Categorías de "jugadores" de la tienda.
 SINGLE_PLAYER = {2}
 COOP = {9, 38, 39, 48}  # cooperativo, en línea, pantalla compartida, LAN
@@ -94,7 +97,8 @@ def parse_item(item: dict | None) -> dict:
 
     basic = item.get("basic_info") or {}
     categories = set((item.get("categories") or {}).get("supported_player_categoryids") or [])
-    is_game = item.get("type", 0) == 0
+    item_type = item.get("type", 0)
+    is_game = item_type == 0
     if not is_game:
         price_cents = None
     elif item.get("is_free"):
@@ -112,6 +116,7 @@ def parse_item(item: dict | None) -> dict:
         "release_date": _release_date((item.get("release") or {}).get("steam_release_date")),
         "header_image": _header_image(item.get("assets") or {}),
         "is_adult": is_adult_content({"content_descriptors": {"ids": item.get("content_descriptorids") or []}}),
+        "is_software": item_type in SOFTWARE_TYPES,
         "player_categories": sorted(categories),
         "store_available": True,
     }
@@ -145,6 +150,7 @@ def empty_details() -> dict:
         "release_date": "",
         "header_image": "",
         "is_adult": False,
+        "is_software": False,
         "player_categories": [],
         "store_available": False,
     }

@@ -425,6 +425,7 @@ def apply_cached_details(game: Game, details: CachedGameDetails) -> None:
     game.hltb_completionist_hours = details.hltb_completionist_hours if hltb_on else None
     game.achievement_difficulty = game_details_service.difficulty_label(details)
     game.is_adult = bool(details.is_adult) or looks_adult_by_name(game.name)
+    game.is_software = bool(details.is_software)
     if details.header_image:
         game.header_image = details.header_image
     modes = store_browse.player_modes(details.player_categories)

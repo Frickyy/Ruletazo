@@ -60,6 +60,7 @@ export const SORT_OPTIONS = [
  * ¿El juego pasa los filtros?
  * - collection: "all" | "favorites" | "playing" | "near_complete" | "hidden" (los ocultos solo aparecen en "hidden")
  * - hideAdult: oculta contenido +18 (según la tienda o, sin datos, por el nombre)
+ * - hideSoftware: oculta lo que la tienda lista como software (Soundpad, Wallpaper Engine…)
  * - mode: modo de juego (ver MODE_OPTIONS); inCommon: solo los que tenés vos y alguien de tu familia
  * - includeFinished: si es false, los terminados no entran (la ruleta los saca por defecto)
  * - state: filtro por estado de la página Biblioteca (ver STATE_OPTIONS)
@@ -71,6 +72,7 @@ export function matchesFilters(game, filters = {}, now = Date.now()) {
     playtimeFilter = "all",
     duration = "any",
     hideAdult = false,
+    hideSoftware = false,
     search = "",
     mode = "any",
     inCommon = false,
@@ -95,6 +97,7 @@ export function matchesFilters(game, filters = {}, now = Date.now()) {
   if (mode === "multi" && !game.multiplayer) return false;
   if (mode === "local" && !game.local_multiplayer) return false;
   if (hideAdult && game.is_adult) return false;
+  if (hideSoftware && game.is_software) return false;
   if (genre && !(game.genres ?? []).includes(genre)) return false;
   if (search && !game.name.toLocaleLowerCase("es").includes(search.trim().toLocaleLowerCase("es"))) return false;
 
