@@ -194,11 +194,18 @@
   color: var(--accent);
 }
 
+/* Todas las opciones del mismo ancho y cada fila completa de borde a borde: en escritorio
+   entran las 7 en una fila; si no entran, bajan y las de la última fila se estiran. */
 .roulette__toggles {
   grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
+}
+
+.roulette__toggles > .toggle {
+  flex: 1 1 0;
+  min-width: 9.5rem;
 }
 
 .toggle {
@@ -328,7 +335,12 @@
   }
 
   .roulette__toggles {
+    display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .roulette__toggles > .toggle {
+    min-width: 0;
   }
 
   .roulette__toggles .toggle:last-child:nth-child(odd) {
