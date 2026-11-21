@@ -21,7 +21,8 @@ logger = logging.getLogger(__name__)
 
 # 6: sinopsis y fechas en español, y marca de contenido para adultos. 7: URL de la portada.
 # 8: datos de IStoreBrowseService (de a 50 juegos), géneros por etiquetas y categorías de jugadores.
-STORE_METADATA_VERSION = 8
+# 9: marca de software (Soundpad, Wallpaper Engine…) para dejarlo fuera de la ruleta.
+STORE_METADATA_VERSION = 9
 # Subir este número fuerza a volver a pedir "lo bueno / lo malo" de las reseñas.
 # 2: varias frases por lado, filtradas (review_digest), y los errores de Steam ya no se cachean.
 REVIEWS_VERSION = 2
@@ -165,6 +166,7 @@ def apply_store_details(cached: CachedGameDetails, store_details: dict) -> None:
         cached.price_cents = store_details["price_cents"]
         cached.release_date = store_details["release_date"]
         cached.is_adult = store_details["is_adult"]
+        cached.is_software = store_details.get("is_software", False)
         cached.header_image = store_details["header_image"] or cached.header_image or ""
         cached.player_categories = store_details.get("player_categories", [])
     cached.store_metadata_version = STORE_METADATA_VERSION

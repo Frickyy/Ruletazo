@@ -79,6 +79,8 @@ const en = {
   "Géneros: cargando…": "Genres: loading…",
   "Opciones": "Options",
   "Ocultar +18": "Hide 18+",
+  "Ocultar programas": "Hide software",
+  "Deja afuera lo que Steam lista como software, como Soundpad o Wallpaper Engine": "Leaves out what Steam lists as software, like Soundpad or Wallpaper Engine",
   "Incluir terminados": "Include finished",
   "Por defecto los juegos marcados como terminados no salen": "By default, games marked as finished don't come up",
   "Incluir Familia": "Include family",

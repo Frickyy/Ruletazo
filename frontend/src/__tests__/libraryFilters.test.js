@@ -13,6 +13,7 @@ const game = (overrides) => ({
   is_favorite: false,
   is_hidden: false,
   is_adult: false,
+  is_software: false,
   ...overrides,
 });
 
@@ -28,6 +29,13 @@ describe("matchesFilters", () => {
     const adult = game({ is_adult: true });
     expect(matchesFilters(adult, { hideAdult: true })).toBe(false);
     expect(matchesFilters(adult, { hideAdult: false })).toBe(true);
+  });
+
+  it("oculta programas solo si se pide", () => {
+    const soundpad = game({ is_software: true });
+    expect(matchesFilters(soundpad, { hideSoftware: true })).toBe(false);
+    expect(matchesFilters(soundpad, { hideSoftware: false })).toBe(true);
+    expect(matchesFilters(game(), { hideSoftware: true })).toBe(true);
   });
 
   it("filtra por duración según HowLongToBeat y deja afuera los que no tienen dato", () => {

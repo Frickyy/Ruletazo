@@ -10,8 +10,9 @@ from fastapi import HTTPException
 
 from app.core.rate_limit import RateLimit
 from app.db import backup
-from app.models.game import CachedLibraryEntry, UserGameProgress
-from app.services import forum_service, library_service, profile_service, store_browse
+from app.models.game import CachedGameDetails, CachedLibraryEntry, UserGameProgress
+from app.schemas.game import Game
+from app.services import forum_service, game_details_service, library_service, profile_service, store_browse
 from app.services.forum_service import Author, ForumError
 
 STEAM_ID64 = "76561198000000000"
@@ -64,6 +65,18 @@ def test_player_modes_single_player_only():
 def test_missing_item_is_unavailable():
     assert store_browse.parse_item(None)["store_available"] is False
     assert store_browse.parse_item({"appid": 1, "success": 2})["store_available"] is False
+
+
+def test_software_is_marked_and_reaches_the_library():
+    soundpad = store_browse.parse_item({"appid": 629520, "success": 1, "type": 6, "name": "Soundpad"})
+    assert soundpad["is_software"] is True
+    assert store_browse.parse_item(PORTAL_ITEM)["is_software"] is False
+
+    details = CachedGameDetails(appid=629520, genres=[], player_categories=[])
+    game_details_service.apply_store_details(details, soundpad)
+    game = Game(appid=629520, name="Soundpad", header_image="")
+    library_service.apply_cached_details(game, details)
+    assert game.is_software is True
 
 
 @respx.mock

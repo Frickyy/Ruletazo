@@ -51,6 +51,8 @@ class CachedGameDetails(Base):
     player_categories: Mapped[list[int]] = mapped_column(JSON, default=list)
     # La tienda lo marca como contenido sexual para adultos (descriptores 3 o 4).
     is_adult: Mapped[bool] = mapped_column(Boolean, default=False)
+    # La tienda lo lista como software (Soundpad, Wallpaper Engine…), no como juego.
+    is_software: Mapped[bool] = mapped_column(Boolean, default=False)
     store_metadata_version: Mapped[int] = mapped_column(Integer, default=3)
     review_score_desc: Mapped[str] = mapped_column(String(64), default="")
     review_total: Mapped[int] = mapped_column(Integer, default=0)

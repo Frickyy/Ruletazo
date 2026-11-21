@@ -385,7 +385,7 @@ function GamesInCommon({ steamId, name }) {
     }
   }
 
-  const filtered = useMemo(() => (games ?? []).filter((game) => matchesFilters(game, { mode, hideAdult: true })), [games, mode]);
+  const filtered = useMemo(() => (games ?? []).filter((game) => matchesFilters(game, { mode, hideAdult: true, hideSoftware: true })), [games, mode]);
 
   return (
     <section className="profile-section profile-common" aria-labelledby="profile-common">
