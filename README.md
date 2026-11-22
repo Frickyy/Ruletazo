@@ -118,4 +118,6 @@ El detalle está en la **Política de privacidad** y los **Términos**, en el pi
 
 ---
 
-¿Querés correr el proyecto o colaborar? Está todo en [DESARROLLO.md](DESARROLLO.md).
+¿Querés ver cómo está hecho o proponer una mejora? Está todo en [DESARROLLO.md](DESARROLLO.md).
+
+El código es público para leerlo, pero no es de uso libre: no se puede copiar, montar en otra página ni redistribuir sin permiso. Ver [LICENSE](LICENSE).
