@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import DailyGame from "./DailyGame.jsx";
 import SteamLoginButton from "./SteamLoginButton.jsx";
 import { formatNumber, t } from "../i18n/index.js";
 import "./IdlePanel.css";
@@ -15,6 +16,7 @@ function IdlePanel({ steamId, library, pool, onPick, onLogin, onGuest, isStale =
   // isStale: ya se giró y se está esperando la ficha; el panel se atenúa en vez de desaparecer.
   return (
     <div className={`idle-panel-wrap${isStale ? " idle-panel-wrap--stale" : ""}`} inert={isStale ? "" : undefined}>
+      <DailyGame games={steamId ? library : pool} onPick={onPick} isDemo={!steamId} />
       {steamId ? <LibraryPanel library={library} pool={pool} onPick={onPick} /> : <DemoPanel demoCount={pool.length} onLogin={onLogin} onGuest={onGuest} />}
     </div>
   );
