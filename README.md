@@ -2,7 +2,7 @@
 
 **¿No sabés qué jugar?** Ruletazo elige por vos un juego de tu biblioteca de Steam (y, si querés, de la de tu familia) y te muestra lo necesario para decidir si es el momento de empezarlo: cuánto dura, qué opina la comunidad y cuántos logros te faltan.
 
-Es gratis, sin publicidad y en español o inglés.
+Es gratis, sin publicidad y en español o inglés. **Entrá en [ruletazo.app](https://ruletazo.app).**
 
 > Proyecto independiente, sin relación con Valve Corporation ni Steam.
 

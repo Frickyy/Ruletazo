@@ -97,6 +97,20 @@ docker compose up --build
 
 Abrí <http://localhost:8000>. La imagen compila el frontend y lo sirve desde el backend; la base queda en el volumen `data`, con una copia de seguridad por día en `data/backups`. Usa las variables de `backend/.env` (necesita al menos `STEAM_API_KEY` y un `SESSION_SECRET` de 32 caracteres o más). Si la publicás en otro dominio, poné su URL en `FRONTEND_URL`. Esa misma URL se usa al compilar para la vista previa del link al compartirlo (imagen `frontend/public/og-image.png`, que se regenera desde `frontend/scripts/og-image.html`); sin Docker, compilá con `SITE_URL=https://tu-dominio npm run build`.
 
+El puerto queda abierto solo en `127.0.0.1`: desde afuera se entra por un túnel de Cloudflare o un proxy con HTTPS.
+
+### Producción (ruletazo.app)
+
+- Servidor: DigitalOcean (SFO3), Ubuntu 24.04, código en `/opt/ruletazo` (clonado con una deploy key de solo lectura).
+- `backend/.env` con `ENVIRONMENT=production`, `FRONTEND_URL` y `CORS_ORIGINS` en `https://ruletazo.app`, y un `.env` en la raíz con `FRONTEND_URL=https://ruletazo.app` para compilar la vista previa.
+- `cloudflared` corre como servicio (`/etc/cloudflared/config.yml`) y manda `ruletazo.app` y `www.ruletazo.app` a `http://127.0.0.1:8000`.
+- Actualizar a la última versión de `main`:
+
+  ```bash
+  ssh root@IP_DEL_SERVIDOR   # ruletazo.app apunta a Cloudflare, no al servidor
+  cd /opt/ruletazo && git pull && docker compose up -d --build
+  ```
+
 ## Tests
 
 ```bash

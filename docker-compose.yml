@@ -5,8 +5,9 @@ services:
       args:
         # La misma URL pública, para la imagen y el link de la vista previa al compartir.
         SITE_URL: ${FRONTEND_URL:-}
+    # Solo localhost: desde afuera se entra por el túnel de Cloudflare (o un proxy con HTTPS).
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     # STEAM_API_KEY, SESSION_SECRET, ADMIN_STEAM_IDS… (ver backend/.env.example)
     env_file: backend/.env
     # Estos pisan lo que diga backend/.env (que está pensado para desarrollo local).

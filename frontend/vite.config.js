@@ -1,7 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-// URL pública del sitio (ej. https://ruletazo.com), para las etiquetas de vista previa de
+// URL pública del sitio (ej. https://ruletazo.app), para las etiquetas de vista previa de
 // index.html: WhatsApp, Discord y X piden la imagen con URL absoluta. Sin SITE_URL quedan
 // rutas relativas, que alcanzan en desarrollo.
 const siteUrl = (process.env.SITE_URL ?? "").trim().replace(/\/+$/, "");
