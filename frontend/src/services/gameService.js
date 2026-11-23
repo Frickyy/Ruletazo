@@ -20,6 +20,12 @@ export async function fetchGameDetails({ steamId, friendSteamId, appid }) {
   return data;
 }
 
+/** El juego del día de la comunidad y cuántos jugadores de Ruletazo lo tienen. */
+export async function fetchDailyGame() {
+  const { data } = await api.get("/games/daily");
+  return data;
+}
+
 /** Biblioteca completa (cacheada), con los mismos filtros que la ruleta. */
 export async function fetchLibrary(options = {}) {
   const timeout = options.sortBy === "price" || options.sortBy === "release_date" ? 120000 : undefined;

@@ -1,0 +1,57 @@
+.daily-game {
+  display: grid;
+  grid-template-columns: 184px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1.1rem;
+  margin-bottom: 1.25rem;
+  padding: 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.daily-game__cover {
+  width: 184px;
+  aspect-ratio: 460 / 215;
+  object-fit: cover;
+  border-radius: 9px;
+  display: block;
+}
+
+.daily-game__info {
+  min-width: 0;
+}
+
+.daily-game__info .eyebrow {
+  margin: 0 0 0.2rem;
+}
+
+.daily-game__name {
+  margin: 0;
+  font-size: 1.15rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.daily-game__meta {
+  margin: 0.2rem 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 640px) {
+  .daily-game {
+    grid-template-columns: 112px minmax(0, 1fr);
+  }
+
+  .daily-game__cover {
+    width: 112px;
+  }
+
+  .daily-game__action {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+    text-align: center;
+  }
+}

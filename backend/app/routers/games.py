@@ -1,14 +1,17 @@
 import random
+from datetime import date
 from typing import Awaitable, TypeVar
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
+from sqlalchemy import distinct, func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.rate_limit import background, steam_reads
 from app.core.security import current_steam_id, require_steam_id
 from app.db.session import get_db
+from app.models.game import CachedLibraryEntry
 from app.schemas.game import Game
 from app.services import forum_service, favorites_service, game_details_service, hidden_service, library_service
 from app.services.steam_client import InvalidSteamIDError, PrivateProfileError, SteamAPIError, SteamClient
@@ -81,6 +84,37 @@ _MOCK_LIBRARY: list[Game] = [
         (728880, "Overcooked! 2"),
     ]
 ]
+
+
+class DailyGame(BaseModel):
+    appid: int
+    name: str
+    header_image: str
+    owners: int = Field(description="Cuántos jugadores de Ruletazo lo tienen en su biblioteca (solo el número).")
+    day: str
+
+
+_DAILY_EPOCH = date(2026, 1, 1)
+
+
+def daily_pick(day: date) -> Game:
+    """El juego del día: el mismo para todos, rota por la biblioteca de ejemplo (juegos conocidos y
+    variados) y no se repite hasta pasar por todos."""
+    return _MOCK_LIBRARY[(day - _DAILY_EPOCH).days % len(_MOCK_LIBRARY)]
+
+
+def build_daily_game(db: Session, day: date) -> DailyGame:
+    game = daily_pick(day)
+    owners = db.scalar(
+        select(func.count(distinct(CachedLibraryEntry.steam_id))).where(CachedLibraryEntry.appid == game.appid)
+    )
+    return DailyGame(appid=game.appid, name=game.name, header_image=game.header_image, owners=owners or 0, day=day.isoformat())
+
+
+@router.get("/daily", response_model=DailyGame)
+def get_daily_game(db: Session = Depends(get_db)) -> DailyGame:
+    """El juego del día de la comunidad y cuántos lo tienen. No expone a nadie: es solo un conteo."""
+    return build_daily_game(db, date.today())
 
 
 @router.get("/random", response_model=Game, dependencies=[Depends(steam_reads)])
