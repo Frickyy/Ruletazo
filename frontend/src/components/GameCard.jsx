@@ -31,7 +31,7 @@ function GameCard({ game, isStale = false, isDemo = false, onToggleFavorite, onS
   useEffect(() => setShareStatus(null), [game.appid]);
   async function handleShare() {
     try {
-      const result = await shareResult(game.name);
+      const result = await shareResult(game);
       if (result === "copied") {
         setShareStatus("copied");
         setTimeout(() => setShareStatus(null), 2500);

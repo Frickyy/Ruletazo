@@ -147,7 +147,7 @@ export async function shareYearCard(profile) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function loadImage(url) {
+export function loadImage(url) {
   if (!url) return Promise.resolve(null);
   return new Promise((resolve) => {
     const image = new Image();
@@ -158,14 +158,14 @@ function loadImage(url) {
   });
 }
 
-function fit(ctx, text, maxWidth) {
+export function fit(ctx, text, maxWidth) {
   let value = String(text ?? "");
   if (ctx.measureText(value).width <= maxWidth) return value;
   while (value.length > 1 && ctx.measureText(`${value}…`).width > maxWidth) value = value.slice(0, -1);
   return `${value}…`;
 }
 
-function roundRectPath(ctx, x, y, width, height, radius) {
+export function roundRectPath(ctx, x, y, width, height, radius) {
   ctx.beginPath();
   ctx.moveTo(x + radius, y);
   ctx.arcTo(x + width, y, x + width, y + height, radius);
@@ -175,7 +175,7 @@ function roundRectPath(ctx, x, y, width, height, radius) {
   ctx.closePath();
 }
 
-function roundRect(ctx, x, y, width, height, radius, color) {
+export function roundRect(ctx, x, y, width, height, radius, color) {
   roundRectPath(ctx, x, y, width, height, radius);
   ctx.fillStyle = color;
   ctx.fill();
