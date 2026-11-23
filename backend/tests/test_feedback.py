@@ -1,5 +1,6 @@
 import smtplib
 
+import httpx
 import pytest
 
 from app.core.config import get_settings
@@ -44,7 +45,36 @@ class FakeSMTP:
 def fake_smtp(monkeypatch):
     FakeSMTP.sent, FakeSMTP.fail = [], False
     monkeypatch.setattr(feedback_service.smtplib, "SMTP", FakeSMTP)
+    # Por defecto sin Resend: cada test que lo quiera lo prende.
+    monkeypatch.setattr(get_settings(), "resend_api_key", "")
     return FakeSMTP
+
+
+class FakeResponse:
+    def __init__(self, status):
+        self.status_code = status
+        self.request = httpx.Request("POST", feedback_service.RESEND_URL)
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            raise httpx.HTTPStatusError("error", request=self.request, response=httpx.Response(self.status_code))
+
+
+@pytest.fixture()
+def fake_resend(monkeypatch):
+    calls = []
+    state = {"status": 200}
+
+    def post(url, json=None, headers=None, timeout=None):
+        calls.append({"url": url, "json": json, "headers": headers})
+        return FakeResponse(state["status"])
+
+    settings = get_settings()
+    monkeypatch.setattr(settings, "resend_api_key", "re_test")
+    monkeypatch.setattr(settings, "email_from", "Ruletazo <feedback@ruletazo.app>")
+    monkeypatch.setattr(settings, "feedback_email", "ruletazo007@gmail.com, otra@gmail.com")
+    monkeypatch.setattr(feedback_service.httpx, "post", post)
+    return calls, state
 
 
 def _save(db, **overrides):
@@ -95,6 +125,31 @@ def test_feedback_without_smtp_stays_saved(db_session, monkeypatch):
 
 def test_feedback_smtp_failure_keeps_it(db_session, smtp_settings):
     FakeSMTP.fail = True
+    feedback = _save(db_session)
+    assert feedback_service.send_feedback_email(db_session, feedback.id) is False
+    assert db_session.get(Feedback, feedback.id).emailed is False
+
+
+def test_feedback_goes_through_resend_when_configured(db_session, smtp_settings, fake_resend):
+    calls, _ = fake_resend
+    feedback = _save(db_session)
+    assert feedback_service.send_feedback_email(db_session, feedback.id) is True
+    assert FakeSMTP.sent == []  # Resend tiene prioridad sobre el SMTP
+    call = calls[0]
+    assert call["url"] == "https://api.resend.com/emails"
+    assert call["headers"]["Authorization"] == "Bearer re_test"
+    body = call["json"]
+    assert body["from"] == "Ruletazo <feedback@ruletazo.app>"
+    assert body["to"] == ["ruletazo007@gmail.com", "otra@gmail.com"]
+    assert body["subject"] == "Ana <3 mandó un feedback"
+    assert "Estaría bueno un modo oscuro" in body["text"]
+    assert "steamcommunity.com/profiles/7656" in body["html"]
+    assert db_session.get(Feedback, feedback.id).emailed is True
+
+
+def test_feedback_resend_failure_keeps_it(db_session, fake_resend):
+    _, state = fake_resend
+    state["status"] = 403
     feedback = _save(db_session)
     assert feedback_service.send_feedback_email(db_session, feedback.id) is False
     assert db_session.get(Feedback, feedback.id).emailed is False

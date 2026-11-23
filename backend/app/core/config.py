@@ -44,6 +44,11 @@ class Settings(BaseSettings):
     smtp_port: int = 587
     smtp_user: str = ""
     smtp_password: str = ""
+    # Alternativa al SMTP: la API de Resend, que va por HTTPS (sirve en servidores que bloquean
+    # los puertos de mail, como DigitalOcean). Si RESEND_API_KEY está, se usa en vez del SMTP.
+    # EMAIL_FROM tiene que ser de un dominio verificado en Resend.
+    resend_api_key: str = ""
+    email_from: str = "Ruletazo <feedback@ruletazo.app>"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
@@ -59,6 +64,10 @@ class Settings(BaseSettings):
     @property
     def smtp_configured(self) -> bool:
         return bool(self.smtp_user and self.smtp_password and self.feedback_email)
+
+    @property
+    def resend_configured(self) -> bool:
+        return bool(self.resend_api_key and self.email_from and self.feedback_email)
 
     @property
     def is_production(self) -> bool:

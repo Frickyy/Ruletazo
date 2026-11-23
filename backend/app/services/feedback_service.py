@@ -3,9 +3,10 @@
 FEEDBACK_EMAIL acepta varias direcciones separadas por comas (p. ej. la casilla de la página y
 una personal para enterarse al toque); a todas les llega el mismo mail.
 
-El mail sale por SMTP (por defecto Gmail con una contraseña de aplicación, ver DESARROLLO.md). Si el
-SMTP no está configurado o falla, el comentario igual queda guardado en la tabla `feedback`
-con `emailed = False`, así no se pierde ninguno.
+El mail sale por la API de Resend si hay RESEND_API_KEY (va por HTTPS, así que anda aunque el
+servidor bloquee los puertos de mail), o si no por SMTP (Gmail con una contraseña de aplicación,
+ver DESARROLLO.md). Si nada está configurado o falla, el comentario igual queda guardado en la
+tabla `feedback` con `emailed = False`, así no se pierde ninguno.
 
 Quién lo mandó se sabe por la sesión de Steam: el asunto es "<nombre> mandó un feedback" y el
 nombre va con link a su perfil. Sin sesión, el comentario llega como anónimo.
@@ -17,6 +18,7 @@ from email.message import EmailMessage
 from email.utils import formatdate, make_msgid
 from html import escape
 
+import httpx
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -115,21 +117,45 @@ def send_feedback_email(db: Session, feedback_id: int) -> bool:
     feedback = db.get(Feedback, feedback_id)
     if feedback is None or feedback.emailed:
         return False
-    if not settings.smtp_configured:
-        logger.warning("Feedback %s guardado sin mandar: falta SMTP_USER / SMTP_PASSWORD.", feedback_id)
-        return False
-    email = build_email(feedback, settings.smtp_user, settings.feedback_email)
-    try:
-        with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=20) as smtp:
-            smtp.starttls()
-            smtp.login(settings.smtp_user, settings.smtp_password)
-            smtp.send_message(email)
-    except (smtplib.SMTPException, OSError):
-        logger.exception("No se pudo mandar el mail del feedback %s (queda guardado).", feedback_id)
+    if settings.resend_configured:
+        email = build_email(feedback, settings.email_from, settings.feedback_email)
+        try:
+            _send_with_resend(email, settings.resend_api_key)
+        except httpx.HTTPError:
+            logger.exception("No se pudo mandar el mail del feedback %s por Resend (queda guardado).", feedback_id)
+            return False
+    elif settings.smtp_configured:
+        email = build_email(feedback, settings.smtp_user, settings.feedback_email)
+        try:
+            with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=20) as smtp:
+                smtp.starttls()
+                smtp.login(settings.smtp_user, settings.smtp_password)
+                smtp.send_message(email)
+        except (smtplib.SMTPException, OSError):
+            logger.exception("No se pudo mandar el mail del feedback %s (queda guardado).", feedback_id)
+            return False
+    else:
+        logger.warning("Feedback %s guardado sin mandar: falta RESEND_API_KEY o SMTP_USER / SMTP_PASSWORD.", feedback_id)
         return False
     feedback.emailed = True
     db.commit()
     return True
+
+
+RESEND_URL = "https://api.resend.com/emails"
+
+
+def _send_with_resend(email: EmailMessage, api_key: str) -> None:
+    """Manda el mismo mail que armó build_email, pero por la API HTTPS de Resend."""
+    payload = {
+        "from": email["From"],
+        "to": [address.strip() for address in email["To"].split(",") if address.strip()],
+        "subject": email["Subject"],
+        "text": email.get_body(("plain",)).get_content(),
+        "html": email.get_body(("html",)).get_content(),
+    }
+    response = httpx.post(RESEND_URL, json=payload, headers={"Authorization": f"Bearer {api_key}"}, timeout=20)
+    response.raise_for_status()
 
 
 def _one_line(value: str | None) -> str:
