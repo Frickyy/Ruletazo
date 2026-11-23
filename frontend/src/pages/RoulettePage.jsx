@@ -325,7 +325,7 @@ function RoulettePage({
           <p className="roulette__lead">
             {steamId
               ? t("Girá la ruleta: el juego que frene en el centro es el que te toca.")
-              : t("Probá la ruleta con 5 juegos de ejemplo, o pegá el link de tu perfil de Steam para girar con tu biblioteca.")}
+              : t("Probá la ruleta con {count} juegos de ejemplo, o pegá el link de tu perfil de Steam para girar con tu biblioteca.", { count: DEMO_GAMES.length })}
           </p>
         </div>
         {games.length > 0 && (
@@ -660,12 +660,49 @@ function steamHeader(appid) {
 }
 
 // Sin sesión la ruleta usa la biblioteca de ejemplo del backend.
+// Biblioteca de ejemplo para quien entra sin cuenta: variada (cortos, cooperativos, indies y grandes)
+// para que el rodillo se vea lleno y la primera prueba ya sirva.
 const DEMO_GAMES = [
   { appid: 1091500, name: "Cyberpunk 2077", image: steamHeader(1091500) },
   { appid: 1245620, name: "ELDEN RING", image: steamHeader(1245620) },
   { appid: 413150, name: "Stardew Valley", image: steamHeader(413150) },
   { appid: 1174180, name: "Red Dead Redemption 2", image: steamHeader(1174180) },
   { appid: 1145360, name: "Hades", image: steamHeader(1145360) },
+  { appid: 367520, name: "Hollow Knight", image: steamHeader(367520) },
+  { appid: 504230, name: "Celeste", image: steamHeader(504230) },
+  { appid: 105600, name: "Terraria", image: steamHeader(105600) },
+  { appid: 620, name: "Portal 2", image: steamHeader(620) },
+  { appid: 220, name: "Half-Life 2", image: steamHeader(220) },
+  { appid: 292030, name: "The Witcher 3: Wild Hunt", image: steamHeader(292030) },
+  { appid: 1086940, name: "Baldur's Gate 3", image: steamHeader(1086940) },
+  { appid: 632470, name: "Disco Elysium", image: steamHeader(632470) },
+  { appid: 753640, name: "Outer Wilds", image: steamHeader(753640) },
+  { appid: 304430, name: "INSIDE", image: steamHeader(304430) },
+  { appid: 1426210, name: "It Takes Two", image: steamHeader(1426210) },
+  { appid: 548430, name: "Deep Rock Galactic", image: steamHeader(548430) },
+  { appid: 892970, name: "Valheim", image: steamHeader(892970) },
+  { appid: 550, name: "Left 4 Dead 2", image: steamHeader(550) },
+  { appid: 264710, name: "Subnautica", image: steamHeader(264710) },
+  { appid: 646570, name: "Slay the Spire", image: steamHeader(646570) },
+  { appid: 588650, name: "Dead Cells", image: steamHeader(588650) },
+  { appid: 268910, name: "Cuphead", image: steamHeader(268910) },
+  { appid: 391540, name: "Undertale", image: steamHeader(391540) },
+  { appid: 1092790, name: "Inscryption", image: steamHeader(1092790) },
+  { appid: 1794680, name: "Vampire Survivors", image: steamHeader(1794680) },
+  { appid: 2379780, name: "Balatro", image: steamHeader(2379780) },
+  { appid: 1966720, name: "Lethal Company", image: steamHeader(1966720) },
+  { appid: 814380, name: "Sekiro: Shadows Die Twice", image: steamHeader(814380) },
+  { appid: 782330, name: "DOOM Eternal", image: steamHeader(782330) },
+  { appid: 489830, name: "The Elder Scrolls V: Skyrim Special Edition", image: steamHeader(489830) },
+  { appid: 1687950, name: "Persona 5 Royal", image: steamHeader(1687950) },
+  { appid: 1055540, name: "A Short Hike", image: steamHeader(1055540) },
+  { appid: 1135690, name: "Unpacking", image: steamHeader(1135690) },
+  { appid: 383870, name: "Firewatch", image: steamHeader(383870) },
+  { appid: 501300, name: "What Remains of Edith Finch", image: steamHeader(501300) },
+  { appid: 653530, name: "Return of the Obra Dinn", image: steamHeader(653530) },
+  { appid: 427520, name: "Factorio", image: steamHeader(427520) },
+  { appid: 632360, name: "Risk of Rain 2", image: steamHeader(632360) },
+  { appid: 728880, name: "Overcooked! 2", image: steamHeader(728880) },
 ];
 
 export default RoulettePage;
