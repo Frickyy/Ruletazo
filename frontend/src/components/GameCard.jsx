@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import { STATE_LABELS } from "../services/libraryFilters.js";
+import { shareResult } from "../services/shareResult.js";
 import { formatNumber, locale, t } from "../i18n/index.js";
 
 /**
@@ -24,6 +26,20 @@ function GameCard({ game, isStale = false, isDemo = false, onToggleFavorite, onS
   const achievementPercent = achievementProgress?.total
     ? Math.round((achievementProgress.unlocked / achievementProgress.total) * 100)
     : 0;
+  // "Compartir": manda "Me tocó X en Ruletazo" con el link de la página (bucle para traer gente).
+  const [shareStatus, setShareStatus] = useState(null);
+  useEffect(() => setShareStatus(null), [game.appid]);
+  async function handleShare() {
+    try {
+      const result = await shareResult(game);
+      if (result === "copied") {
+        setShareStatus("copied");
+        setTimeout(() => setShareStatus(null), 2500);
+      }
+    } catch {
+      setShareStatus(null);
+    }
+  }
 
   return (
     // isStale: es la ficha del giro anterior mientras sale el próximo; se atenúa y no se puede tocar.
@@ -85,6 +101,9 @@ function GameCard({ game, isStale = false, isDemo = false, onToggleFavorite, onS
             <a className="button" href={`https://store.steampowered.com/app/${game.appid}/`} target="_blank" rel="noopener noreferrer">
               {t("Ver en Steam")} ↗
             </a>
+            <button type="button" className="button" onClick={handleShare}>
+              {shareStatus === "copied" ? `✓ ${t("Link copiado")}` : t("Compartir")}
+            </button>
           </div>
           {onSetState && game.source !== "friend" && (
             <div className="segmented game-card__state" role="group" aria-label={t("Estado del juego")}>
