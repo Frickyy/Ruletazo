@@ -1,4 +1,5 @@
 import { t } from "../i18n/index.js";
+import { renderResultCard } from "./resultCard.js";
 
 /**
  * Texto para compartir el juego que salió en la ruleta. La idea es que quien lo recibe
@@ -13,14 +14,16 @@ export function buildShareText(gameName, siteUrl) {
 }
 
 /**
- * Comparte con el menú nativo del celular si existe; si no, copia el texto y el link.
+ * En el celular comparte una imagen tipo historia (portada + nombre) con el texto y el link; si el
+ * navegador no puede compartir archivos, comparte solo el texto; en la compu copia texto y link.
  * Devuelve "shared", "copied" o "cancelled" para que la ficha muestre el aviso que corresponde.
  */
-export async function shareResult(gameName, siteUrl = window.location.origin) {
-  const data = buildShareText(gameName, siteUrl);
+export async function shareResult(game, siteUrl = window.location.origin) {
+  const data = buildShareText(game.name, siteUrl);
   if (navigator.share) {
     try {
-      await navigator.share(data);
+      const files = await resultFiles(game);
+      await navigator.share(files ? { ...data, files } : data);
       return "shared";
     } catch (error) {
       // Cerrar el menú de compartir no es un error para mostrar.
@@ -29,4 +32,16 @@ export async function shareResult(gameName, siteUrl = window.location.origin) {
   }
   await navigator.clipboard.writeText(`${data.text} ${data.url}`);
   return "copied";
+}
+
+/** La imagen, solo si el navegador puede compartir archivos (si no, se comparte el texto). */
+async function resultFiles(game) {
+  if (!navigator.canShare) return null;
+  try {
+    const blob = await renderResultCard(game);
+    const files = [new File([blob], `ruletazo-${game.appid}.png`, { type: "image/png" })];
+    return navigator.canShare({ files }) ? files : null;
+  } catch {
+    return null;
+  }
 }
