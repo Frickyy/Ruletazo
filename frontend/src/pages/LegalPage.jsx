@@ -8,9 +8,9 @@ import "./LegalPage.css";
  * (DATA_LOCATION) y el mail de contacto (CONTACT_EMAIL en backend/.env).
  */
 const UPDATED = "18 de noviembre de 2026";
-const DATA_LOCATION = "el país donde está alojado el servidor";
+const DATA_LOCATION = "Estados Unidos (servidores de DigitalOcean en San Francisco)";
 const UPDATED_EN = "November 18, 2026";
-const DATA_LOCATION_EN = "the country where the server is hosted";
+const DATA_LOCATION_EN = "the United States (DigitalOcean servers in San Francisco)";
 
 function LegalPage({ kind, config }) {
   const contact = config?.contact_email ? (

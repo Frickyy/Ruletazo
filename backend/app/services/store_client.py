@@ -63,7 +63,7 @@ class SteamStoreClient:
         self._client = httpx.AsyncClient(
             base_url=STORE_API_BASE_URL,
             timeout=timeout,
-            headers={"User-Agent": "Steamzinho/1.0"},
+            headers={"User-Agent": "Ruletazo/1.0 (+https://ruletazo.app)"},
         )
 
     async def __aenter__(self) -> "SteamStoreClient":
