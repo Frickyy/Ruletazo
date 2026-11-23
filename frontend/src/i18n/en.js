@@ -53,8 +53,8 @@ const en = {
   "Tu biblioteca, a la suerte": "Your library, left to chance",
   "Biblioteca de ejemplo": "Sample library",
   "Girá la ruleta: el juego que frene en el centro es el que te toca.": "Spin the wheel: the game that stops in the middle is the one you get.",
-  "Probá la ruleta con 5 juegos de ejemplo, o pegá el link de tu perfil de Steam para girar con tu biblioteca.":
-    "Try the wheel with 5 sample games, or paste your Steam profile link to spin with your library.",
+  "Probá la ruleta con {count} juegos de ejemplo, o pegá el link de tu perfil de Steam para girar con tu biblioteca.":
+    "Try the wheel with {count} sample games, or paste your Steam profile link to spin with your library.",
   "juegos": "games",
   "sin estrenar": "unplayed",
   "en la ruleta": "on the wheel",
@@ -268,8 +268,8 @@ const en = {
   "Te mostramos cuánto dura, qué opina la comunidad y cuántos logros te faltan.": "We show you how long it is, what the community thinks and how many achievements you're missing.",
   "Cómo funciona": "How it works",
   "Usá tu propia biblioteca": "Use your own library",
-  "Ahora estás girando con 5 juegos de ejemplo. Pegá el link de tu perfil (tiene que ser público) y entran todos los tuyos.":
-    "Right now you're spinning with 5 sample games. Paste your profile link (it has to be public) and all of yours come in.",
+  "Ahora estás girando con {count} juegos de ejemplo. Pegá el link de tu perfil (tiene que ser público) y entran todos los tuyos.":
+    "Right now you're spinning with {count} sample games. Paste your profile link (it has to be public) and all of yours come in.",
   "Link de tu perfil de Steam": "Your Steam profile link",
   "Girar con mi biblioteca": "Spin with my library",
   "o, para guardar favoritos y estados": "or, to save favorites and states",

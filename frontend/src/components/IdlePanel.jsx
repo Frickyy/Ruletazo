@@ -15,7 +15,7 @@ function IdlePanel({ steamId, library, pool, onPick, onLogin, onGuest, isStale =
   // isStale: ya se giró y se está esperando la ficha; el panel se atenúa en vez de desaparecer.
   return (
     <div className={`idle-panel-wrap${isStale ? " idle-panel-wrap--stale" : ""}`} inert={isStale ? "" : undefined}>
-      {steamId ? <LibraryPanel library={library} pool={pool} onPick={onPick} /> : <DemoPanel onLogin={onLogin} onGuest={onGuest} />}
+      {steamId ? <LibraryPanel library={library} pool={pool} onPick={onPick} /> : <DemoPanel demoCount={pool.length} onLogin={onLogin} onGuest={onGuest} />}
     </div>
   );
 }
@@ -83,7 +83,7 @@ function LibraryPanel({ library, pool, onPick }) {
   );
 }
 
-function DemoPanel({ onLogin, onGuest }) {
+function DemoPanel({ demoCount, onLogin, onGuest }) {
   const [profileLink, setProfileLink] = useState("");
   const steps = [
     [t("Pegá tu perfil de Steam"), t("O iniciá sesión: Steam confirma quién sos sin pedirte la contraseña.")],
@@ -108,7 +108,7 @@ function DemoPanel({ onLogin, onGuest }) {
       </section>
       <section className="idle-panel__block idle-panel__block--side idle-cta" aria-labelledby="idle-cta">
         <h2 id="idle-cta">{t("Usá tu propia biblioteca")}</h2>
-        <p className="hint">{t("Ahora estás girando con 5 juegos de ejemplo. Pegá el link de tu perfil (tiene que ser público) y entran todos los tuyos.")}</p>
+        <p className="hint">{t("Ahora estás girando con {count} juegos de ejemplo. Pegá el link de tu perfil (tiene que ser público) y entran todos los tuyos.", { count: demoCount })}</p>
         {onGuest && (
           <form
             className="idle-guest"

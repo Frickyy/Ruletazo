@@ -65,6 +65,21 @@ _MOCK_LIBRARY: list[Game] = [
         short_description="Combate a golpe de estoque para escapar del Inframundo en este roguelike de acción de la casa de Bastion.",
         playtime_forever_minutes=0,
     ),
+] + [
+    # El resto de la biblioteca de ejemplo (la misma lista que DEMO_GAMES en el frontend). Solo
+    # appid y nombre: la ficha (géneros, sinopsis, reseñas, duración) se completa desde la Store.
+    Game(appid=appid, name=name, header_image=f"https://cdn.cloudflare.steamstatic.com/steam/apps/{appid}/header.jpg")
+    for appid, name in [
+        (367520, "Hollow Knight"), (504230, "Celeste"), (105600, "Terraria"), (620, "Portal 2"), (220, "Half-Life 2"),
+        (292030, "The Witcher 3: Wild Hunt"), (1086940, "Baldur's Gate 3"), (632470, "Disco Elysium"), (753640, "Outer Wilds"),
+        (304430, "INSIDE"), (1426210, "It Takes Two"), (548430, "Deep Rock Galactic"), (892970, "Valheim"), (550, "Left 4 Dead 2"),
+        (264710, "Subnautica"), (646570, "Slay the Spire"), (588650, "Dead Cells"), (268910, "Cuphead"), (391540, "Undertale"),
+        (1092790, "Inscryption"), (1794680, "Vampire Survivors"), (2379780, "Balatro"), (1966720, "Lethal Company"),
+        (814380, "Sekiro: Shadows Die Twice"), (782330, "DOOM Eternal"), (489830, "The Elder Scrolls V: Skyrim Special Edition"),
+        (1687950, "Persona 5 Royal"), (1055540, "A Short Hike"), (1135690, "Unpacking"), (383870, "Firewatch"),
+        (501300, "What Remains of Edith Finch"), (653530, "Return of the Obra Dinn"), (427520, "Factorio"), (632360, "Risk of Rain 2"),
+        (728880, "Overcooked! 2"),
+    ]
 ]
 
 
@@ -125,7 +140,8 @@ async def get_game_details(
         game = mock.model_copy(deep=True)
         details = await game_details_service.get_or_fetch_details(db, game.appid, game.name)
         library_service.apply_cached_details(game, details)
-        game.short_description = mock.short_description  # la de ejemplo está en español; la Store la da en inglés
+        if mock.short_description:
+            game.short_description = mock.short_description  # la de ejemplo está en español; la Store la da en inglés
         return _with_community_reviews(db, game)
 
     game = await _unwrap_steam_errors(library_service.get_game_details(db, steamid, friend_steamid, appid, viewer_steam_id=viewer))
