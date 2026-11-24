@@ -13,6 +13,7 @@ import IdlePanel from "../components/IdlePanel.jsx";
 import SpinHistory, { useSpinHistory } from "../components/SpinHistory.jsx";
 import { coverAccent } from "../services/coverColor.js";
 import ClassificationBanner from "../components/ClassificationBanner.jsx";
+import GuestStart from "../components/GuestStart.jsx";
 import PrivateLibraryHelp from "../components/PrivateLibraryHelp.jsx";
 import {
   DURATION_OPTIONS,
@@ -90,7 +91,9 @@ function RoulettePage({
 
   // Los juegos que pueden salir: exactamente los que cumplen los filtros actuales.
   const pool = useMemo(() => {
-    if (!steamId) return DEMO_GAMES;
+    // La biblioteca de ejemplo tiene horas de ejemplo: así "0 horas" y "Menos de 2 h" responden
+    // también para quien todavía no pegó su perfil (antes se marcaban y la ruleta no cambiaba).
+    if (!steamId) return DEMO_GAMES.filter((game) => matchesDemoPlaytime(game, playtimeFilter));
     return games.filter((game) => matchesFilters(game, filters)).map(toReelGame);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [steamId, games, collection, genre, playtimeFilter, duration, hideAdult, hideSoftware, mode, commonOnly, includeFinished]);
@@ -110,7 +113,12 @@ function RoulettePage({
   const cardGame = shownGame ?? lastCard;
   const cardIsStale = Boolean(cardGame) && !shownGame;
   const detailsError = spin && details?.spinId === settledSpinId ? details.error : null;
-  const unplayedCount = useMemo(() => games.filter((game) => game.playtime_forever_minutes === 0 && !game.is_hidden).length, [games]);
+  // Los números de arriba (juegos, sin estrenar, en la ruleta): de tu biblioteca o de la de ejemplo.
+  const statsGames = steamId ? games : DEMO_GAMES;
+  const unplayedCount = useMemo(
+    () => statsGames.filter((game) => game.playtime_forever_minutes === 0 && !game.is_hidden).length,
+    [statsGames],
+  );
   const libraryLoading = Boolean(steamId) && libraryStatus === "loading";
   const canSpin = !isSpinning && !libraryLoading && spinnable.length > 0;
 
@@ -337,11 +345,11 @@ function RoulettePage({
               : t("Probá la ruleta con {count} juegos de ejemplo, o pegá el link de tu perfil de Steam para girar con tu biblioteca.", { count: DEMO_GAMES.length })}
           </p>
         </div>
-        {games.length > 0 && (
+        {statsGames.length > 0 && (
           <dl className="roulette__stats">
             <div>
               <dt>{t("juegos")}</dt>
-              <dd>{formatNumber(games.length)}</dd>
+              <dd>{formatNumber(statsGames.length)}</dd>
             </div>
             <div>
               <dt>{t("sin estrenar")}</dt>
@@ -407,6 +415,8 @@ function RoulettePage({
             </button>
           ))}
         </div>
+
+        {!steamId && onGuestChange && <GuestStart onGuest={onGuestChange} onLogin={onLogin} />}
 
         {steamId && (
           <>
@@ -551,7 +561,6 @@ function RoulettePage({
           pool={pool}
           onPick={handlePick}
           onLogin={onLogin}
-          onGuest={onGuestChange}
           isStale={Boolean(spin)}
         />
       )}
@@ -648,6 +657,13 @@ function emptyPoolMessage(duration) {
   return t("No hay juegos que cumplan esos filtros. Probá con otros.");
 }
 
+/** Filtro de horas de la biblioteca de ejemplo (sin sesión no hay "Abandonados"). */
+function matchesDemoPlaytime(game, playtimeFilter) {
+  if (playtimeFilter === "zero") return game.playtime_forever_minutes === 0;
+  if (playtimeFilter === "under2") return game.playtime_forever_minutes < 120;
+  return true;
+}
+
 function toReelGame(game) {
   return { appid: game.appid, name: game.name, image: game.image ?? game.header_image };
 }
@@ -672,46 +688,46 @@ function steamHeader(appid) {
 // Biblioteca de ejemplo para quien entra sin cuenta: variada (cortos, cooperativos, indies y grandes)
 // para que el rodillo se vea lleno y la primera prueba ya sirva.
 const DEMO_GAMES = [
-  { appid: 1091500, name: "Cyberpunk 2077", image: steamHeader(1091500) },
-  { appid: 1245620, name: "ELDEN RING", image: steamHeader(1245620) },
-  { appid: 413150, name: "Stardew Valley", image: steamHeader(413150) },
-  { appid: 1174180, name: "Red Dead Redemption 2", image: steamHeader(1174180) },
-  { appid: 1145360, name: "Hades", image: steamHeader(1145360) },
-  { appid: 367520, name: "Hollow Knight", image: steamHeader(367520) },
-  { appid: 504230, name: "Celeste", image: steamHeader(504230) },
-  { appid: 105600, name: "Terraria", image: steamHeader(105600) },
-  { appid: 620, name: "Portal 2", image: steamHeader(620) },
-  { appid: 220, name: "Half-Life 2", image: steamHeader(220) },
-  { appid: 292030, name: "The Witcher 3: Wild Hunt", image: steamHeader(292030) },
-  { appid: 1086940, name: "Baldur's Gate 3", image: steamHeader(1086940) },
-  { appid: 632470, name: "Disco Elysium", image: steamHeader(632470) },
-  { appid: 753640, name: "Outer Wilds", image: steamHeader(753640) },
-  { appid: 304430, name: "INSIDE", image: steamHeader(304430) },
-  { appid: 1426210, name: "It Takes Two", image: steamHeader(1426210) },
-  { appid: 548430, name: "Deep Rock Galactic", image: steamHeader(548430) },
-  { appid: 892970, name: "Valheim", image: steamHeader(892970) },
-  { appid: 550, name: "Left 4 Dead 2", image: steamHeader(550) },
-  { appid: 264710, name: "Subnautica", image: steamHeader(264710) },
-  { appid: 646570, name: "Slay the Spire", image: steamHeader(646570) },
-  { appid: 588650, name: "Dead Cells", image: steamHeader(588650) },
-  { appid: 268910, name: "Cuphead", image: steamHeader(268910) },
-  { appid: 391540, name: "Undertale", image: steamHeader(391540) },
-  { appid: 1092790, name: "Inscryption", image: steamHeader(1092790) },
-  { appid: 1794680, name: "Vampire Survivors", image: steamHeader(1794680) },
-  { appid: 2379780, name: "Balatro", image: steamHeader(2379780) },
-  { appid: 1966720, name: "Lethal Company", image: steamHeader(1966720) },
-  { appid: 814380, name: "Sekiro: Shadows Die Twice", image: steamHeader(814380) },
-  { appid: 782330, name: "DOOM Eternal", image: steamHeader(782330) },
-  { appid: 489830, name: "The Elder Scrolls V: Skyrim Special Edition", image: steamHeader(489830) },
-  { appid: 1687950, name: "Persona 5 Royal", image: steamHeader(1687950) },
-  { appid: 1055540, name: "A Short Hike", image: steamHeader(1055540) },
-  { appid: 1135690, name: "Unpacking", image: steamHeader(1135690) },
-  { appid: 383870, name: "Firewatch", image: steamHeader(383870) },
-  { appid: 501300, name: "What Remains of Edith Finch", image: steamHeader(501300) },
-  { appid: 653530, name: "Return of the Obra Dinn", image: steamHeader(653530) },
-  { appid: 427520, name: "Factorio", image: steamHeader(427520) },
-  { appid: 632360, name: "Risk of Rain 2", image: steamHeader(632360) },
-  { appid: 728880, name: "Overcooked! 2", image: steamHeader(728880) },
+  { appid: 1091500, name: "Cyberpunk 2077", image: steamHeader(1091500), playtime_forever_minutes: 2760 },
+  { appid: 1245620, name: "ELDEN RING", image: steamHeader(1245620), playtime_forever_minutes: 5400 },
+  { appid: 413150, name: "Stardew Valley", image: steamHeader(413150), playtime_forever_minutes: 90 },
+  { appid: 1174180, name: "Red Dead Redemption 2", image: steamHeader(1174180), playtime_forever_minutes: 1980 },
+  { appid: 1145360, name: "Hades", image: steamHeader(1145360), playtime_forever_minutes: 0 },
+  { appid: 367520, name: "Hollow Knight", image: steamHeader(367520), playtime_forever_minutes: 0 },
+  { appid: 504230, name: "Celeste", image: steamHeader(504230), playtime_forever_minutes: 45 },
+  { appid: 105600, name: "Terraria", image: steamHeader(105600), playtime_forever_minutes: 1260 },
+  { appid: 620, name: "Portal 2", image: steamHeader(620), playtime_forever_minutes: 0 },
+  { appid: 220, name: "Half-Life 2", image: steamHeader(220), playtime_forever_minutes: 75 },
+  { appid: 292030, name: "The Witcher 3: Wild Hunt", image: steamHeader(292030), playtime_forever_minutes: 3120 },
+  { appid: 1086940, name: "Baldur's Gate 3", image: steamHeader(1086940), playtime_forever_minutes: 0 },
+  { appid: 632470, name: "Disco Elysium", image: steamHeader(632470), playtime_forever_minutes: 0 },
+  { appid: 753640, name: "Outer Wilds", image: steamHeader(753640), playtime_forever_minutes: 30 },
+  { appid: 304430, name: "INSIDE", image: steamHeader(304430), playtime_forever_minutes: 0 },
+  { appid: 1426210, name: "It Takes Two", image: steamHeader(1426210), playtime_forever_minutes: 600 },
+  { appid: 548430, name: "Deep Rock Galactic", image: steamHeader(548430), playtime_forever_minutes: 2100 },
+  { appid: 892970, name: "Valheim", image: steamHeader(892970), playtime_forever_minutes: 840 },
+  { appid: 550, name: "Left 4 Dead 2", image: steamHeader(550), playtime_forever_minutes: 1500 },
+  { appid: 264710, name: "Subnautica", image: steamHeader(264710), playtime_forever_minutes: 0 },
+  { appid: 646570, name: "Slay the Spire", image: steamHeader(646570), playtime_forever_minutes: 960 },
+  { appid: 588650, name: "Dead Cells", image: steamHeader(588650), playtime_forever_minutes: 110 },
+  { appid: 268910, name: "Cuphead", image: steamHeader(268910), playtime_forever_minutes: 0 },
+  { appid: 391540, name: "Undertale", image: steamHeader(391540), playtime_forever_minutes: 0 },
+  { appid: 1092790, name: "Inscryption", image: steamHeader(1092790), playtime_forever_minutes: 20 },
+  { appid: 1794680, name: "Vampire Survivors", image: steamHeader(1794680), playtime_forever_minutes: 720 },
+  { appid: 2379780, name: "Balatro", image: steamHeader(2379780), playtime_forever_minutes: 0 },
+  { appid: 1966720, name: "Lethal Company", image: steamHeader(1966720), playtime_forever_minutes: 300 },
+  { appid: 814380, name: "Sekiro: Shadows Die Twice", image: steamHeader(814380), playtime_forever_minutes: 0 },
+  { appid: 782330, name: "DOOM Eternal", image: steamHeader(782330), playtime_forever_minutes: 480 },
+  { appid: 489830, name: "The Elder Scrolls V: Skyrim Special Edition", image: steamHeader(489830), playtime_forever_minutes: 4200 },
+  { appid: 1687950, name: "Persona 5 Royal", image: steamHeader(1687950), playtime_forever_minutes: 0 },
+  { appid: 1055540, name: "A Short Hike", image: steamHeader(1055540), playtime_forever_minutes: 0 },
+  { appid: 1135690, name: "Unpacking", image: steamHeader(1135690), playtime_forever_minutes: 60 },
+  { appid: 383870, name: "Firewatch", image: steamHeader(383870), playtime_forever_minutes: 0 },
+  { appid: 501300, name: "What Remains of Edith Finch", image: steamHeader(501300), playtime_forever_minutes: 0 },
+  { appid: 653530, name: "Return of the Obra Dinn", image: steamHeader(653530), playtime_forever_minutes: 0 },
+  { appid: 427520, name: "Factorio", image: steamHeader(427520), playtime_forever_minutes: 180 },
+  { appid: 632360, name: "Risk of Rain 2", image: steamHeader(632360), playtime_forever_minutes: 0 },
+  { appid: 728880, name: "Overcooked! 2", image: steamHeader(728880), playtime_forever_minutes: 95 },
 ];
 
 export default RoulettePage;

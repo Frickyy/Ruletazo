@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import DailyGame from "./DailyGame.jsx";
 import SteamLoginButton from "./SteamLoginButton.jsx";
 import { formatNumber, t } from "../i18n/index.js";
@@ -12,12 +12,12 @@ const TOP_PLAYED_COUNT = 5;
  * Con sesión: algunos juegos sin estrenar (se pueden elegir a mano) y los más jugados.
  * Sin sesión: cómo funciona y una invitación a iniciar sesión.
  */
-function IdlePanel({ steamId, library, pool, onPick, onLogin, onGuest, isStale = false }) {
+function IdlePanel({ steamId, library, pool, onPick, onLogin, isStale = false }) {
   // isStale: ya se giró y se está esperando la ficha; el panel se atenúa en vez de desaparecer.
   return (
     <div className={`idle-panel-wrap${isStale ? " idle-panel-wrap--stale" : ""}`} inert={isStale ? "" : undefined}>
       <DailyGame games={steamId ? library : pool} onPick={onPick} isDemo={!steamId} />
-      {steamId ? <LibraryPanel library={library} pool={pool} onPick={onPick} /> : <DemoPanel demoCount={pool.length} onLogin={onLogin} onGuest={onGuest} />}
+      {steamId ? <LibraryPanel library={library} pool={pool} onPick={onPick} /> : <DemoPanel onLogin={onLogin} />}
     </div>
   );
 }
@@ -85,8 +85,7 @@ function LibraryPanel({ library, pool, onPick }) {
   );
 }
 
-function DemoPanel({ demoCount, onLogin, onGuest }) {
-  const [profileLink, setProfileLink] = useState("");
+function DemoPanel({ onLogin }) {
   const steps = [
     [t("Pegá tu perfil de Steam"), t("O iniciá sesión: Steam confirma quién sos sin pedirte la contraseña.")],
     [t("Filtrá lo que quieras"), t("Sin estrenar, poco jugados, favoritos, por género o sumando la biblioteca de tu familia.")],
@@ -108,41 +107,13 @@ function DemoPanel({ demoCount, onLogin, onGuest }) {
           ))}
         </ol>
       </section>
-      <section className="idle-panel__block idle-panel__block--side idle-cta" aria-labelledby="idle-cta">
-        <h2 id="idle-cta">{t("Usá tu propia biblioteca")}</h2>
-        <p className="hint">{t("Ahora estás girando con {count} juegos de ejemplo. Pegá el link de tu perfil (tiene que ser público) y entran todos los tuyos.", { count: demoCount })}</p>
-        {onGuest && (
-          <form
-            className="idle-guest"
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (profileLink.trim()) onGuest(profileLink.trim());
-            }}
-          >
-            <label className="visually-hidden" htmlFor="guest-profile">
-              {t("Link de tu perfil de Steam")}
-            </label>
-            <input
-              id="guest-profile"
-              className="text-input"
-              placeholder="steamcommunity.com/id/…"
-              value={profileLink}
-              onChange={(event) => setProfileLink(event.target.value)}
-              autoComplete="off"
-              inputMode="url"
-            />
-            <button type="submit" className="button button--primary" disabled={!profileLink.trim()}>
-              {t("Girar con mi biblioteca")}
-            </button>
-          </form>
-        )}
-        {onLogin && (
-          <>
-            <p className="idle-cta__divider">{t("o, para guardar favoritos y estados")}</p>
-            <SteamLoginButton onClick={onLogin} />
-          </>
-        )}
-      </section>
+      {onLogin && (
+        <section className="idle-panel__block idle-panel__block--side idle-cta" aria-labelledby="idle-cta">
+          <h2 id="idle-cta">{t("Guardá lo que vas jugando")}</h2>
+          <p className="hint">{t("Con tu cuenta de Steam guardás favoritos, lo que estás jugando y lo que terminaste. Steam confirma quién sos sin pedirte la contraseña.")}</p>
+          <SteamLoginButton onClick={onLogin} />
+        </section>
+      )}
     </div>
   );
 }
