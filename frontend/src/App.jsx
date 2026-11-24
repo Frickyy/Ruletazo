@@ -9,6 +9,7 @@ const ProfilePage = lazy(() => import("./pages/ProfilePage.jsx"));
 const RoomPage = lazy(() => import("./pages/RoomPage.jsx"));
 import SiteFooter from "./components/SiteFooter.jsx";
 import SteamLoginButton from "./components/SteamLoginButton.jsx";
+import { fetchRecentActivity } from "./services/forumService.js";
 import { fetchPublicConfig } from "./services/profileService.js";
 import { createRoom } from "./services/roomService.js";
 import SteamIdInput from "./components/SteamIdInput.jsx";
@@ -75,6 +76,14 @@ function App() {
   const [config, setConfig] = useState(null);
   useEffect(() => {
     fetchPublicConfig().then(setConfig).catch(() => setConfig(null));
+  }, []);
+  // El Foro aparece en la barra recién cuando tiene algún mensaje: vacío ("Todavía no hay
+  // mensajes") parecía una página abandonada. Desde la ficha de cada juego se sigue entrando.
+  const [forumHasActivity, setForumHasActivity] = useState(false);
+  useEffect(() => {
+    fetchRecentActivity()
+      .then((items) => setForumHasActivity(Array.isArray(items) && items.length > 0))
+      .catch(() => setForumHasActivity(false));
   }, []);
   const [authMessage, setAuthMessage] = useState("");
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
@@ -237,7 +246,7 @@ function App() {
 
           <nav className="topbar__nav" aria-label={t("Secciones")}>
             <ul className="topbar__links">
-              {VIEWS.map((view) => (
+              {VIEWS.filter((view) => view.id !== "forum" || forumHasActivity || activeView === "forum").map((view) => (
                 <li key={view.id}>
                   <button
                     type="button"

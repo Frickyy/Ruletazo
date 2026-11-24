@@ -279,12 +279,13 @@ const en = {
   "Girá y decidí": "Spin and decide",
   "Te mostramos cuánto dura, qué opina la comunidad y cuántos logros te faltan.": "We show you how long it is, what the community thinks and how many achievements you're missing.",
   "Cómo funciona": "How it works",
-  "Usá tu propia biblioteca": "Use your own library",
-  "Ahora estás girando con {count} juegos de ejemplo. Pegá el link de tu perfil (tiene que ser público) y entran todos los tuyos.":
-    "Right now you're spinning with {count} sample games. Paste your profile link (it has to be public) and all of yours come in.",
-  "Link de tu perfil de Steam": "Your Steam profile link",
+  "¿Y con tus juegos? Pegá el link de tu perfil de Steam": "What about your games? Paste your Steam profile link",
   "Girar con mi biblioteca": "Spin with my library",
-  "o, para guardar favoritos y estados": "or, to save favorites and states",
+  "El perfil tiene que ser público.": "The profile has to be public.",
+  "O iniciá sesión con Steam": "Or sign in through Steam",
+  "Guardá lo que vas jugando": "Keep track of what you play",
+  "Con tu cuenta de Steam guardás favoritos, lo que estás jugando y lo que terminaste. Steam confirma quién sos sin pedirte la contraseña.":
+    "With your Steam account you save favorites, what you're playing and what you've finished. Steam confirms who you are without asking for your password.",
   "Últimos que salieron": "Recent picks",
 
   // ---------- Biblioteca ----------

@@ -1,0 +1,48 @@
+.guest-start {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 0.5rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+}
+
+.guest-start__label {
+  font-weight: 600;
+}
+
+.guest-start__row {
+  display: flex;
+  gap: 0.6rem;
+}
+
+/* Va dentro de la grilla de la ruleta, que estira todos los botones a lo ancho
+   (.roulette__panel .button): de ahí la especificidad extra. */
+.guest-start .guest-start__row .text-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 44px;
+}
+
+.guest-start .guest-start__row .button {
+  flex: 0 0 auto;
+  width: auto;
+  min-height: 44px;
+}
+
+.guest-start__hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+@media (max-width: 560px) {
+  .guest-start__row {
+    flex-direction: column;
+  }
+
+  .guest-start .guest-start__row .button {
+    width: 100%;
+  }
+}
