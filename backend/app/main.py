@@ -6,9 +6,9 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 
 from app.core.config import get_settings
+from app.core.static_files import FrontendStaticFiles
 from app.db.backup import backup_loop
 from app.db.session import init_db
 from app.routers import auth, feedback, forum, games, profiles, rooms
@@ -64,6 +64,7 @@ async def health_check() -> dict[str, str]:
 # En producción (Docker) el backend también sirve el frontend ya compilado: una sola URL para
 # la página, la API y la vuelta del login de Steam. En desarrollo lo sirve Vite y esto no se monta.
 # Las rutas del frontend van con hash (#/foro/...), así que alcanza con servir los archivos.
+# FrontendStaticFiles agrega los encabezados de caché (ver core/static_files.py).
 _frontend_dist = Path(settings.frontend_dist).resolve() if settings.frontend_dist else None
 if _frontend_dist and (_frontend_dist / "index.html").is_file():
-    app.mount("/", StaticFiles(directory=_frontend_dist, html=True), name="frontend")
+    app.mount("/", FrontendStaticFiles(directory=_frontend_dist, html=True), name="frontend")
