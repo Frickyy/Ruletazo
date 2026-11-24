@@ -111,7 +111,7 @@ def _track_fetches(monkeypatch):
     monkeypatch.setattr(
         game_details_service,
         "_fetch_reviews",
-        fake("reviews", {"failed": False, "score_desc": "Muy positivas", "total_reviews": 5, "total_positive": 4, "good": ["Bien"], "bad": []}),
+        fake("reviews", {"failed": False, "good": ["Bien"], "bad": []}),
     )
     monkeypatch.setattr(game_details_service, "_fetch_achievements", fake("achievements", {"total": 0, "average_percent": None}))
     monkeypatch.setattr(game_details_service.hltb_client, "get_completion_times", fake("hltb", {"main_hours": 1, "completionist_hours": 2}))
@@ -119,7 +119,7 @@ def _track_fetches(monkeypatch):
 
 
 async def test_only_missing_reviews_are_fetched(db_session, monkeypatch):
-    db_session.add(_complete_details(reviews_version=0))
+    db_session.add(_complete_details(reviews_version=0, review_score_desc="Muy positivas", review_total=94499))
     db_session.commit()
     calls = _track_fetches(monkeypatch)
 
@@ -127,6 +127,8 @@ async def test_only_missing_reviews_are_fetched(db_session, monkeypatch):
 
     assert calls == ["reviews"]
     assert details.review_pros == "Bien"
+    # Las frases no pisan el puntaje ni el total, que vienen de la tienda.
+    assert (details.review_score_desc, details.review_total) == ("Muy positivas", 94499)
 
 
 async def test_nothing_is_fetched_while_reviews_are_rate_limited(db_session, monkeypatch):

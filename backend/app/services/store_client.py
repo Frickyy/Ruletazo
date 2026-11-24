@@ -10,8 +10,8 @@ from app.services import review_digest, throttle
 
 STORE_API_BASE_URL = "https://store.steampowered.com"
 
-# query_summary.review_score_desc siempre viene en inglés, sin importar el `language`
-# pedido (quirk conocido de la Store API); lo traducimos para que la ficha quede en español.
+# Puntajes de reseñas de Steam en inglés → español, para que la ficha quede en español aunque
+# la tienda responda en inglés.
 _REVIEW_SCORE_TRANSLATIONS = {
     "Overwhelmingly Positive": "Extremadamente positivas",
     "Very Positive": "Muy positivas",
@@ -48,6 +48,11 @@ _GENRE_TRANSLATIONS = {
     "Sexual Content": "Contenido sexual",
     "Gore": "Sangrientos",
 }
+
+
+def translate_review_score(label: str) -> str:
+    """Puntaje de reseñas en español; los que ya vienen traducidos quedan igual."""
+    return _REVIEW_SCORE_TRANSLATIONS.get(label, label)
 
 
 def normalize_genres(genres: list[str]) -> list[str]:
@@ -126,12 +131,15 @@ class SteamStoreClient:
         }
 
     async def get_review_digest(self, appid: int) -> dict:
-        """Puntaje de la comunidad + "lo bueno" y "lo malo" en frases cortas (ver review_digest).
+        """"Lo bueno" y "lo malo" en frases cortas (ver review_digest).
+
+        El puntaje y el total de reseñas no salen de acá: el resumen de /appreviews cuenta solo
+        una parte de las reseñas, y vienen completos con los datos de la tienda (store_browse).
 
         Son dos pedidos: las reseñas más útiles en español (con ambos tipos mezclados, separadas
-        por `voted_up`) y las de todos los idiomas, que dan el puntaje global y completan si en
-        español no alcanza. Antes eran cinco pedidos por juego y Steam empezaba a redirigir a la
-        portada (rate limit); ese error se guardaba como "sin reseñas" durante días.
+        por `voted_up`) y las de todos los idiomas, que completan si en español no alcanza.
+        Antes eran cinco pedidos por juego y Steam empezaba a redirigir a la portada (rate limit);
+        ese error se guardaba como "sin reseñas" durante días.
 
         Devuelve `failed=True` si Steam no respondió bien, para no cachear un resultado vacío.
         """
@@ -140,8 +148,6 @@ class SteamStoreClient:
         if everyone is None:
             return {"failed": True}
 
-        summary = everyone.get("query_summary", {})
-        score_desc_en = summary.get("review_score_desc", "")
         good, bad = [], []
         for payload in (spanish, everyone):
             if payload is None:
@@ -151,9 +157,6 @@ class SteamStoreClient:
             bad += [review.get("review", "") for review in reviews if not review.get("voted_up")]
         return {
             "failed": False,
-            "score_desc": _REVIEW_SCORE_TRANSLATIONS.get(score_desc_en, score_desc_en),
-            "total_reviews": summary.get("total_reviews", 0),
-            "total_positive": summary.get("total_positive", 0),
             "good": review_digest.pick_excerpts(good),
             "bad": review_digest.pick_excerpts(bad),
         }

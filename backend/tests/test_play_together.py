@@ -7,8 +7,9 @@ import httpx
 import pytest
 import respx
 from fastapi import HTTPException
+from starlette.requests import Request
 
-from app.core.rate_limit import RateLimit
+from app.core.rate_limit import RateLimit, client_ip
 from app.db import backup
 from app.models.game import CachedGameDetails, CachedLibraryEntry, UserGameProgress
 from app.schemas.game import Game
@@ -53,6 +54,39 @@ def test_parse_store_item():
     }
 
 
+def test_parse_store_item_takes_reviews_from_every_language():
+    item = {
+        **PORTAL_ITEM,
+        "reviews": {
+            "summary_filtered": {"review_count": 94499, "percent_positive": 90, "review_score": 8, "review_score_label": "Very Positive"},
+            "summary_language_specific": {"review_count": 3823, "percent_positive": 96, "review_score_label": "Extremadamente positivas"},
+        },
+    }
+
+    details = store_browse.parse_item(item)
+
+    assert details["review_score_desc"] == "Muy positivas"  # el total de todos los idiomas, traducido
+    assert details["review_total"] == 94499
+    assert details["review_positive"] == 85049
+
+
+def test_parse_store_item_without_reviews():
+    details = store_browse.parse_item(PORTAL_ITEM)
+
+    assert (details["review_score_desc"], details["review_total"], details["review_positive"]) == ("", 0, 0)
+
+
+def test_store_reviews_reach_the_game_card():
+    item = {**PORTAL_ITEM, "reviews": {"summary_filtered": {"review_count": 1200, "percent_positive": 75, "review_score_label": "Mayormente positivas"}}}
+    details = CachedGameDetails(appid=620, genres=[], player_categories=[], review_score_desc="Extremadamente positivas", review_total=40)
+
+    game_details_service.apply_store_details(details, store_browse.parse_item(item))
+    game = Game(appid=620, name="Portal 2", header_image="")
+    library_service.apply_cached_details(game, details)
+
+    assert (game.review_score_desc, game.review_total) == ("Mayormente positivas", 1200)
+
+
 def test_player_modes_single_player_only():
     assert store_browse.player_modes([2]) == {
         "single_player": True,
@@ -88,6 +122,7 @@ async def test_get_items_asks_for_many_games_at_once():
     result = await store_browse.get_items([620, 999])
 
     assert route.call_count == 1
+    assert '"include_reviews": true' in route.calls[0].request.url.params["input_json"]
     assert result[620]["name"] == "Portal 2"
     assert result[999]["store_available"] is False
 
@@ -206,6 +241,25 @@ def test_rate_limit_per_client():
         limit.check("1.1.1.1", now=2)
     assert exc_info.value.status_code == 429
     limit.check("1.1.1.1", now=100)  # pasó la ventana
+
+
+def _request(headers: dict, client_host: str = "203.0.113.77") -> Request:
+    return Request({
+        "type": "http",
+        "headers": [(name.encode(), value.encode()) for name, value in headers.items()],
+        "client": (client_host, 0),
+    })
+
+
+def test_client_ip_prefers_cloudflare_over_spoofable_forwarded_for():
+    # uvicorn (--forwarded-allow-ips=*) deja en request.client la primera IP de X-Forwarded-For,
+    # que la escribe el visitante; CF-Connecting-IP la pone Cloudflare.
+    spoofed = _request({"cf-connecting-ip": "198.51.100.5", "x-forwarded-for": "203.0.113.77"})
+    assert client_ip(spoofed) == "198.51.100.5"
+
+
+def test_client_ip_falls_back_to_the_connection_without_cloudflare():
+    assert client_ip(_request({}, client_host="127.0.0.1")) == "127.0.0.1"
 
 
 # ---------- Copias de seguridad ----------

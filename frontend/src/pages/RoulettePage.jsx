@@ -13,6 +13,7 @@ import IdlePanel from "../components/IdlePanel.jsx";
 import SpinHistory, { useSpinHistory } from "../components/SpinHistory.jsx";
 import { coverAccent } from "../services/coverColor.js";
 import ClassificationBanner from "../components/ClassificationBanner.jsx";
+import PrivateLibraryHelp from "../components/PrivateLibraryHelp.jsx";
 import {
   DURATION_OPTIONS,
   MODE_OPTIONS,
@@ -272,7 +273,15 @@ function RoulettePage({
 
   let status = null;
   if (libraryLoading) status = <p className="hint roulette__hint">{t("Cargando tu biblioteca…")}</p>;
-  else if (steamId && libraryStatus === "error") {
+  else if (steamId && library.isPrivate) {
+    status = (
+      <PrivateLibraryHelp
+        isOwn={!guest}
+        onRetry={() => library.reload()}
+        onChangeProfile={guest ? () => onGuestChange?.("") : undefined}
+      />
+    );
+  } else if (steamId && libraryStatus === "error") {
     status = (
       <p className="error-text roulette__hint">
         {libraryError}

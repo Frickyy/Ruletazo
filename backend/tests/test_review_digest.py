@@ -73,7 +73,7 @@ async def test_review_digest_splits_good_and_bad():
         digest = await client.get_review_digest(10)
 
     assert digest["failed"] is False
-    assert digest["score_desc"] == "Muy positivas"
+    assert "score_desc" not in digest  # el puntaje sale de la tienda (store_browse), no de acá
     assert digest["good"] == [GOOD]
     assert digest["bad"] == [bad]
 

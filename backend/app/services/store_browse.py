@@ -1,8 +1,9 @@
 """Datos de la tienda de a muchos juegos por pedido (IStoreBrowseService/GetItems).
 
 Es el servicio que usa la propia tienda de Steam: con un solo pedido trae descripción,
-desarrollador, fecha, portada, precio, descriptores de contenido, etiquetas y categorías
-(un jugador, cooperativo, multijugador) de hasta 50 juegos. No necesita API key.
+desarrollador, fecha, portada, precio, descriptores de contenido, etiquetas, categorías
+(un jugador, cooperativo, multijugador) y el resumen de reseñas de hasta 50 juegos. No
+necesita API key.
 
 Reemplaza a /api/appdetails para clasificar la biblioteca: aquel acepta un juego por pedido
 y obligaba a ir de a uno con pausas (más de una hora para una biblioteca de mil juegos).
@@ -14,7 +15,7 @@ from datetime import datetime, timezone
 import httpx
 
 from app.services import throttle
-from app.services.store_client import is_adult_content
+from app.services.store_client import is_adult_content, translate_review_score
 
 STORE_BROWSE_URL = "https://api.steampowered.com/IStoreBrowseService/GetItems/v1/"
 ASSET_BASE_URL = "https://shared.akamai.steamstatic.com/store_item_assets/"
@@ -49,6 +50,8 @@ _DATA_REQUEST = {
     "include_categories": True,
     "include_tag_count": 20,
     "include_all_purchase_options": True,
+    # Puntaje y cantidad de reseñas de todos los idiomas (lo mismo que muestra la tienda).
+    "include_reviews": True,
 }
 
 
@@ -118,7 +121,24 @@ def parse_item(item: dict | None) -> dict:
         "is_adult": is_adult_content({"content_descriptors": {"ids": item.get("content_descriptorids") or []}}),
         "is_software": item_type in SOFTWARE_TYPES,
         "player_categories": sorted(categories),
+        **review_summary(item),
         "store_available": True,
+    }
+
+
+def review_summary(item: dict) -> dict:
+    """Puntaje de la tienda ("Muy positivas"), total de reseñas y cuántas son positivas.
+
+    `summary_filtered` cuenta todos los idiomas, como la ficha de la tienda; `summary_language_specific`
+    serían solo las del idioma pedido, que para un juego conocido son una fracción del total.
+    """
+    summary = (item.get("reviews") or {}).get("summary_filtered") or {}
+    total = int(summary.get("review_count") or 0)
+    percent = summary.get("percent_positive")
+    return {
+        "review_score_desc": translate_review_score(summary.get("review_score_label") or "") if total else "",
+        "review_total": total,
+        "review_positive": round(total * int(percent) / 100) if total and percent is not None else 0,
     }
 
 
@@ -152,6 +172,9 @@ def empty_details() -> dict:
         "is_adult": False,
         "is_software": False,
         "player_categories": [],
+        "review_score_desc": "",
+        "review_total": 0,
+        "review_positive": 0,
         "store_available": False,
     }
 
