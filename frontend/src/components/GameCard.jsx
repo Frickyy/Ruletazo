@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { STATE_LABELS } from "../services/libraryFilters.js";
 import { shareResult } from "../services/shareResult.js";
+import { track } from "../services/track.js";
 import { formatNumber, locale, t } from "../i18n/index.js";
 
 /**
@@ -30,6 +31,7 @@ function GameCard({ game, isStale = false, isDemo = false, onToggleFavorite, onS
   const [shareStatus, setShareStatus] = useState(null);
   useEffect(() => setShareStatus(null), [game.appid]);
   async function handleShare() {
+    track("share");
     try {
       const result = await shareResult(game);
       if (result === "copied") {

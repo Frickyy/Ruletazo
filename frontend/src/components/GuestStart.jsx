@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { t } from "../i18n/index.js";
+import { track } from "../services/track.js";
 import "./GuestStart.css";
 
 /**
@@ -14,7 +15,9 @@ function GuestStart({ onGuest, onLogin }) {
       className="guest-start"
       onSubmit={(event) => {
         event.preventDefault();
-        if (profileLink.trim()) onGuest(profileLink.trim());
+        if (!profileLink.trim()) return;
+        track("guest_submit");
+        onGuest(profileLink.trim());
       }}
     >
       <label className="guest-start__label" htmlFor="guest-start-profile">

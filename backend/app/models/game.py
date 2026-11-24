@@ -142,6 +142,18 @@ class UserProfile(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 
+class UsageCounter(Base):
+    """Cuántas veces por día pasó cada paso en la página (visitas, giros, perfiles cargados…).
+    Solo el número: no se guarda quién lo hizo, ni su IP, ni nada de su navegador."""
+
+    __tablename__ = "usage_counters"
+
+    # Día en hora de Argentina, "AAAA-MM-DD".
+    day: Mapped[str] = mapped_column(String(10), primary_key=True)
+    event: Mapped[str] = mapped_column(String(32), primary_key=True)
+    count: Mapped[int] = mapped_column(Integer, default=0)
+
+
 class Feedback(Base):
     """Comentarios que deja la gente desde el formulario de feedback. Se guardan siempre, aunque
     el mail no salga (SMTP sin configurar o caído), para no perder ninguno."""

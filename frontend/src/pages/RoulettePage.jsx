@@ -25,6 +25,7 @@ import {
   smartWeight,
 } from "../services/libraryFilters.js";
 import { unlockAudio } from "../services/reelSound.js";
+import { track } from "../services/track.js";
 import Reel from "../components/Reel.jsx";
 import { formatNumber, t } from "../i18n/index.js";
 import "../components/GameCard.css";
@@ -186,6 +187,7 @@ function RoulettePage({
       });
     }
     unlockAudio();
+    track(steamId ? "spin" : "demo_spin");
     // Ruleta inteligente: salen más seguido los sin estrenar, cortos, bien reseñados… (ver smartWeight).
     showGame(pickWeighted(candidates, smart && steamId ? (game) => smartWeight(gamesById.get(game.appid)) : undefined));
   }
