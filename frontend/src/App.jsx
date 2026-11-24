@@ -12,6 +12,7 @@ import SteamLoginButton from "./components/SteamLoginButton.jsx";
 import { fetchRecentActivity } from "./services/forumService.js";
 import { fetchPublicConfig } from "./services/profileService.js";
 import { createRoom } from "./services/roomService.js";
+import { track, trackOnce } from "./services/track.js";
 import SteamIdInput from "./components/SteamIdInput.jsx";
 import { fetchSession, fetchSteamProfile, logoutSession } from "./services/gameService.js";
 import { useHashRoute } from "./routes.js";
@@ -95,8 +96,10 @@ function App() {
   const [hideSoftware, setHideSoftware] = useState(() => readStorage("steamRoulette.hideSoftware") !== "false");
 
   useEffect(() => {
+    trackOnce("visit");
     LEGACY_SESSION_KEYS.forEach((key) => localStorage.removeItem(key));
     const params = new URLSearchParams(window.location.search);
+    if (params.get("login") === "success") track("login_success");
     if (params.get("auth_error")) setAuthMessage(t("No se pudo iniciar sesión con Steam. Probá nuevamente."));
     if (params.get("auth_error") || params.get("login")) {
       window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
@@ -195,6 +198,7 @@ function App() {
   /** Arma una sala con los juegos que hoy entran en la ruleta y la abre. */
   async function handleCreateRoom(games) {
     const room = await createRoom(games);
+    track("room_create");
     navigate("room", null, room.code);
     window.scrollTo({ top: 0 });
   }
@@ -204,6 +208,7 @@ function App() {
   }
 
   function handleSteamLogin() {
+    track("login_click");
     const apiUrl = import.meta.env.VITE_API_URL ?? "/api";
     window.location.href = `${apiUrl}/auth/login`;
   }

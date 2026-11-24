@@ -11,7 +11,7 @@ from app.core.config import get_settings
 from app.core.static_files import FrontendStaticFiles
 from app.db.backup import backup_loop
 from app.db.session import init_db
-from app.routers import auth, feedback, forum, games, profiles, rooms
+from app.routers import auth, feedback, forum, games, profiles, rooms, usage
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 # httpx registra cada URL completa en nivel INFO, incluida la STEAM_API_KEY que viaja como parámetro.
@@ -54,6 +54,7 @@ app.include_router(forum.router)
 app.include_router(profiles.router)
 app.include_router(rooms.router)
 app.include_router(feedback.router)
+app.include_router(usage.router)
 
 
 @app.get("/api/health", tags=["health"])

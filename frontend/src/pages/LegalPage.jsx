@@ -7,9 +7,9 @@ import "./LegalPage.css";
  * alguien con conocimiento legal de tu país, y completar el país donde se alojan los datos
  * (DATA_LOCATION) y el mail de contacto (CONTACT_EMAIL en backend/.env).
  */
-const UPDATED = "18 de noviembre de 2026";
+const UPDATED = "24 de noviembre de 2026";
 const DATA_LOCATION = "Estados Unidos (servidores de DigitalOcean en San Francisco)";
-const UPDATED_EN = "November 18, 2026";
+const UPDATED_EN = "November 24, 2026";
 const DATA_LOCATION_EN = "the United States (DigitalOcean servers in San Francisco)";
 
 function LegalPage({ kind, config }) {
@@ -61,6 +61,11 @@ function Privacy({ contact }) {
           <strong>Los comentarios que mandás con “Mandar comentario”:</strong> el texto, la sección de la página donde estabas y, si tenés
           la sesión iniciada, tu nombre y tu SteamID. Llegan por mail a quien mantiene la página y no se publican.
         </li>
+        <li>
+          <strong>Estadísticas de uso anónimas:</strong> contamos cuántas veces por día se usa cada paso de la página (visitas, giros,
+          perfiles cargados, inicios de sesión), solo como un número. No guardamos quién lo hizo, ni tu IP, ni datos de tu navegador.
+          Cloudflare, que protege y acelera la página, también mide las visitas y la velocidad de carga sin usar cookies.
+        </li>
       </ul>
 
       <h2>Qué es público</h2>
@@ -72,8 +77,8 @@ function Privacy({ contact }) {
       <h2>Cookies y almacenamiento</h2>
       <p>
         Usamos una sola cookie, necesaria para mantener tu sesión (firmada, dura 30 días y no se puede leer desde la página). Algunas
-        preferencias, como los filtros, el idioma o el historial de giros, se guardan en tu navegador. No usamos cookies de publicidad ni de
-        seguimiento.
+        preferencias, como los filtros, el idioma o el historial de giros, se guardan en tu navegador, igual que una marca (mientras la
+        pestaña está abierta) para no contar dos veces la misma visita. No usamos cookies de publicidad ni de seguimiento.
       </p>
 
       <h2>Con quién se comparte</h2>
@@ -178,6 +183,11 @@ function PrivacyEn({ contact }) {
           <strong>The feedback you send with “Send feedback”:</strong> the text, the section of the site you were on and, if you&apos;re
           signed in, your Steam name and SteamID. It reaches whoever runs the site by email and is never published.
         </li>
+        <li>
+          <strong>Anonymous usage statistics:</strong> we count how many times a day each step of the site is used (visits, spins,
+          profiles loaded, sign-ins), only as a number. We don&apos;t store who did it, your IP address or anything about your browser.
+          Cloudflare, which protects and speeds up the site, also measures visits and load times without cookies.
+        </li>
       </ul>
 
       <h2>What is public</h2>
@@ -189,7 +199,8 @@ function PrivacyEn({ contact }) {
       <h2>Cookies and storage</h2>
       <p>
         We use a single cookie, needed to keep you signed in (signed, lasts 30 days and can&apos;t be read by the page). Some preferences,
-        like filters, language or spin history, are stored in your browser. We don&apos;t use advertising or tracking cookies.
+        like filters, language or spin history, are stored in your browser, as is a mark (while the tab is open) so the same visit
+        isn&apos;t counted twice. We don&apos;t use advertising or tracking cookies.
       </p>
 
       <h2>Who we share it with</h2>

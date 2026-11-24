@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "../i18n/index.js";
 import { classifyLibraryBatch, enrichLibraryBatch, fetchClassificationStatus, fetchLibrary } from "./gameService.js";
+import { track } from "./track.js";
 
 // Primera pasada (datos de la tienda): de a 100 juegos, Steam los manda de a 50 por pedido.
 const CLASSIFY_BATCH_SIZE = 100;
@@ -43,12 +44,14 @@ export function useLibrary(steamId, friendSteamId) {
         setStatus("ready");
         setError(null);
         setErrorStatus(null);
+        if (!silent) track("library_ok");
       } catch (err) {
         if (id !== requestId.current || silent) return;
         setGames([]);
         setStatus("error");
         setError(err.response?.data?.detail ?? t("No se pudo cargar la biblioteca. ¿El perfil es público?"));
         setErrorStatus(err.response?.status ?? null);
+        track(err.response?.status === 403 ? "library_private" : "library_error");
       }
     },
     [steamId, friendSteamId],

@@ -188,8 +188,8 @@ def test_migrations_create_a_fresh_database(tmp_path):
 
     connection = sqlite3.connect(db_file)
     tables = {row[0] for row in connection.execute("select name from sqlite_master where type='table'")}
-    assert {"hidden_games", "forum_reports", "cached_game_details"} <= tables
-    assert connection.execute("select version_num from alembic_version").fetchone() == ("0010",)
+    assert {"hidden_games", "forum_reports", "cached_game_details", "usage_counters"} <= tables
+    assert connection.execute("select version_num from alembic_version").fetchone() == ("0011",)
     connection.close()
 
 
