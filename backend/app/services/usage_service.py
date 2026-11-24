@@ -25,6 +25,7 @@ EVENTS = frozenset(
         "login_click",  # tocó "Iniciar sesión con Steam"
         "login_success",  # volvió de Steam con la sesión iniciada
         "share",  # compartió lo que le tocó
+        "backlog_share",  # compartió su pila sin jugar
         "room_create",  # armó una sala grupal
     }
 )

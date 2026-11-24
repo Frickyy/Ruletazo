@@ -608,6 +608,21 @@ const en = {
   "Se envía como": "Sending as",
   "Se envía como anónimo. Iniciá sesión con Steam para que sepamos quién sos.": "Sending anonymously. Sign in through Steam so we know who you are.",
 
+  // ---------- Tu pila sin jugar ----------
+  "Tu pila sin jugar": "Your unplayed pile",
+  "juegos sin estrenar": "unplayed games",
+  "a precio de hoy en Steam": "at today's Steam prices",
+  "El valor cuenta {priced} de {unplayed}: al resto todavía no le cargamos el precio o ya no se vende.":
+    "The value counts {priced} of {unplayed}: the rest don't have a price loaded yet or aren't sold anymore.",
+  "Armando la imagen…": "Making the image…",
+  "Compartir mi pila": "Share my pile",
+  "Mi pila sin jugar": "My unplayed pile",
+  "a precio de hoy en la tienda de Steam": "at today's Steam store prices",
+  "¿Cuánto vale la tuya?": "How much is yours worth?",
+  "Tengo {count} juegos de Steam sin estrenar que hoy valen {value} en la tienda 💀 ¿Cuánto vale tu pila?":
+    "I have {count} unplayed Steam games worth {value} at today's store prices 💀 How much is your pile worth?",
+  "Tengo {count} juegos de Steam sin estrenar 💀 ¿Cuántos tenés vos?": "I have {count} unplayed Steam games 💀 How many do you have?",
+
   // ---------- Biblioteca privada en Steam ----------
   "Tu biblioteca de Steam es privada": "Your Steam library is private",
   "Esta biblioteca de Steam es privada": "This Steam library is private",

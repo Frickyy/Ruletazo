@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import BacklogValue from "./BacklogValue.jsx";
 import DailyGame from "./DailyGame.jsx";
 import SteamLoginButton from "./SteamLoginButton.jsx";
 import { formatNumber, t } from "../i18n/index.js";
@@ -44,6 +45,7 @@ function LibraryPanel({ library, pool, onPick }) {
 
   return (
     <div className="idle-panel">
+      <BacklogValue games={library} />
       {unplayed.length > 0 && (
         <section className="idle-panel__block" aria-labelledby="idle-unplayed">
           <div className="idle-panel__heading">

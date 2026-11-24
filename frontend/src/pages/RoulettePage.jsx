@@ -116,8 +116,9 @@ function RoulettePage({
   const detailsError = spin && details?.spinId === settledSpinId ? details.error : null;
   // Los números de arriba (juegos, sin estrenar, en la ruleta): de tu biblioteca o de la de ejemplo.
   const statsGames = steamId ? games : DEMO_GAMES;
+  // Sin programas (Soundpad, Wallpaper Engine…), igual que "Tu pila sin jugar": son juegos sin estrenar.
   const unplayedCount = useMemo(
-    () => statsGames.filter((game) => game.playtime_forever_minutes === 0 && !game.is_hidden).length,
+    () => statsGames.filter((game) => game.playtime_forever_minutes === 0 && !game.is_hidden && !game.is_software).length,
     [statsGames],
   );
   const libraryLoading = Boolean(steamId) && libraryStatus === "loading";

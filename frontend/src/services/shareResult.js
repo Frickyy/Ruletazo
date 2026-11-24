@@ -13,16 +13,20 @@ export function buildShareText(gameName, siteUrl) {
   };
 }
 
-/**
- * En el celular comparte una imagen tipo historia (portada + nombre) con el texto y el link; si el
- * navegador no puede compartir archivos, comparte solo el texto; en la compu copia texto y link.
- * Devuelve "shared", "copied" o "cancelled" para que la ficha muestre el aviso que corresponde.
- */
+/** Comparte el juego que salió, con su imagen tipo historia (ver shareWithImage). */
 export async function shareResult(game, siteUrl = window.location.origin) {
-  const data = buildShareText(game.name, siteUrl);
+  return shareWithImage(buildShareText(game.name, siteUrl), () => renderResultCard(game), `ruletazo-${game.appid}.png`);
+}
+
+/**
+ * En el celular comparte una imagen (la que dibuja `renderImage`) con el texto y el link; si el
+ * navegador no puede compartir archivos, comparte solo el texto; en la compu copia texto y link.
+ * Devuelve "shared", "copied" o "cancelled" para que la página muestre el aviso que corresponde.
+ */
+export async function shareWithImage(data, renderImage, filename) {
   if (navigator.share) {
     try {
-      const files = await resultFiles(game);
+      const files = await imageFiles(renderImage, filename);
       await navigator.share(files ? { ...data, files } : data);
       return "shared";
     } catch (error) {
@@ -35,11 +39,11 @@ export async function shareResult(game, siteUrl = window.location.origin) {
 }
 
 /** La imagen, solo si el navegador puede compartir archivos (si no, se comparte el texto). */
-async function resultFiles(game) {
+async function imageFiles(renderImage, filename) {
   if (!navigator.canShare) return null;
   try {
-    const blob = await renderResultCard(game);
-    const files = [new File([blob], `ruletazo-${game.appid}.png`, { type: "image/png" })];
+    const blob = await renderImage();
+    const files = [new File([blob], filename, { type: "image/png" })];
     return navigator.canShare({ files }) ? files : null;
   } catch {
     return null;
