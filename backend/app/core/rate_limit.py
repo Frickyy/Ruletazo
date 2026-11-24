@@ -1,8 +1,8 @@
 """Límite de pedidos por visitante para los endpoints que consultan a Steam con nuestra API key.
 
 Sin esto, si la app se publica, cualquiera podría usarla para pedir bibliotecas y perfiles
-ajenos sin parar, gastando la cuota de la API key. El límite es por IP (detrás de un proxy,
-uvicorn --proxy-headers pone la IP real) y en memoria: alcanza para un solo proceso.
+ajenos sin parar, gastando la cuota de la API key. El límite es por IP (ver client_ip) y en
+memoria: alcanza para un solo proceso.
 """
 
 import time
@@ -38,7 +38,22 @@ class RateLimit:
 
     async def __call__(self, request: Request) -> None:
         """Dependencia de FastAPI."""
-        self.check(request.client.host if request.client else "desconocido")
+        self.check(client_ip(request))
+
+
+def client_ip(request: Request) -> str:
+    """IP real del visitante.
+
+    En producción todo entra por Cloudflare, que pone la IP en CF-Connecting-IP y pisa la que
+    mande el visitante. X-Forwarded-For no sirve para esto: su primera entrada la escribe el
+    propio visitante, y uvicorn (--forwarded-allow-ips=*) la usa como `request.client`, así que
+    cualquiera podía inventar una IP por pedido y saltear los límites. Sin Cloudflare (en
+    desarrollo) se usa la conexión directa.
+    """
+    cloudflare_ip = request.headers.get("cf-connecting-ip", "").strip()
+    if cloudflare_ip:
+        return cloudflare_ip
+    return request.client.host if request.client else "desconocido"
 
 
 # Lecturas que disparan pedidos a Steam (biblioteca, ficha, perfiles, búsquedas).

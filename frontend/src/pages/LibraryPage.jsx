@@ -13,6 +13,7 @@ import {
   sortGames,
 } from "../services/libraryFilters.js";
 import ClassificationBanner from "../components/ClassificationBanner.jsx";
+import PrivateLibraryHelp from "../components/PrivateLibraryHelp.jsx";
 import { formatNumber, locale, t } from "../i18n/index.js";
 import "./LibraryPage.css";
 
@@ -277,7 +278,11 @@ function LibraryPage({
 
       <ClassificationBanner classification={classification} onPause={setClassificationPaused} />
 
-      {(loadError || actionError) && <p className="error-text">{actionError ?? loadError}</p>}
+      {library.isPrivate && !actionError ? (
+        <PrivateLibraryHelp isOwn={!guest} onRetry={() => library.reload()} />
+      ) : (
+        (loadError || actionError) && <p className="error-text">{actionError ?? loadError}</p>
+      )}
       {isLoading && <p className="hint">{t("Cargando biblioteca…")}</p>}
 
       <ul className="library-page__list">

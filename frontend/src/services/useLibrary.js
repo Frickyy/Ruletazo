@@ -22,6 +22,8 @@ export function useLibrary(steamId, friendSteamId) {
   const [games, setGames] = useState([]);
   const [status, setStatus] = useState("idle"); // idle | loading | ready | error
   const [error, setError] = useState(null);
+  // Código HTTP del último error: 403 = el perfil o los detalles de juegos son privados en Steam.
+  const [errorStatus, setErrorStatus] = useState(null);
   // { phase: "store" | "enrich" | "done", classified, total, withDuration, running }
   const [classification, setClassification] = useState(null);
   const [paused, setPaused] = useState(false);
@@ -40,11 +42,13 @@ export function useLibrary(steamId, friendSteamId) {
         setGames(next);
         setStatus("ready");
         setError(null);
+        setErrorStatus(null);
       } catch (err) {
         if (id !== requestId.current || silent) return;
         setGames([]);
         setStatus("error");
         setError(err.response?.data?.detail ?? t("No se pudo cargar la biblioteca. ¿El perfil es público?"));
+        setErrorStatus(err.response?.status ?? null);
       }
     },
     [steamId, friendSteamId],
@@ -151,6 +155,8 @@ export function useLibrary(steamId, friendSteamId) {
     games,
     status,
     error,
+    // La biblioteca no se pudo leer porque en Steam es privada (se muestra cómo hacerla pública).
+    isPrivate: status === "error" && errorStatus === 403,
     reload,
     restartEnrichment,
     updateGame,

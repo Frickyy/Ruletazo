@@ -606,6 +606,21 @@ const en = {
   "Leemos todo lo que llega.": "We read everything that comes in.",
   "Se envía como": "Sending as",
   "Se envía como anónimo. Iniciá sesión con Steam para que sepamos quién sos.": "Sending anonymously. Sign in through Steam so we know who you are.",
+
+  // ---------- Biblioteca privada en Steam ----------
+  "Tu biblioteca de Steam es privada": "Your Steam library is private",
+  "Esta biblioteca de Steam es privada": "This Steam library is private",
+  "Steam no muestra los juegos de un perfil hasta que su dueño los hace públicos. Son tres pasos:":
+    "Steam doesn't show a profile's games until its owner makes them public. It takes three steps:",
+  "Abrí la configuración de privacidad de tu perfil de Steam.": "Open your Steam profile's privacy settings.",
+  "Abrir la configuración ↗": "Open settings ↗",
+  "En “Mi perfil” y en “Detalles de los juegos”, elegí “Público”.": "Set both “My profile” and “Game details” to “Public”.",
+  "Volvé acá y tocá “Probar de nuevo”. Steam puede tardar unos minutos en aplicar el cambio.":
+    "Come back and tap “Try again”. Steam may take a few minutes to apply the change.",
+  "Si dejás marcada la casilla que mantiene privado tu tiempo de juego, tus juegos van a figurar sin horas jugadas.":
+    "If you keep the box that hides your total playtime checked, your games will show up with no hours played.",
+  "Probando…": "Trying…",
+  "Probar de nuevo": "Try again",
 };
 
 export default en;

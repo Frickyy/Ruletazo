@@ -59,6 +59,9 @@ async def steam_auth_callback(request: Request) -> RedirectResponse:
     if params.get("openid.mode") != "id_res":
         return RedirectResponse(f"{frontend_url}/?auth_error=cancelled")
 
+    if not _is_assertion_for_this_site(params, str(request.url_for("steam_auth_callback"))):
+        return RedirectResponse(f"{frontend_url}/?auth_error=invalid_response")
+
     verification_data = {key: value for key, value in params.items() if key.startswith("openid.")}
     verification_data["openid.mode"] = "check_authentication"
 
@@ -94,6 +97,23 @@ async def steam_auth_callback(request: Request) -> RedirectResponse:
         path="/",
     )
     return redirect
+
+
+def _is_assertion_for_this_site(params: dict, callback_url: str) -> bool:
+    """La respuesta tiene que venir de Steam y estar firmada para ESTA página.
+
+    check_authentication solo confirma que Steam firmó esos campos, no para qué sitio los firmó:
+    sin este control, un login hecho en otra página (que así conoce la respuesta de Steam de
+    quien entró) se podía reenviar a nuestra vuelta para abrir sesión como esa persona.
+    """
+    signed = set(params.get("openid.signed", "").split(","))
+    return_to = params.get("openid.return_to", "")
+    return (
+        params.get("openid.op_endpoint") == STEAM_OPENID_URL
+        and {"op_endpoint", "claimed_id", "identity", "return_to"} <= signed
+        and params.get("openid.claimed_id") == params.get("openid.identity")
+        and return_to.split("?", 1)[0] == callback_url.split("?", 1)[0]
+    )
 
 
 @router.get("/me")

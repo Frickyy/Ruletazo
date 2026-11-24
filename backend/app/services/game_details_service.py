@@ -22,7 +22,8 @@ logger = logging.getLogger(__name__)
 # 6: sinopsis y fechas en español, y marca de contenido para adultos. 7: URL de la portada.
 # 8: datos de IStoreBrowseService (de a 50 juegos), géneros por etiquetas y categorías de jugadores.
 # 9: marca de software (Soundpad, Wallpaper Engine…) para dejarlo fuera de la ruleta.
-STORE_METADATA_VERSION = 9
+# 10: puntaje y total de reseñas desde IStoreBrowseService (el de /appreviews era parcial y dejó de responder).
+STORE_METADATA_VERSION = 10
 # Subir este número fuerza a volver a pedir "lo bueno / lo malo" de las reseñas.
 # 2: varias frases por lado, filtradas (review_digest), y los errores de Steam ya no se cachean.
 REVIEWS_VERSION = 2
@@ -122,10 +123,9 @@ async def get_or_fetch_details(db: Session, appid: int, name: str) -> CachedGame
     if store_details is not None:
         apply_store_details(cached, store_details)
     if reviews is not None and not reviews["failed"]:
+        # De /appreviews solo se usan las frases: el puntaje y el total vienen con los datos de
+        # la tienda (apply_store_details), porque el resumen de /appreviews cuenta una parte.
         # Si Steam no respondió (rate limit) se conserva lo que había y se reintenta la próxima vez.
-        cached.review_score_desc = reviews["score_desc"]
-        cached.review_total = reviews["total_reviews"]
-        cached.review_positive = reviews["total_positive"]
         cached.featured_reviews = []
         cached.review_pros = join_excerpts(reviews["good"])
         cached.review_cons = join_excerpts(reviews["bad"])
@@ -169,6 +169,9 @@ def apply_store_details(cached: CachedGameDetails, store_details: dict) -> None:
         cached.is_software = store_details.get("is_software", False)
         cached.header_image = store_details["header_image"] or cached.header_image or ""
         cached.player_categories = store_details.get("player_categories", [])
+        cached.review_score_desc = store_details.get("review_score_desc", "")
+        cached.review_total = store_details.get("review_total", 0)
+        cached.review_positive = store_details.get("review_positive", 0)
     cached.store_metadata_version = STORE_METADATA_VERSION
 
 
