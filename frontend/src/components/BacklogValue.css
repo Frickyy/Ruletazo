@@ -1,0 +1,45 @@
+.backlog-value {
+  display: flex;
+  flex-wrap: wrap;
+  grid-column: 1 / -1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.9rem 1.5rem;
+  padding: 1.1rem 1.25rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+}
+
+.backlog-value__text {
+  display: flex;
+  flex: 1 1 22rem;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.backlog-value h2 {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.backlog-value__numbers {
+  margin: 0;
+  color: var(--text-soft);
+}
+
+.backlog-value__numbers strong {
+  color: var(--accent);
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+}
+
+.backlog-value .hint {
+  margin: 0;
+  font-size: 0.8125rem;
+}
+
+.backlog-value .button {
+  min-height: 44px;
+}
