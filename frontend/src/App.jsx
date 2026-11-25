@@ -15,7 +15,8 @@ import { createRoom } from "./services/roomService.js";
 import { track, trackOnce } from "./services/track.js";
 import SteamIdInput from "./components/SteamIdInput.jsx";
 import { fetchSession, fetchSteamProfile, logoutSession } from "./services/gameService.js";
-import { useHashRoute } from "./routes.js";
+import { useRoute } from "./routes.js";
+import { usePageTitle } from "./services/pageTitle.js";
 import { setLang, t, tk, useLang } from "./i18n/index.js";
 import { useLibrary } from "./services/useLibrary.js";
 import "./components/SteamIdInput.css";
@@ -51,7 +52,9 @@ function App() {
     const legacyId = localStorage.getItem(FRIEND_STEAM_ID_KEY) ?? "";
     return legacyId ? [legacyId] : [""];
   });
-  const [{ view: activeView, forumTarget, profileId, roomCode }, navigate] = useHashRoute();
+  const [{ view: activeView, forumTarget, profileId, roomCode }, navigate] = useRoute();
+  // Cada página pone su título; Familia está acá mismo.
+  usePageTitle(t("Familia"), activeView === "family");
   const [guestId, setGuestId] = useState(() => readStorage(GUEST_ID_KEY) ?? "");
   const [guestProfile, setGuestProfile] = useState(null);
   const isGuest = sessionChecked && !isLoggedIn && Boolean(guestId);

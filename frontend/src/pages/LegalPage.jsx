@@ -1,4 +1,5 @@
-import { getLang } from "../i18n/index.js";
+import { getLang, t } from "../i18n/index.js";
+import { usePageTitle } from "../services/pageTitle.js";
 import "./LegalPage.css";
 
 /*
@@ -13,6 +14,7 @@ const UPDATED_EN = "November 24, 2026";
 const DATA_LOCATION_EN = "the United States (DigitalOcean servers in San Francisco)";
 
 function LegalPage({ kind, config }) {
+  usePageTitle(kind === "terms" ? t("Términos de uso") : t("Política de privacidad"));
   const contact = config?.contact_email ? (
     <a href={`mailto:${config.contact_email}`}>{config.contact_email}</a>
   ) : getLang() === "en" ? (

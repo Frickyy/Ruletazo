@@ -4,13 +4,15 @@ import SteamLoginButton from "../components/SteamLoginButton.jsx";
 import { unlockAudio } from "../services/reelSound.js";
 import { fetchRoom, joinRoom, setRoomVeto, spinRoom } from "../services/roomService.js";
 import { formatNumber, t } from "../i18n/index.js";
+import { buildPath } from "../routes.js";
+import { usePageTitle } from "../services/pageTitle.js";
 import "./RoomPage.css";
 
 const POLL_MS = 2000;
 const PAGE_SIZE = 60;
 
 /**
- * Sala en grupo (#/sala/<código>). Todos ven el mismo rodillo: quien armó la sala gira, el
+ * Sala en grupo (/sala/<código>). Todos ven el mismo rodillo: quien armó la sala gira, el
  * backend elige al azar entre los juegos que nadie vetó y cada navegador anima hasta ese juego.
  * El estado se consulta cada 2 segundos (solo con la pestaña visible).
  */
@@ -74,6 +76,8 @@ function RoomPage({ code, viewer, onLogin, onBack }) {
 
   useEffect(() => setVisible(PAGE_SIZE), [search]);
 
+  usePageTitle(code ? t("Sala {code}", { code }) : t("Sala"));
+
   if (!code) return <RoomMessage title={t("Sala")} text={t("Ese link de sala no es válido.")} onBack={onBack} />;
   if (error && !room) return <RoomMessage title={t("Sala")} text={error} onBack={onBack} />;
   if (!room) return <p className="hint">{t("Cargando la sala…")}</p>;
@@ -98,7 +102,7 @@ function RoomPage({ code, viewer, onLogin, onBack }) {
   }
 
   async function copyLink() {
-    const url = `${window.location.origin}${window.location.pathname}#/sala/${room.code}`;
+    const url = `${window.location.origin}${buildPath("room", null, room.code)}`;
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);

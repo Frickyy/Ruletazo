@@ -637,6 +637,11 @@ const en = {
     "If you keep the box that hides your total playtime checked, your games will show up with no hours played.",
   "Probando…": "Trying…",
   "Probar de nuevo": "Try again",
+  "Ruletazo · ¿Qué jugar? La ruleta de tu biblioteca de Steam": "Ruletazo · What to play? Spin your Steam library",
+  "Política de privacidad": "Privacy policy",
+  "Términos de uso": "Terms of use",
+  "{name}: reseñas y discusiones": "{name}: reviews and discussions",
+  "Sala {code}": "Room {code}",
 };
 
 export default en;

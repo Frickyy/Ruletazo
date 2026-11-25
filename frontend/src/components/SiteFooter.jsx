@@ -39,8 +39,8 @@ function SiteFooter({ config, onNavigate, user }) {
           </button>
         </div>
         <nav className="site-footer__links" aria-label={t("Legales")}>
-          <a href="#/privacidad" onClick={(event) => { event.preventDefault(); onNavigate?.("privacy"); }}>{t("Privacidad")}</a>
-          <a href="#/terminos" onClick={(event) => { event.preventDefault(); onNavigate?.("terms"); }}>{t("Términos")}</a>
+          <a href="/privacidad" onClick={(event) => { event.preventDefault(); onNavigate?.("privacy"); }}>{t("Privacidad")}</a>
+          <a href="/terminos" onClick={(event) => { event.preventDefault(); onNavigate?.("terms"); }}>{t("Términos")}</a>
         </nav>
         <p className="site-footer__disclaimer">
           {t("Proyecto independiente, sin relación con Valve Corporation. Steam y el logo de Steam son marcas registradas de Valve Corporation. Datos de juegos con la Steam Web API.")}

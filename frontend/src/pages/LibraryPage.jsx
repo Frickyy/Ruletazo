@@ -15,6 +15,7 @@ import {
 import ClassificationBanner from "../components/ClassificationBanner.jsx";
 import PrivateLibraryHelp from "../components/PrivateLibraryHelp.jsx";
 import { formatNumber, locale, t } from "../i18n/index.js";
+import { usePageTitle } from "../services/pageTitle.js";
 import "./LibraryPage.css";
 
 // Filas que se dibujan de entrada; al llegar al final se suman de a tanto (con 1000+ juegos,
@@ -41,6 +42,7 @@ function LibraryPage({
   guest = null,
   onLogin,
 }) {
+  usePageTitle(t("Biblioteca"));
   const { games, status, error: loadError, updateGame, classification, setClassificationPaused } = library;
   const [collection, setCollection] = useState("all");
   const [genre, setGenre] = useState("");

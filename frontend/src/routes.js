@@ -1,18 +1,21 @@
 import { useEffect, useState } from "react";
 
 /**
- * Rutas con hash (#/foro/juego/367520) para que el botón Atrás funcione, se pueda recargar
- * sin perder la sección y se puedan compartir links del foro. Con hash no hace falta que el
- * servidor conozca las rutas: cualquier hosting estático sirve index.html y listo.
+ * Rutas con direcciones normales (/foro/juego/367520): el botón Atrás funciona, se puede recargar
+ * sin perder la sección, se comparten links limpios y Google puede mostrar cada sección por
+ * separado (con hash veía todo como la portada). El servidor devuelve la página en estas
+ * direcciones (backend/app/core/static_files.py).
  *
- *   #/ruleta · #/biblioteca · #/familia · #/foro
- *   #/foro/juego/<appid>               reseñas del juego
- *   #/foro/juego/<appid>/discusiones   discusiones del juego
- *   #/foro/juego/<appid>/hilo/<id>     un hilo
- *   #/perfil                           tu perfil
- *   #/perfil/<steamid>                 el perfil de otra persona
- *   #/sala/<código>                    una sala para elegir en grupo
- *   #/privacidad · #/terminos
+ *   /  (la ruleta) · /biblioteca · /familia · /foro
+ *   /foro/juego/<appid>               reseñas del juego
+ *   /foro/juego/<appid>/discusiones   discusiones del juego
+ *   /foro/juego/<appid>/hilo/<id>     un hilo
+ *   /perfil                           tu perfil
+ *   /perfil/<steamid>                 el perfil de otra persona
+ *   /sala/<código>                    una sala para elegir en grupo
+ *   /privacidad · /terminos
+ *
+ * Los links viejos con hash (/#/sala/ABC123) siguen andando: al entrar se pasan a la dirección nueva.
  */
 const VIEW_SLUGS = {
   roulette: "ruleta",
@@ -26,8 +29,8 @@ const VIEW_SLUGS = {
 };
 const SLUG_VIEWS = Object.fromEntries(Object.entries(VIEW_SLUGS).map(([view, slug]) => [slug, view]));
 
-export function parseRoute(hash) {
-  const parts = hash.replace(/^#\/?/, "").split("/").filter(Boolean);
+export function parseRoute(path) {
+  const parts = path.split("/").filter(Boolean);
   const view = SLUG_VIEWS[parts[0]] ?? "roulette";
   if (view === "room") {
     return { view, forumTarget: null, roomCode: /^[A-Za-z0-9]{4,12}$/.test(parts[1] ?? "") ? parts[1].toUpperCase() : null };
@@ -45,47 +48,79 @@ export function parseRoute(hash) {
   return { view, forumTarget: { appid, tab: parts[3] === "discusiones" ? "threads" : "reviews" } };
 }
 
-export function buildHash(view, forumTarget = null, profileId = null) {
-  let hash = `#/${VIEW_SLUGS[view] ?? VIEW_SLUGS.roulette}`;
-  if (view === "profile" && profileId) return `${hash}/${profileId}`;
-  if (view === "room" && profileId) return `${hash}/${profileId}`;
+/** La dirección de una sección. La ruleta es la portada (/), así no hay dos direcciones para lo mismo. */
+export function buildPath(view, forumTarget = null, profileId = null) {
+  if (view === "roulette" || !VIEW_SLUGS[view]) return "/";
+  let path = `/${VIEW_SLUGS[view]}`;
+  if ((view === "profile" || view === "room") && profileId) return `${path}/${profileId}`;
   if (view === "forum" && forumTarget?.appid) {
-    hash += `/juego/${forumTarget.appid}`;
-    if (forumTarget.threadId) hash += `/hilo/${forumTarget.threadId}`;
-    else if (forumTarget.tab === "threads") hash += "/discusiones";
+    path += `/juego/${forumTarget.appid}`;
+    if (forumTarget.threadId) path += `/hilo/${forumTarget.threadId}`;
+    else if (forumTarget.tab === "threads") path += "/discusiones";
   }
-  return hash;
+  return path;
+}
+
+/** La ruta de una dirección; un link viejo con hash (/#/sala/ABC123) cuenta como su dirección nueva. */
+export function routeFromLocation({ pathname, hash }) {
+  return parseRoute(hash.startsWith("#/") ? hash.slice(1) : pathname);
+}
+
+/** La dirección de siempre para una ruta ya leída (ej. /sala/abc234 → /sala/ABC234, /ruleta → /). */
+export function pathOfRoute(route) {
+  return buildPath(route.view, route.forumTarget, route.profileId ?? route.roomCode);
+}
+
+/**
+ * Lee la ruta de la barra de direcciones. Si la dirección no es la de siempre (un link viejo con
+ * hash, /ruleta, un código de sala en minúsculas, una sección que no existe), la reemplaza sin
+ * sumar un paso al historial. Conserva lo que viene después del "?" (la vuelta del login lo usa).
+ */
+function readLocation() {
+  const { pathname, search, hash } = window.location;
+  const route = routeFromLocation(window.location);
+  const path = pathOfRoute(route);
+  const legacy = hash.startsWith("#/");
+  if (path !== pathname || legacy) {
+    window.history.replaceState(window.history.state, "", path + search + (legacy ? "" : hash));
+  }
+  return route;
 }
 
 /** Ruta actual + función para navegar. `name` del juego no viaja en la URL: se pide al backend. */
-export function useHashRoute() {
-  const [route, setRoute] = useState(() => parseRoute(window.location.hash));
+export function useRoute() {
+  const [route, setRoute] = useState(readLocation);
 
   useEffect(() => {
-    const onHashChange = () =>
+    // Atrás/Adelante, o un link viejo con hash pegado con la página ya abierta.
+    const onLocationChange = () =>
       setRoute((current) => {
-        const next = parseRoute(window.location.hash);
+        const next = readLocation();
         // Conserva el nombre del juego si se sigue en el mismo, así no parpadea "Juego".
         if (next.forumTarget && current.forumTarget?.appid === next.forumTarget.appid && current.forumTarget.name) {
           next.forumTarget.name = current.forumTarget.name;
         }
         return next;
       });
-    window.addEventListener("hashchange", onHashChange);
-    return () => window.removeEventListener("hashchange", onHashChange);
+    window.addEventListener("popstate", onLocationChange);
+    window.addEventListener("hashchange", onLocationChange);
+    return () => {
+      window.removeEventListener("popstate", onLocationChange);
+      window.removeEventListener("hashchange", onLocationChange);
+    };
   }, []);
 
   function navigate(view, forumTarget = null, profileId = null) {
-    const hash = buildHash(view, forumTarget, profileId);
+    const path = buildPath(view, forumTarget, profileId);
     // El nombre del juego no está en la URL; se conserva en memoria mientras dure la navegación.
-    // El tercer parámetro es el SteamID en #/perfil y el código en #/sala.
+    // El tercer parámetro es el SteamID en /perfil y el código en /sala.
     setRoute({
       view,
       forumTarget,
       profileId: view === "profile" ? profileId : undefined,
       roomCode: view === "room" ? profileId : undefined,
     });
-    if (window.location.hash !== hash) window.location.hash = hash;
+    if (window.location.pathname !== path || window.location.hash) window.history.pushState(null, "", path);
   }
 
   return [route, navigate];
