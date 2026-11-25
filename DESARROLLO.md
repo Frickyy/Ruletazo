@@ -8,7 +8,7 @@ Cómo correr, configurar y publicar el proyecto. Qué hace la página y cómo se
 |---|---|
 | Frontend | React 18, Vite, Axios, Vitest |
 | Backend | Python 3.13, FastAPI, SQLAlchemy, Alembic, httpx |
-| Datos | Steam Web API, Steam Store API, HowLongToBeat |
+| Datos | Steam Web API, Steam Store API, IGDB (duración), HowLongToBeat (apagado) |
 | Base de datos | SQLite |
 | Tests | pytest, respx, Vitest |
 
@@ -18,13 +18,13 @@ Cómo correr, configurar y publicar el proyecto. Qué hace la página y cómo se
 ┌──────────────┐   /api (proxy de Vite)   ┌──────────────────┐        ┌───────────────────┐
 │  React + Vite│ ───────────────────────▶ │  FastAPI         │ ─────▶ │ Steam Web API     │
 │  :5173       │                          │  :8000           │        │ Steam Store API   │
-└──────────────┘                          │  caché SQLite    │        │ HowLongToBeat     │
+└──────────────┘                          │  caché SQLite    │        │ IGDB              │
                                           └──────────────────┘        └───────────────────┘
 ```
 
 En desarrollo, Vite reenvía todas las rutas `/api` al backend, así frontend y API comparten el mismo origen y el login con Steam vuelve al mismo puerto. En Docker el backend sirve también el frontend compilado: una sola URL para todo.
 
-Los pedidos a servicios externos pasan por un control de ritmo común (`services/throttle.py`): si Steam o HowLongToBeat avisan que nos pasamos, ese servicio se pausa unos minutos en lugar de seguir insistiendo. Además, los endpoints que consultan a Steam con la API key tienen un límite por visitante (`core/rate_limit.py`), para que nadie pueda gastar la cuota de la clave si la app se publica.
+Los pedidos a servicios externos pasan por un control de ritmo común (`services/throttle.py`): si Steam, IGDB o HowLongToBeat avisan que nos pasamos, ese servicio se pausa unos minutos en lugar de seguir insistiendo. Además, los endpoints que consultan a Steam con la API key tienen un límite por visitante (`core/rate_limit.py`), para que nadie pueda gastar la cuota de la clave si la app se publica.
 
 Los datos de la tienda vienen de `IStoreBrowseService/GetItems` (el mismo servicio que usa la tienda), que acepta 50 juegos por pedido y no necesita API key.
 
@@ -62,6 +62,7 @@ Completá `backend/.env`:
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` | Cuenta que manda esos mails. Con Gmail: `smtp.gmail.com`, `587`, la cuenta y una [contraseña de aplicación](https://myaccount.google.com/apppasswords) (hace falta la verificación en dos pasos). Sin usuario y contraseña, los comentarios solo quedan en la tabla `feedback`. |
 | `RESEND_API_KEY`, `EMAIL_FROM` | Alternativa al SMTP por HTTPS con [Resend](https://resend.com), para servidores que bloquean los puertos de mail (DigitalOcean lo hace en cuentas nuevas). Si hay clave, tiene prioridad sobre el SMTP. `EMAIL_FROM` tiene que ser de un dominio verificado en Resend (en producción, `Ruletazo <feedback@ruletazo.app>`). |
 | `HLTB_ENABLED` | `false` (por defecto). Prenderlo solo con permiso por escrito de Ziff Davis (ver *Riesgos antes de monetizar*). |
+| `IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET` | Claves de una app registrada en la [consola de Twitch](https://dev.twitch.tv/console) (tipo de cliente *Confidencial*, redirección `http://localhost`; Twitch pide la verificación en dos pasos). Con ellas la duración sale de IGDB (ver *Duración*); sin ellas no se le pide nada. |
 | `SUPPORT_LINKS` | Links para apoyar el proyecto en el pie de página: `Cafecito|https://cafecito.app/usuario,Ko-fi|https://ko-fi.com/usuario`. |
 | `SUPPORTER_STEAM_IDS` | SteamID64 de quienes apoyan el proyecto: muestran la insignia "Supporter" en su perfil y el foro. |
 | `AFFILIATE_STORES` | Tiendas con link de afiliado en el foro de cada juego: `Humble|https://www.humblebundle.com/store/search?search={query}&partner=TU_ID`. |
@@ -132,9 +133,12 @@ Pensada para no tocar la experiencia: **la plata nunca influye en qué juego sal
 ### Riesgos antes de monetizar
 - **Steam Web API**: sus términos (de 2010) licencian los datos para el "uso personal" de los usuarios, prohíben dar a entender una relación con Valve y piden una política de privacidad, informar qué datos se guardan y consultar datos de un usuario solo cuando él lo pide. Varios endpoints que usa la app (biblioteca, tienda) no figuran en la documentación oficial. Lo más prudente es **pedir permiso por escrito a Valve** (webapi@valvesoftware.com) antes de monetizar, y no ofrecer planes pagos que den acceso a datos de Steam.
 - **HowLongToBeat**: los términos de uso de Ziff Davis, su dueña, prohíben usar robots o programas para extraer datos del sitio y mostrarlos en otro programa, con o sin fines comerciales. Por eso viene **apagado** (`HLTB_ENABLED=false`) y solo debería prenderse con permiso por escrito.
+- **IGDB**: su API es gratis para proyectos con y sin fines de lucro y deja guardar los datos, pero a los productos que ganan plata les pide un acuerdo (gratis) con una mención visible. Hoy hay solo donaciones voluntarias; antes de activar links de afiliado conviene escribir a partner@igdb.com.
 
 ### Duración
-Cuando alguien marca un juego como *Terminado*, se guardan sus horas en Steam en ese momento. La duración de cada juego es la **mediana** de esas horas y se muestra recién cuando lo terminaron al menos 3 personas (nunca por persona). Las horas de menos de 30 minutos no cuentan. Al principio casi ningún juego tiene duración, así que el filtro por duración aparece recién cuando hay datos.
+Sale de [IGDB](https://www.igdb.com), la base de juegos de Twitch (`services/igdb_client.py`): se busca por appid de Steam, de a muchos juegos por pedido, y solo se le manda ese número. Los tiempos los cargan sus usuarios y en multijugador o sandbox hay valores absurdos, así que solo se usa un dato **creíble**: al menos 3 personas, entre 15 minutos y 150 horas, y con los tiempos rápido, normal y completo en orden (con un margen del 25 %, porque cada promedio sale de gente distinta). Se muestra el normal (la historia con algunos extras), con un link a la ficha de IGDB y la mención en el pie de página. Con las bibliotecas de noviembre de 2026, un tercio de los juegos sin jugar tenía un dato creíble (la mitad de los populares).
+
+Si IGDB no tiene el dato, se usa el de quienes lo terminaron en Ruletazo: al marcar un juego como *Terminado* se guardan sus horas en Steam en ese momento, y la duración es la **mediana** de esas horas, que se muestra recién cuando lo terminaron al menos 3 personas (nunca por persona). Las horas de menos de 30 minutos no cuentan. El filtro y el orden por duración aparecen recién cuando al menos la mitad de los juegos tiene el dato (`durationFilterAvailable`).
 - **El nombre**: la app se llama Ruletazo, sin "Steam", para no dar a entender una relación con Valve. Internamente se conservan algunos nombres viejos (la base `steam_roulette.db`, las claves `steamRoulette.*` del navegador) para no perder datos ni preferencias.
 - La política de privacidad y los términos (`#/privacidad`, `#/terminos`) son un **borrador**: revisalos con alguien con conocimiento legal de tu país y completá el país del servidor (`DATA_LOCATION` en `frontend/src/pages/LegalPage.jsx`).
 
@@ -142,6 +146,7 @@ Cuando alguien marca un juego como *Terminado*, se guardan sus horas en Steam en
 
 - **Juegos gratis que nunca abriste**: la Steam Web API solo devuelve los free-to-play que jugaste al menos una vez, así que los que agregaste y nunca abriste (por ejemplo *Wuthering Waves* o *The First Descendant*) no aparecen en la biblioteca. Alcanza con abrirlos una vez desde Steam para que aparezcan.
 - **HowLongToBeat** (apagado por defecto) no tiene una API oficial: si se prende, se busca por nombre y, si el sitio cambia, la duración puede faltar.
+- **Duración**: IGDB tiene un dato creíble para pocos juegos chicos; esos juegos salen sin duración hasta que alguien la cargue en IGDB o lo terminen 3 personas en Ruletazo.
 - **Reseñas**: Steam limita los pedidos de reseñas; si se pasa, se reintenta más tarde y mientras tanto la ficha sale sin "lo bueno y lo malo".
 - **Contenido +18**: se detecta con los descriptores de contenido de la tienda. Hasta que un juego tiene esos datos, se usa una aproximación por el nombre.
 - **Inglés**: las sinopsis de los juegos y las frases de reseñas vienen de Steam en español, así que en inglés esas partes siguen en español.
@@ -197,7 +202,7 @@ backend/
     models/      tablas de caché, favoritos, ocultos y foro
     routers/     endpoints de juegos, autenticación y foro
     schemas/     modelos de respuesta
-    services/    clientes de Steam, Store y HowLongToBeat, ritmo de pedidos, biblioteca y foro
+    services/    clientes de Steam, Store, IGDB y HowLongToBeat, ritmo de pedidos, biblioteca y foro
   migrations/    migraciones de Alembic
   tests/
 frontend/
