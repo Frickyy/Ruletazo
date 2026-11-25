@@ -344,3 +344,44 @@ def test_deleting_data_removes_completion_samples(db_session):
     _finish(db_session, ANA, 10, 600)
     profile_service.delete_user_data(db_session, ANA)
     assert db_session.query(CompletionSample).count() == 0
+
+
+def test_igdb_comes_before_the_community_and_after_hltb(db_session, monkeypatch):
+    from app.core.config import Settings
+    from app.models.game import CachedGameDetails
+    from app.services import duration_service
+
+    db_session.add(
+        CachedGameDetails(
+            appid=10, hltb_main_hours=20.0, igdb_hours=10.4, igdb_samples=36,
+            igdb_url="https://www.igdb.com/games/portal-2", fetched_at=datetime.now(timezone.utc),
+        )
+    )
+    # Un juego que IGDB no tiene con un dato creíble: queda la mediana de la comunidad.
+    db_session.add(CachedGameDetails(appid=20, igdb_hours=None, igdb_samples=2, fetched_at=datetime.now(timezone.utc)))
+    for index, minutes in enumerate((540, 600, 660)):
+        _finish(db_session, f"7656119800000010{index}", 10, minutes)
+        _finish(db_session, f"7656119800000010{index}", 20, minutes)
+
+    with_igdb = Settings(igdb_client_id="cliente", igdb_client_secret="secreto")
+    monkeypatch.setattr(duration_service, "get_settings", lambda: with_igdb)
+    found = duration_service.durations(db_session, [10, 20])
+    assert found[10] == {"hours": 10.4, "source": "igdb", "samples": 36, "url": "https://www.igdb.com/games/portal-2"}
+    assert found[20]["source"] == "community"
+
+    monkeypatch.setattr(duration_service, "get_settings", lambda: with_igdb.model_copy(update={"hltb_enabled": True}))
+    assert duration_service.durations(db_session, [10])[10]["source"] == "hltb"
+
+    # Sin claves no se muestra lo que haya quedado guardado de IGDB.
+    monkeypatch.setattr(duration_service, "get_settings", lambda: Settings(igdb_client_id="", igdb_client_secret=""))
+    assert duration_service.durations(db_session, [10])[10]["source"] == "community"
+
+
+def test_config_says_when_igdb_is_on(monkeypatch):
+    from app.core.config import Settings
+    from app.routers import profiles
+
+    monkeypatch.setattr(profiles, "get_settings", lambda: Settings(igdb_client_id="cliente", igdb_client_secret="secreto"))
+    assert profiles.public_config()["igdb_enabled"] is True
+    monkeypatch.setattr(profiles, "get_settings", lambda: Settings(igdb_client_id="", igdb_client_secret=""))
+    assert profiles.public_config()["igdb_enabled"] is False

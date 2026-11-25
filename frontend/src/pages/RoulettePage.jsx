@@ -19,6 +19,7 @@ import {
   DURATION_OPTIONS,
   MODE_OPTIONS,
   PLAYTIME_OPTIONS,
+  durationFilterAvailable,
   genresOf,
   matchesFilters,
   pickWeighted,
@@ -84,12 +85,14 @@ function RoulettePage({
   const [skipped, setSkipped] = useSessionSet("steamRoulette.skippedToday");
 
   const genres = useMemo(() => genresOf(games), [games]);
-  // La duración sale de HowLongToBeat (si está activado) o de quienes terminaron el juego en
-  // Ruletazo. Sin ningún dato todavía, el filtro no se muestra para no dejarlo siempre vacío.
-  const durationEnabled = useMemo(() => hltbEnabled || games.some((game) => game.duration_hours != null), [hltbEnabled, games]);
+  // La duración sale de HowLongToBeat (si está activado), de IGDB o de quienes terminaron el juego
+  // en Ruletazo. Mientras la tenga menos de la mitad de los juegos, el filtro no se muestra.
+  const durationEnabled = useMemo(() => durationFilterAvailable(games, hltbEnabled), [hltbEnabled, games]);
   // "En común" solo tiene sentido con la familia sumada.
   const commonOnly = inCommon && hasFamily && includeFamily;
-  const filters = { collection, genre, playtimeFilter, duration, hideAdult, hideSoftware, mode, inCommon: commonOnly, includeFinished };
+  // Si el filtro de duración no se muestra, tampoco filtra (por si quedó elegido de antes).
+  const activeDuration = durationEnabled ? duration : "any";
+  const filters = { collection, genre, playtimeFilter, duration: activeDuration, hideAdult, hideSoftware, mode, inCommon: commonOnly, includeFinished };
   const gamesById = useMemo(() => new Map(games.map((game) => [game.appid, game])), [games]);
 
   // Los juegos que pueden salir: exactamente los que cumplen los filtros actuales.
@@ -99,7 +102,7 @@ function RoulettePage({
     if (!steamId) return DEMO_GAMES.filter((game) => matchesDemoPlaytime(game, playtimeFilter));
     return games.filter((game) => matchesFilters(game, filters)).map(toReelGame);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [steamId, games, collection, genre, playtimeFilter, duration, hideAdult, hideSoftware, mode, commonOnly, includeFinished]);
+  }, [steamId, games, collection, genre, playtimeFilter, activeDuration, hideAdult, hideSoftware, mode, commonOnly, includeFinished]);
   // Los descartados por hoy siguen pasando por el rodillo (si no, la tira se rearmaba de golpe
   // justo al girar), pero no pueden ganar.
   const spinnable = useMemo(() => pool.filter((game) => !skipped.has(game.appid)), [pool, skipped]);
@@ -328,7 +331,7 @@ function RoulettePage({
         </button>
       </p>
     );
-  } else if (pool.length === 0) status = <p className="hint roulette__hint">{emptyPoolMessage(duration)}</p>;
+  } else if (pool.length === 0) status = <p className="hint roulette__hint">{emptyPoolMessage(activeDuration)}</p>;
   else if (isLoadingDetails && !lastCard) status = <p className="hint roulette__hint">{t("Cargando la ficha de {name}…", { name: spin.winner.name })}</p>;
   else if (detailsError) status = <p className="error-text roulette__hint">{detailsError}</p>;
 

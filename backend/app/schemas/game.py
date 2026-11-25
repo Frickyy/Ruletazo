@@ -48,10 +48,12 @@ class Game(BaseModel):
     review_bad: list[str] = Field(default_factory=list)
     hltb_main_hours: float | None = None
     hltb_completionist_hours: float | None = None
-    # Duración que muestra la página: "hltb" o "community" (mediana de quienes lo terminaron).
+    # Duración que muestra la página: "hltb", "igdb" o "community" (mediana de quienes lo terminaron).
     duration_hours: float | None = None
     duration_source: str | None = None
+    # Personas detrás del dato (en IGDB o en Ruletazo) y, con IGDB, el link a la ficha del juego allá.
     duration_samples: int = 0
+    duration_url: str = ""
     achievement_difficulty: str = "Sin datos"
     # Reseñas del foro de Ruletazo (solo en la ficha: /games/details).
     community_review_count: int = 0

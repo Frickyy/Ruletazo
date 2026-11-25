@@ -8,9 +8,9 @@ import "./LegalPage.css";
  * alguien con conocimiento legal de tu país, y completar el país donde se alojan los datos
  * (DATA_LOCATION) y el mail de contacto (CONTACT_EMAIL en backend/.env).
  */
-const UPDATED = "24 de noviembre de 2026";
+const UPDATED = "25 de noviembre de 2026";
 const DATA_LOCATION = "Estados Unidos (servidores de DigitalOcean en San Francisco)";
-const UPDATED_EN = "November 24, 2026";
+const UPDATED_EN = "November 25, 2026";
 const DATA_LOCATION_EN = "the United States (DigitalOcean servers in San Francisco)";
 
 function LegalPage({ kind, config }) {
@@ -86,8 +86,8 @@ function Privacy({ contact }) {
       <h2>Con quién se comparte</h2>
       <p>
         No vendemos ni compartimos tus datos. Para funcionar, la página consulta a Steam (Valve), al que solo se le envía tu SteamID o el
-        número del juego. Las portadas se cargan desde los
-        servidores de imágenes de Steam. Si la página tiene links a tiendas, pueden ser links de afiliado: la tienda sabe que
+        número del juego. Para la duración de los juegos consulta a IGDB (de Twitch), al que solo se le envía el número de cada juego
+        en Steam. Las portadas se cargan desde los servidores de imágenes de Steam. Si la página tiene links a tiendas, pueden ser links de afiliado: la tienda sabe que
         llegaste desde acá, no quién sos.
       </p>
 
@@ -118,8 +118,8 @@ function Terms({ contact }) {
 
       <h2>Datos de los juegos</h2>
       <p>
-        La información de los juegos (biblioteca, portadas, géneros, duración, reseñas) viene de Steam y de otros servicios. Puede
-        estar incompleta o desactualizada, y puede dejar de estar disponible si esos servicios cambian.
+        La información de los juegos (biblioteca, portadas, géneros, duración, reseñas) viene de Steam y de otros servicios, como IGDB
+        para la duración. Puede estar incompleta o desactualizada, y puede dejar de estar disponible si esos servicios cambian.
       </p>
 
       <h2>El foro</h2>
@@ -208,7 +208,8 @@ function PrivacyEn({ contact }) {
       <h2>Who we share it with</h2>
       <p>
         We don&apos;t sell or share your data. To work, the site queries Steam (Valve), which only receives your SteamID or the game&apos;s
-        number. Covers are loaded from Steam&apos;s image servers. If the site has links to stores, they may be affiliate links: the store
+        number. For game lengths it queries IGDB (owned by Twitch), which only receives each game&apos;s Steam number. Covers are loaded
+        from Steam&apos;s image servers. If the site has links to stores, they may be affiliate links: the store
         knows you came from here, not who you are.
       </p>
 
@@ -239,8 +240,8 @@ function TermsEn({ contact }) {
 
       <h2>Game data</h2>
       <p>
-        Game information (library, covers, genres, length, reviews) comes from Steam and other services. It may be incomplete or out of
-        date, and it may stop being available if those services change.
+        Game information (library, covers, genres, length, reviews) comes from Steam and other services, such as IGDB for game length.
+        It may be incomplete or out of date, and it may stop being available if those services change.
       </p>
 
       <h2>The forum</h2>

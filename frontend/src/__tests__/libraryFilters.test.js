@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { genresOf, isStale, matchesFilters, sortGames } from "../services/libraryFilters.js";
+import { durationFilterAvailable, genresOf, isStale, matchesFilters, sortGames } from "../services/libraryFilters.js";
 
 const NOW = Date.UTC(2026, 10, 18);
 const DAY = 24 * 60 * 60;
@@ -77,4 +77,16 @@ describe("sortGames", () => {
 
 it("genresOf junta géneros sin repetir", () => {
   expect(genresOf([game({ genres: ["Rol", "Acción"] }), game({ genres: ["Acción"] })])).toEqual(["Acción", "Rol"]);
+});
+
+describe("durationFilterAvailable", () => {
+  it("se muestra con HowLongToBeat o cuando al menos la mitad de los juegos tiene duración", () => {
+    const known = game({ duration_hours: 10.4 });
+    const unknown = game({ duration_hours: null });
+    expect(durationFilterAvailable([unknown], true)).toBe(true);
+    expect(durationFilterAvailable([], false)).toBe(false);
+    // Uno de cada tres (lo que hay hoy con IGDB): filtrar dejaría afuera a casi todos.
+    expect(durationFilterAvailable([known, unknown, unknown], false)).toBe(false);
+    expect(durationFilterAvailable([known, unknown], false)).toBe(true);
+  });
 });
