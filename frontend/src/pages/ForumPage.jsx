@@ -24,6 +24,7 @@ import FormattedText, { formatHelp } from "../components/FormattedText.jsx";
 import { locale, t, tk } from "../i18n/index.js";
 import SteamLoginButton from "../components/SteamLoginButton.jsx";
 import SupporterBadge from "../components/SupporterBadge.jsx";
+import { usePageTitle } from "../services/pageTitle.js";
 import "./ForumPage.css";
 
 const SCORES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
@@ -51,6 +52,7 @@ function ForumPage({ target, onTargetChange, viewer, onLogin, onOpenProfile = nu
 // ---------- Portada: buscador + actividad reciente ----------
 
 function ForumHome({ onTargetChange, viewer }) {
+  usePageTitle(t("Foro"));
   const [query, setQuery] = useState("");
   const [results, setResults] = useState(null);
   const [searching, setSearching] = useState(false);
@@ -166,7 +168,7 @@ function ForumGameView({ target, onTargetChange, viewer, onLogin }) {
   const { appid } = target;
   const [game, setGame] = useState(null);
   const [gameError, setGameError] = useState("");
-  // La pestaña vive en la URL (#/foro/juego/<appid>/discusiones), así Atrás vuelve a la anterior.
+  // La pestaña vive en la URL (/foro/juego/<appid>/discusiones), así Atrás vuelve a la anterior.
   const tab = target.tab ?? "reviews";
   const setTab = (nextTab) => onTargetChange({ appid, name: game?.name ?? target.name, tab: nextTab });
   const [reviews, setReviews] = useState([]);
@@ -195,6 +197,7 @@ function ForumGameView({ target, onTargetChange, viewer, onLogin }) {
 
   const myReview = reviews.find((review) => review.is_mine);
   const name = game?.name ?? target.name ?? t("Juego");
+  usePageTitle(game?.name || target.name ? t("{name}: reseñas y discusiones", { name }) : t("Foro"));
 
   return (
     <section className="forum" aria-labelledby="forum-game-title">
@@ -465,6 +468,7 @@ function ForumThreadView({ target, onTargetChange, viewer, onLogin }) {
   }, [target.threadId, viewer?.steam_id]);
 
   const backToGame = () => onTargetChange({ appid: target.appid, name: thread?.game_name ?? target.name, tab: "threads" });
+  usePageTitle(thread ? [thread.title, thread.game_name].filter(Boolean).join(" · ") : t("Foro"));
 
   async function handleReply(event) {
     event.preventDefault();

@@ -5,6 +5,8 @@ import { MODE_OPTIONS, matchesFilters } from "../services/libraryFilters.js";
 import SupporterBadge from "../components/SupporterBadge.jsx";
 import { shareYearCard } from "../services/yearCard.js";
 import { formatNumber, t, tk } from "../i18n/index.js";
+import { buildPath } from "../routes.js";
+import { usePageTitle } from "../services/pageTitle.js";
 import "./ProfilePage.css";
 
 /**
@@ -101,6 +103,9 @@ function ProfilePage({ profileId, viewer, onLogin, onOpenForum, onAddToFamily, f
     };
   }, [targetId, viewer?.steam_id]);
 
+  // Tu perfil, o el nombre de la otra persona cuando llega.
+  usePageTitle(profile ? (profile.is_me ? t("Mi perfil") : profile.name) : profileId ? t("Perfil") : t("Mi perfil"));
+
   if (!targetId) {
     return (
       <section className="profile-page">
@@ -135,7 +140,7 @@ function ProfilePage({ profileId, viewer, onLogin, onOpenForum, onAddToFamily, f
   }
 
   async function copyLink() {
-    const url = `${window.location.origin}${window.location.pathname}#/perfil/${profile.steam_id}`;
+    const url = `${window.location.origin}${buildPath("profile", null, profile.steam_id)}`;
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);

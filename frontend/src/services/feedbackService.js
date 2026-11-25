@@ -5,5 +5,5 @@ import api from "./api.js";
  * Quién lo manda lo pone el backend con la sesión de Steam (sin sesión llega como anónimo).
  */
 export async function sendFeedback({ kind, message, website }) {
-  await api.post("/feedback", { kind, message, page: window.location.hash || "#/", website });
+  await api.post("/feedback", { kind, message, page: window.location.pathname, website });
 }

@@ -26,6 +26,7 @@ import {
 } from "../services/libraryFilters.js";
 import { unlockAudio } from "../services/reelSound.js";
 import { track } from "../services/track.js";
+import { usePageTitle } from "../services/pageTitle.js";
 import Reel from "../components/Reel.jsx";
 import { formatNumber, t } from "../i18n/index.js";
 import "../components/GameCard.css";
@@ -60,6 +61,7 @@ function RoulettePage({
   hltbEnabled = true,
   onCreateRoom,
 }) {
+  usePageTitle();
   const { games, status: libraryStatus, error: libraryError, updateGame } = library;
   const [collection, setCollection] = useState("all");
   const [genre, setGenre] = useState("");

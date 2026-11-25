@@ -64,8 +64,8 @@ async def health_check() -> dict[str, str]:
 
 # En producción (Docker) el backend también sirve el frontend ya compilado: una sola URL para
 # la página, la API y la vuelta del login de Steam. En desarrollo lo sirve Vite y esto no se monta.
-# Las rutas del frontend van con hash (#/foro/...), así que alcanza con servir los archivos.
-# FrontendStaticFiles agrega los encabezados de caché (ver core/static_files.py).
+# FrontendStaticFiles agrega los encabezados de caché y devuelve la página en las direcciones
+# de cada sección (/foro/juego/620, /sala/ABC123…); ver core/static_files.py.
 _frontend_dist = Path(settings.frontend_dist).resolve() if settings.frontend_dist else None
 if _frontend_dist and (_frontend_dist / "index.html").is_file():
     app.mount("/", FrontendStaticFiles(directory=_frontend_dist, html=True), name="frontend")
