@@ -169,11 +169,12 @@ async def get_game_details(
         mock = next((game for game in _MOCK_LIBRARY if game.appid == appid), None)
         if mock is None:
             raise HTTPException(status_code=404, detail="Ese juego no está en la biblioteca de ejemplo.")
-        # Los juegos de ejemplo son reales: su ficha (HLTB, reseñas, logros) se completa igual que
+        # Los juegos de ejemplo son reales: su ficha (duración, reseñas, logros) se completa igual que
         # la de cualquier juego, así la demo no muestra todo vacío.
         game = mock.model_copy(deep=True)
         details = await game_details_service.get_or_fetch_details(db, game.appid, game.name)
         library_service.apply_cached_details(game, details)
+        library_service.apply_durations(db, [game])
         if mock.short_description:
             game.short_description = mock.short_description  # la de ejemplo está en español; la Store la da en inglés
         return _with_community_reviews(db, game)

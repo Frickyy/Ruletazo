@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     # en "false" se dejan de pedir duraciones y la página oculta el filtro de duración.
     # Apagado por defecto: los términos de Ziff Davis (dueña de HLTB) prohíben el acceso automatizado.
     hltb_enabled: bool = False
+    # IGDB (la base de juegos de Twitch) para la duración: Client ID y secreto de una app registrada
+    # en https://dev.twitch.tv/console. Sin los dos no se le pide nada a IGDB ni se muestra su dato.
+    igdb_client_id: str = ""
+    igdb_client_secret: str = ""
     # Monetización (todo opcional; vacío = no se muestra):
     # links para apoyar el proyecto, "Nombre|URL" separados por coma (ej. "Cafecito|https://cafecito.app/x").
     support_links: str = ""
@@ -68,6 +72,10 @@ class Settings(BaseSettings):
     @property
     def resend_configured(self) -> bool:
         return bool(self.resend_api_key and self.email_from and self.feedback_email)
+
+    @property
+    def igdb_configured(self) -> bool:
+        return bool(self.igdb_client_id and self.igdb_client_secret)
 
     @property
     def is_production(self) -> bool:

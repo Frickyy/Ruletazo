@@ -1,8 +1,8 @@
 """Pila de pendientes y desafíos del mes.
 
 Todo se calcula con datos que la página ya tiene (la copia de la biblioteca, los estados que
-marca el usuario y la duración de HowLongToBeat): no se guarda nada nuevo ni se pide nada a Steam.
-Los desafíos se renuevan solos cada mes.
+marca el usuario y las duraciones de duration_service): no se guarda nada nuevo ni se pide nada a
+Steam. Los desafíos se renuevan solos cada mes.
 """
 
 from datetime import datetime, timezone

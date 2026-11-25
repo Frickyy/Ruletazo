@@ -1,5 +1,5 @@
 """Enriquecimiento de un juego: géneros/sinopsis/reseñas (Store API), tiempo estimado
-para completarlo (HowLongToBeat) y dificultad de logros (Steam Web API).
+para completarlo (IGDB, o HowLongToBeat si está activado) y dificultad de logros (Steam Web API).
 
 Se cachea por appid con un TTL largo porque, a diferencia de la biblioteca de un
 usuario, esta información casi no cambia de un día para el otro.
@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.models.game import CachedGameDetails
-from app.services import hltb_client, store_browse, throttle
+from app.services import hltb_client, igdb_client, store_browse, throttle
 from app.services.steam_client import SteamClient
 from app.services.store_client import SteamStoreClient
 
@@ -29,6 +29,8 @@ STORE_METADATA_VERSION = 10
 REVIEWS_VERSION = 2
 # Subir este número fuerza a volver a buscar en HowLongToBeat los juegos que no tuvieron resultado.
 HLTB_VERSION = 1
+# Subir este número fuerza a volver a buscar en IGDB (por ejemplo, si cambia qué dato cuenta como creíble).
+IGDB_VERSION = 1
 
 # Store API / reseñas / logros cambian poco: se reutilizan varios días antes de
 # volver a golpear las 3 APIs externas para el mismo juego.
@@ -64,6 +66,19 @@ def has_hltb_lookup(details: CachedGameDetails) -> bool:
     """
     has_result = details.hltb_main_hours is not None or details.hltb_completionist_hours is not None
     return has_result or (details.hltb_version or 0) >= HLTB_VERSION
+
+
+def has_igdb_lookup(details: CachedGameDetails) -> bool:
+    """True si ya se buscó en IGDB con la versión actual, haya tenido dato o no."""
+    return (details.igdb_version or 0) >= IGDB_VERSION
+
+
+def apply_igdb(cached: CachedGameDetails, found: dict) -> None:
+    """Guarda lo que devolvió igdb_client.get_times para este juego (horas None = sin dato creíble)."""
+    cached.igdb_hours = found["hours"]
+    cached.igdb_samples = found["samples"]
+    cached.igdb_url = found["url"]
+    cached.igdb_version = IGDB_VERSION
 
 
 # "Lo bueno" y "lo malo" se guardan como varias frases en una columna de texto, una por línea.
@@ -103,17 +118,19 @@ async def get_or_fetch_details(db: Session, appid: int, name: str) -> CachedGame
     expired = cached is None or not is_fresh(cached)
     needs_store = expired or not has_store_metadata(cached)
     needs_hltb = (expired or not has_hltb_lookup(cached)) and get_settings().hltb_enabled
+    needs_igdb = (expired or not has_igdb_lookup(cached)) and igdb_client.enabled() and not throttle.is_cooling_down("igdb")
     needs_reviews = (expired or not has_review_highlights(cached)) and not throttle.is_cooling_down("reviews")
     needs_achievements = expired
-    if not (needs_store or needs_hltb or needs_reviews or needs_achievements):
+    if not (needs_store or needs_hltb or needs_igdb or needs_reviews or needs_achievements):
         return cached
 
     logger.info("Enriqueciendo detalles de '%s' (appid %s)", name, appid)
-    store_details, reviews, achievements, hltb = await asyncio.gather(
+    store_details, reviews, achievements, hltb, igdb = await asyncio.gather(
         _fetch_app_details(appid) if needs_store else _skip(),
         _fetch_reviews(appid) if needs_reviews else _skip(),
         _fetch_achievements(appid) if needs_achievements else _skip(),
         hltb_client.get_completion_times(name) if needs_hltb else _skip(),
+        igdb_client.get_times([appid]) if needs_igdb else _skip(),
     )
 
     if cached is None:
@@ -135,6 +152,9 @@ async def get_or_fetch_details(db: Session, appid: int, name: str) -> CachedGame
         cached.hltb_main_hours = hltb["main_hours"]
         cached.hltb_completionist_hours = hltb["completionist_hours"]
         cached.hltb_version = HLTB_VERSION
+    if igdb is not None:
+        # None es que IGDB no respondió: se conserva lo que había y se reintenta la próxima vez.
+        apply_igdb(cached, igdb[appid])
     if achievements is not None:
         cached.achievement_total = achievements["total"]
         cached.achievement_avg_percent = achievements["average_percent"]

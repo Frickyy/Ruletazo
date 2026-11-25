@@ -189,7 +189,7 @@ def test_migrations_create_a_fresh_database(tmp_path):
     connection = sqlite3.connect(db_file)
     tables = {row[0] for row in connection.execute("select name from sqlite_master where type='table'")}
     assert {"hidden_games", "forum_reports", "cached_game_details", "usage_counters"} <= tables
-    assert connection.execute("select version_num from alembic_version").fetchone() == ("0011",)
+    assert connection.execute("select version_num from alembic_version").fetchone() == ("0012",)
     connection.close()
 
 
@@ -221,7 +221,7 @@ def test_migrations_upgrade_a_database_created_before_alembic(tmp_path):
     library_columns = {row[1] for row in connection.execute("pragma table_info(cached_library_entries)")}
     detail_columns = {row[1] for row in connection.execute("pragma table_info(cached_game_details)")}
     assert "last_played" in library_columns
-    assert {"is_adult", "hltb_version", "review_pros"} <= detail_columns
+    assert {"is_adult", "hltb_version", "review_pros", "igdb_hours", "igdb_samples", "igdb_url", "igdb_version"} <= detail_columns
     assert connection.execute("select name from cached_library_entries").fetchone() == ("Juego",)
     connection.close()
 

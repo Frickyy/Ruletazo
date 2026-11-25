@@ -388,6 +388,7 @@ def apply_durations(db: Session, games: list[Game]) -> None:
         game.duration_hours = duration["hours"] if duration else None
         game.duration_source = duration["source"] if duration else None
         game.duration_samples = duration["samples"] if duration else 0
+        game.duration_url = duration.get("url", "") if duration else ""
 
 
 async def _ensure_store_metadata(db: Session, games: list[Game]) -> None:

@@ -6,7 +6,8 @@ la mediana y no el promedio, porque las horas de Steam incluyen tiempo en menús
 abierto, y alguien que lo dejó corriendo una semana no debe correr el número.
 
 Solo se muestra con al menos MIN_SAMPLES personas, y nunca por persona: es un dato agregado.
-Si HowLongToBeat está activado (HLTB_ENABLED) y tiene el dato, se usa ese primero.
+Antes se usa IGDB, si hay claves y tiene un dato creíble (ver igdb_client), y antes que todo
+HowLongToBeat, si está activado (HLTB_ENABLED) y tiene el dato.
 """
 
 from datetime import datetime, timezone
@@ -63,14 +64,25 @@ def community_durations(db: Session, appids: list[int]) -> dict[int, tuple[float
 
 
 def durations(db: Session, appids: list[int]) -> dict[int, dict]:
-    """La duración que muestra la página: HowLongToBeat si está activado y lo tiene; si no, la de la comunidad."""
+    """La duración que muestra la página, de la primera fuente que la tenga: HowLongToBeat (si está
+    activado), IGDB (si hay claves; con el link a su ficha en "url") o quienes lo terminaron en Ruletazo."""
+    settings = get_settings()
     result: dict[int, dict] = {}
-    if get_settings().hltb_enabled and appids:
+    if settings.hltb_enabled and appids:
         for appid, hours in db.execute(
             select(CachedGameDetails.appid, CachedGameDetails.hltb_main_hours).where(CachedGameDetails.appid.in_(appids))
         ):
             if hours is not None:
                 result[appid] = {"hours": hours, "source": "hltb", "samples": 0}
+    pending = [appid for appid in appids if appid not in result]
+    if settings.igdb_configured and pending:
+        for appid, hours, samples, url in db.execute(
+            select(
+                CachedGameDetails.appid, CachedGameDetails.igdb_hours, CachedGameDetails.igdb_samples, CachedGameDetails.igdb_url
+            ).where(CachedGameDetails.appid.in_(pending))
+        ):
+            if hours is not None:
+                result[appid] = {"hours": hours, "source": "igdb", "samples": samples, "url": url}
     for appid, (hours, count) in community_durations(db, [appid for appid in appids if appid not in result]).items():
         result[appid] = {"hours": hours, "source": "community", "samples": count}
     return result

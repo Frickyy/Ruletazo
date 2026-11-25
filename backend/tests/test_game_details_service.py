@@ -92,6 +92,7 @@ def _complete_details(**overrides):
         store_metadata_version=game_details_service.STORE_METADATA_VERSION,
         reviews_version=game_details_service.REVIEWS_VERSION,
         hltb_version=game_details_service.HLTB_VERSION,
+        igdb_version=game_details_service.IGDB_VERSION,
     )
     defaults.update(overrides)
     return _make_details(**defaults)
@@ -115,6 +116,11 @@ def _track_fetches(monkeypatch):
     )
     monkeypatch.setattr(game_details_service, "_fetch_achievements", fake("achievements", {"total": 0, "average_percent": None}))
     monkeypatch.setattr(game_details_service.hltb_client, "get_completion_times", fake("hltb", {"main_hours": 1, "completionist_hours": 2}))
+    monkeypatch.setattr(
+        game_details_service.igdb_client,
+        "get_times",
+        fake("igdb", {10: {"hours": 10.4, "samples": 36, "url": "https://www.igdb.com/games/portal-2"}}),
+    )
     return calls
 
 
@@ -155,3 +161,44 @@ async def test_expired_details_refresh_every_part(db_session, monkeypatch):
     await game_details_service.get_or_fetch_details(db_session, 10, "Juego")
 
     assert sorted(calls) == ["achievements", "hltb", "reviews", "store"]
+
+
+async def test_igdb_duration_is_looked_up_once_and_kept(db_session, monkeypatch):
+    monkeypatch.setattr(game_details_service.igdb_client, "enabled", lambda: True)
+    db_session.add(_complete_details(igdb_version=0))
+    db_session.commit()
+    calls = _track_fetches(monkeypatch)
+
+    details = await game_details_service.get_or_fetch_details(db_session, 10, "Portal 2")
+    assert calls == ["igdb"]
+    assert (details.igdb_hours, details.igdb_samples, details.igdb_url) == (10.4, 36, "https://www.igdb.com/games/portal-2")
+
+    await game_details_service.get_or_fetch_details(db_session, 10, "Portal 2")
+    assert calls == ["igdb"]  # ya buscado: no se vuelve a pedir
+
+
+async def test_igdb_failure_is_retried_later(db_session, monkeypatch):
+    async def failed(appids):
+        return None
+
+    monkeypatch.setattr(game_details_service.igdb_client, "enabled", lambda: True)
+    db_session.add(_complete_details(igdb_version=0, igdb_hours=12.0))
+    db_session.commit()
+    _track_fetches(monkeypatch)
+    monkeypatch.setattr(game_details_service.igdb_client, "get_times", failed)
+
+    details = await game_details_service.get_or_fetch_details(db_session, 10, "Juego")
+
+    assert details.igdb_hours == 12.0  # no se borra lo que había
+    assert game_details_service.has_igdb_lookup(details) is False
+
+
+async def test_igdb_is_not_asked_without_keys(db_session, monkeypatch):
+    monkeypatch.setattr(game_details_service.igdb_client, "enabled", lambda: False)
+    db_session.add(_complete_details(igdb_version=0))
+    db_session.commit()
+    calls = _track_fetches(monkeypatch)
+
+    await game_details_service.get_or_fetch_details(db_session, 10, "Juego")
+
+    assert calls == []
