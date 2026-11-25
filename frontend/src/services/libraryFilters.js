@@ -196,3 +196,18 @@ export function pickWeighted(items, weightOf = () => 1, random = Math.random) {
   }
   return items[items.length - 1];
 }
+
+/** Con menos de la mitad de los juegos con duración conocida, el filtro dejaría afuera a casi todos. */
+export const MIN_DURATION_COVERAGE = 0.5;
+
+/**
+ * Si se muestran el filtro y el orden por duración: con HowLongToBeat activado, o cuando al menos la
+ * mitad de los juegos tiene el dato (de IGDB o de quienes los terminaron en Ruletazo). Con menos,
+ * filtrar por duración dejaría afuera a la mayor parte de la biblioteca sin que se note por qué.
+ */
+export function durationFilterAvailable(games, hltbEnabled = false) {
+  if (hltbEnabled) return true;
+  if (!games.length) return false;
+  const known = games.filter((game) => game.duration_hours != null).length;
+  return known / games.length >= MIN_DURATION_COVERAGE;
+}

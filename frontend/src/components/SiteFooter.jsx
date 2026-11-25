@@ -4,8 +4,9 @@ import FeedbackDialog from "./FeedbackDialog.jsx";
 import "./SiteFooter.css";
 
 /**
- * Pie de página: links para apoyar el proyecto (si están configurados), legales y el aviso de
- * que no hay relación con Valve (lo piden los términos de la Steam Web API).
+ * Pie de página: links para apoyar el proyecto (si están configurados), legales, el aviso de
+ * que no hay relación con Valve (lo piden los términos de la Steam Web API) y la mención a IGDB
+ * cuando la duración de los juegos sale de ahí.
  */
 function SiteFooter({ config, onNavigate, user }) {
   const supportLinks = config?.support_links ?? [];
@@ -44,6 +45,16 @@ function SiteFooter({ config, onNavigate, user }) {
         </nav>
         <p className="site-footer__disclaimer">
           {t("Proyecto independiente, sin relación con Valve Corporation. Steam y el logo de Steam son marcas registradas de Valve Corporation. Datos de juegos con la Steam Web API.")}
+          {config?.igdb_enabled && (
+            <>
+              {" "}
+              {t("Duración de los juegos:")}{" "}
+              <a href="https://www.igdb.com/" target="_blank" rel="noopener noreferrer">
+                IGDB
+              </a>
+              .
+            </>
+          )}
         </p>
       </div>
       <FeedbackDialog open={feedbackOpen} onClose={() => setFeedbackOpen(false)} user={user} />

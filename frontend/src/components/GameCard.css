@@ -48,6 +48,15 @@
   color: var(--muted);
 }
 
+.game-card__source a {
+  color: inherit;
+  text-underline-offset: 2px;
+}
+
+.game-card__source a:hover {
+  color: var(--accent);
+}
+
 .game-card__info h2 {
   font-size: clamp(1.75rem, 3.5vw, 2.125rem);
   overflow-wrap: anywhere;

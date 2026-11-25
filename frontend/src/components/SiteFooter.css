@@ -123,3 +123,12 @@
   font-size: 0.75rem;
   line-height: 1.5;
 }
+
+.site-footer__disclaimer a {
+  color: inherit;
+  text-underline-offset: 2px;
+}
+
+.site-footer__disclaimer a:hover {
+  color: var(--accent);
+}

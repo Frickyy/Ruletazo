@@ -8,6 +8,7 @@ import {
   SORT_OPTIONS,
   STATE_LABELS,
   STATE_OPTIONS,
+  durationFilterAvailable,
   genresOf,
   matchesFilters,
   sortGames,
@@ -60,18 +61,18 @@ function LibraryPage({
   const deferredSearch = useDeferredValue(search);
 
   const genres = useMemo(() => genresOf(games), [games]);
-  // La duración sale de HowLongToBeat (si está activado) o de quienes terminaron el juego en
-  // Ruletazo. Sin ningún dato todavía, el filtro no se muestra para no dejarlo siempre vacío.
-  const durationEnabled = useMemo(() => hltbEnabled || games.some((game) => game.duration_hours != null), [hltbEnabled, games]);
+  // La duración sale de HowLongToBeat (si está activado), de IGDB o de quienes terminaron el juego
+  // en Ruletazo. Mientras la tenga menos de la mitad de los juegos, el filtro no se muestra.
+  const durationEnabled = useMemo(() => durationFilterAvailable(games, hltbEnabled), [hltbEnabled, games]);
   const hiddenCount = useMemo(() => games.filter((game) => game.is_hidden).length, [games]);
   const filtered = useMemo(() => {
-    const filters = { collection, genre, playtimeFilter, duration, hideAdult, hideSoftware, mode, state: stateFilter, search: deferredSearch };
+    const filters = { collection, genre, playtimeFilter, duration: durationEnabled ? duration : "any", hideAdult, hideSoftware, mode, state: stateFilter, search: deferredSearch };
     return sortGames(
       games.filter((game) => matchesFilters(game, filters)),
       sortBy,
       sortDirection,
     );
-  }, [games, collection, genre, playtimeFilter, duration, hideAdult, hideSoftware, mode, stateFilter, deferredSearch, sortBy, sortDirection]);
+  }, [games, collection, genre, playtimeFilter, duration, durationEnabled, hideAdult, hideSoftware, mode, stateFilter, deferredSearch, sortBy, sortDirection]);
 
   // Resumen de estados: se vuelve a pedir cuando cambia algún estado.
   const statesKey = useMemo(() => games.filter((game) => game.state).map((game) => `${game.appid}:${game.state}`).join(","), [games]);

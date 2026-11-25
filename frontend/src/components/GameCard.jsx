@@ -141,6 +141,19 @@ function GameCard({ game, isStale = false, isDemo = false, onToggleFavorite, onS
                   {" "}· {t("según {n} jugadores", { n: game.duration_samples })}
                 </span>
               )}
+              {game.duration_source === "igdb" && (
+                <span className="muted game-card__source">
+                  {" "}·{" "}
+                  <a
+                    href={game.duration_url || "https://www.igdb.com/"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={t("Promedio de lo que cargaron {n} personas en IGDB: la historia y algunos extras", { n: game.duration_samples })}
+                  >
+                    {t("según IGDB")}
+                  </a>
+                </span>
+              )}
             </dd>
           </div>
           {game.hltb_completionist_hours != null && (

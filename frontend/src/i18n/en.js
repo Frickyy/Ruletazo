@@ -45,6 +45,7 @@ const en = {
   "Términos": "Terms",
   "Proyecto independiente, sin relación con Valve Corporation. Steam y el logo de Steam son marcas registradas de Valve Corporation. Datos de juegos con la Steam Web API.":
     "Independent project, not affiliated with Valve Corporation. Steam and the Steam logo are trademarks of Valve Corporation. Game data from the Steam Web API.",
+  "Duración de los juegos:": "Game lengths:",
 
   // ---------- Ruleta ----------
   "¿Qué jugamos hoy?": "What are we playing today?",
@@ -195,6 +196,9 @@ const en = {
   "Mediana de las horas en Steam de quienes lo marcaron como terminado en Ruletazo":
     "Median Steam hours of the people who marked it as finished on Ruletazo",
   "según {n} jugadores": "based on {n} players",
+  "según IGDB": "per IGDB",
+  "Promedio de lo que cargaron {n} personas en IGDB: la historia y algunos extras":
+    "Average of what {n} people logged on IGDB: the story plus some extras",
   "Completista (HLTB)": "Completionist (HLTB)",
   "Reseñas": "Reviews",
   "Sin reseñas": "No reviews",
