@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { t } from "../i18n/index.js";
+import { getLang, t } from "../i18n/index.js";
 import { usePageTitle } from "../services/pageTitle.js";
 import { overlayUrl, steamIdFromInput } from "../services/streamerOverlay.js";
 import "./StreamerPage.css";
@@ -28,8 +28,9 @@ function StreamerPage({ defaultProfile = "" }) {
 
   const origin = window.location.origin;
   const hasProfile = Boolean(steamIdFromInput(profile));
-  const url = overlayUrl(origin, { profile, filter, background, sound });
-  const previewUrl = overlayUrl(origin, { profile: previewProfile, demo: !previewProfile, filter, background, sound });
+  const lang = getLang();
+  const url = overlayUrl(origin, { profile, filter, background, sound, lang });
+  const previewUrl = overlayUrl(origin, { profile: previewProfile, demo: !previewProfile, filter, background, sound, lang });
 
   async function copy() {
     try {

@@ -52,7 +52,7 @@ export function isOverlayLocation({ pathname, search }) {
 }
 
 /** La dirección para pegar en OBS. Solo lleva lo que no es el valor por defecto. */
-export function overlayUrl(origin, { profile = "", demo = false, filter = "todos", background = "transparente", sound = true } = {}) {
+export function overlayUrl(origin, { profile = "", demo = false, filter = "todos", background = "transparente", sound = true, lang = "es" } = {}) {
   const params = new URLSearchParams();
   const id = steamIdFromInput(profile);
   if (id) params.set("perfil", id);
@@ -60,6 +60,8 @@ export function overlayUrl(origin, { profile = "", demo = false, filter = "todos
   if (filter !== "todos" && filter in OVERLAY_FILTERS) params.set("filtro", filter);
   if (background !== "transparente" && OVERLAY_BACKGROUNDS.includes(background)) params.set("fondo", background);
   if (!sound) params.set("sonido", "0");
+  // La ruleta en vivo arranca en español: si armás la fuente en inglés, el link lo pide.
+  if (lang === "en") params.set("lang", "en");
   const query = params.toString();
   return `${origin}/obs${query ? `?${query}` : ""}`;
 }

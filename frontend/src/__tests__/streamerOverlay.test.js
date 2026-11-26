@@ -25,6 +25,8 @@ describe("modo streamer", () => {
     );
     expect(overlayUrl(ORIGIN, { demo: true })).toBe(`${ORIGIN}/obs?demo=1`);
     expect(overlayUrl(ORIGIN, {})).toBe(`${ORIGIN}/obs`);
+    // Armada en inglés, la fuente lo pide en el link (la ruleta en vivo arranca en español).
+    expect(overlayUrl(ORIGIN, { demo: true, lang: "en" })).toBe(`${ORIGIN}/obs?demo=1&lang=en`);
   });
 
   it("lee la dirección de vuelta, con valores por defecto si algo no se entiende", () => {

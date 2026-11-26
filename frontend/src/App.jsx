@@ -18,7 +18,7 @@ import SteamIdInput from "./components/SteamIdInput.jsx";
 import { fetchSession, fetchSteamProfile, logoutSession } from "./services/gameService.js";
 import { useRoute } from "./routes.js";
 import { usePageTitle } from "./services/pageTitle.js";
-import { setLang, t, tk, useLang } from "./i18n/index.js";
+import { setLang, t, tk, useEnglishSuggestion, useLang } from "./i18n/index.js";
 import { useLibrary } from "./services/useLibrary.js";
 import "./components/SteamIdInput.css";
 import "./App.css";
@@ -246,6 +246,7 @@ function App() {
 
   return (
     <div className="app-shell">
+      <EnglishHint />
       <header className="topbar">
         <div className="topbar__inner">
           <button type="button" className="brand" onClick={() => setActiveView("roulette")} aria-label={t("Ruletazo, ir a la ruleta")}>
@@ -510,6 +511,35 @@ function SupportButton({ links }) {
       </svg>
       <span className="support-button__label">{t("Apoyar")}</span>
     </a>
+  );
+}
+
+/**
+ * Con el navegador en otro idioma, la página arranca igual en español y ofrece el inglés acá, en
+ * inglés y fuera de los fragmentos que muestra Google (data-nosnippet). Ver i18n/index.js.
+ */
+function EnglishHint() {
+  const suggested = useEnglishSuggestion();
+  if (!suggested) return null;
+  return (
+    <div className="lang-hint" lang="en" data-nosnippet="">
+      <span>Prefer English?</span>
+      <button type="button" className="lang-hint__switch" onClick={() => setLang("en")}>
+        Switch to English
+      </button>
+      <button
+        type="button"
+        className="lang-hint__close"
+        onClick={() => setLang("es")}
+        lang="es"
+        aria-label="Seguir en español"
+        title="Seguir en español"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M6 6l12 12M18 6 6 18" />
+        </svg>
+      </button>
+    </div>
   );
 }
 
