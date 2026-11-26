@@ -65,6 +65,9 @@ class CachedGameDetails(Base):
     # Según IGDB: horas para terminarlo (la historia con algunos extras), solo si el dato es creíble
     # (ver igdb_client.credible_hours); cuántas personas cargaron su tiempo, y la ficha del juego en IGDB.
     igdb_hours: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # El tiempo yendo directo a la historia, si va en orden con el normal (ver igdb_client.extra_hours).
+    # Sirve para descartar duraciones que son horas de online (igdb_client.makes_sense).
+    igdb_quick_hours: Mapped[float | None] = mapped_column(Float, nullable=True)
     igdb_samples: Mapped[int] = mapped_column(Integer, default=0)
     igdb_url: Mapped[str] = mapped_column(String(255), default="")
     # Se buscó en IGDB con esta versión (aunque no haya tenido dato). Ver IGDB_VERSION.

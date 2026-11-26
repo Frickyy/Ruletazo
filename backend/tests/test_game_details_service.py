@@ -207,3 +207,12 @@ async def test_igdb_is_not_asked_without_keys(db_session, monkeypatch):
     await game_details_service.get_or_fetch_details(db_session, 10, "Juego")
 
     assert calls == []
+
+
+def test_igdb_lookup_keeps_the_quick_time():
+    details = _make_details()
+
+    game_details_service.apply_igdb(details, {"hours": 27.0, "samples": 12, "url": "", "quick_hours": 15.5, "full_hours": 40.0})
+
+    assert (details.igdb_hours, details.igdb_quick_hours) == (27.0, 15.5)
+    assert game_details_service.has_igdb_lookup(details)

@@ -384,3 +384,22 @@ def test_config_says_when_igdb_is_on(monkeypatch):
     assert profiles.public_config()["igdb_enabled"] is True
     monkeypatch.setattr(profiles, "get_settings", lambda: Settings(igdb_client_id="", igdb_client_secret=""))
     assert profiles.public_config()["igdb_enabled"] is False
+
+
+def test_cards_use_the_quick_time_once_it_is_stored(db_session, monkeypatch):
+    from app.models.game import CachedGameDetails
+    from app.services import duration_service, game_details_service
+
+    now = datetime.now(timezone.utc)
+    current = game_details_service.IGDB_VERSION
+    with_pvp = [1, 2, 36]  # un jugador y JcJ en línea: no es "solo competitivo"
+    # Horas de online: el tiempo rápido es casi igual al normal (GTA V, Rocket League).
+    db_session.add(CachedGameDetails(appid=1, igdb_hours=60.0, igdb_quick_hours=58.0, igdb_samples=40, player_categories=with_pvp, igdb_version=current, fetched_at=now))
+    # Campaña de verdad: el rápido es bastante menor (Red Dead Redemption 2).
+    db_session.add(CachedGameDetails(appid=2, igdb_hours=60.0, igdb_quick_hours=35.0, igdb_samples=40, player_categories=with_pvp, igdb_version=current, fetched_at=now))
+    # Buscado antes de que se guardara el rápido: se muestra hasta que se vuelva a buscar.
+    db_session.add(CachedGameDetails(appid=3, igdb_hours=60.0, igdb_samples=40, player_categories=with_pvp, igdb_version=1, fetched_at=now))
+    db_session.commit()
+    monkeypatch.setattr(duration_service, "get_settings", lambda: Settings(igdb_client_id="cliente", igdb_client_secret="secreto"))
+
+    assert set(duration_service.durations(db_session, [1, 2, 3])) == {2, 3}

@@ -28,7 +28,8 @@ STORE_METADATA_VERSION = 10
 # 2: varias frases por lado, filtradas (review_digest), y los errores de Steam ya no se cachean.
 REVIEWS_VERSION = 2
 # Subir este número fuerza a volver a buscar en IGDB (por ejemplo, si cambia qué dato cuenta como creíble).
-IGDB_VERSION = 1
+# 2: también el tiempo rápido (igdb_quick_hours), para descartar en la ficha horas de online.
+IGDB_VERSION = 2
 
 # Store API / reseñas / logros cambian poco: se reutilizan varios días antes de
 # volver a golpear las 3 APIs externas para el mismo juego.
@@ -64,6 +65,7 @@ def has_igdb_lookup(details: CachedGameDetails) -> bool:
 def apply_igdb(cached: CachedGameDetails, found: dict) -> None:
     """Guarda lo que devolvió igdb_client.get_times para este juego (horas None = sin dato creíble)."""
     cached.igdb_hours = found["hours"]
+    cached.igdb_quick_hours = found.get("quick_hours")
     cached.igdb_samples = found["samples"]
     cached.igdb_url = found["url"]
     cached.igdb_version = IGDB_VERSION
