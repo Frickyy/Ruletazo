@@ -94,7 +94,7 @@ Se puede usar `**negrita**`, `||spoiler||` (queda oculto hasta que lo tocan) y l
 - **Duración de los juegos**: sale de [IGDB](https://www.igdb.com), una base de juegos que arma su comunidad. Si IGDB no tiene un dato creíble, se usan las horas de la gente que lo terminó en Ruletazo (con al menos 3 personas, y nunca se muestran las de alguien en particular).
 - **Cuánto dura cada juego**: en [ruletazo.app/cuanto-dura](https://ruletazo.app/cuanto-dura/) hay una página por juego popular con las horas que lleva terminarlo.
 - **Modo streamer**: en [ruletazo.app/obs](https://ruletazo.app/obs) armás una fuente de navegador para OBS con la ruleta de tu biblioteca, con fondo transparente.
-- **Español e inglés**: botón **ES / EN** arriba. La primera vez se elige según el idioma de tu navegador.
+- **Español e inglés**: botón **ES / EN** arriba, y se recuerda lo que elegís. La página arranca en español; si tu navegador está en otro idioma, te ofrece pasar al inglés.
 - **Como app en el celular**: desde el navegador, *Agregar a pantalla de inicio*, y se abre como una app más.
 - **Sonido** del rodillo, opcional.
 
