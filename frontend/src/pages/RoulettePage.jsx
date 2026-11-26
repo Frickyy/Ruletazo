@@ -510,7 +510,7 @@ function RoulettePage({
                 onChange={onHideJunkChange}
                 disabled={isSpinning}
                 label={t("Ocultar juegos basura")}
-                title={t("Deja afuera los que tienen menos de 50 reseñas en Steam o reseñas negativas: suelen ser los que se compran por los cromos")}
+                title={t("Deja afuera los que tienen menos de 50 reseñas en Steam o reseñas negativas: suelen ser los que se compran por los cromos. Nunca saca tus favoritos")}
               />
               {isLoggedIn && (
                 <Toggle

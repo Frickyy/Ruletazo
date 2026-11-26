@@ -31,7 +31,7 @@ La primera vez, la página tarda unos segundos en leer tu biblioteca: una barra 
 - **Tu colección**: favoritos, los que estás *Jugando* o los que tienen *Casi al 100%* de los logros.
 - **Género**, **duración** (cortos, medianos o largos) y **modo de juego** (un jugador, cooperativo, multijugador, pantalla compartida).
 - **Ruleta inteligente** (opcional): todos pueden salir, pero salen más seguido los sin estrenar, los cortos, los bien reseñados, tus favoritos y los que estás jugando.
-- **Ocultar juegos basura** (opcional): saca los que tienen menos de 50 reseñas en Steam o reseñas negativas, que suelen ser los que se compran por los cromos.
+- **Ocultar juegos basura** (opcional): saca los que tienen menos de 50 reseñas en Steam o reseñas negativas, que suelen ser los que se compran por los cromos. Nunca saca tus favoritos.
 
 Los juegos que ya terminaste y los de contenido para adultos quedan afuera, salvo que los actives.
 

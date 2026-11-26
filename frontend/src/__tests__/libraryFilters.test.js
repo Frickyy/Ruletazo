@@ -36,6 +36,12 @@ describe("matchesFilters", () => {
     expect(matchesFilters(unknown, { hideJunk: true })).toBe(true);
   });
 
+  it("nunca oculta como basura un favorito", () => {
+    const favorite = game({ store_data: true, review_total: 12, review_score_desc: "Positivas", is_favorite: true });
+    expect(isJunk(favorite)).toBe(false);
+    expect(matchesFilters(favorite, { hideJunk: true })).toBe(true);
+  });
+
   it("oculta +18 solo si se pide", () => {
     const adult = game({ is_adult: true });
     expect(matchesFilters(adult, { hideAdult: true })).toBe(false);

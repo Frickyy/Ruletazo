@@ -66,13 +66,13 @@ export const SORT_OPTIONS = [
  * - state: filtro por estado de la página Biblioteca (ver STATE_OPTIONS)
  */
 // "Juegos basura": los que casi nadie reseñó en Steam o que tienen reseñas negativas. Suelen ser los
-// que se compran baratos por los cromos. Un juego sin datos de la tienda no cuenta: todavía no se
-// sabe cuántas reseñas tiene.
+// que se compran baratos por los cromos. No cuentan un juego sin datos de la tienda (todavía no se
+// sabe cuántas reseñas tiene) ni uno que el usuario marcó como favorito.
 export const JUNK_MAX_REVIEWS = 50;
 const NEGATIVE_REVIEWS = ["Mayormente negativas", "Negativas", "Muy negativas", "Extremadamente negativas"];
 
 export function isJunk(game) {
-  if (!game.store_data) return false;
+  if (!game.store_data || game.is_favorite) return false;
   return (game.review_total ?? 0) < JUNK_MAX_REVIEWS || NEGATIVE_REVIEWS.includes(game.review_score_desc);
 }
 
