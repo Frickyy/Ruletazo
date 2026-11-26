@@ -5,7 +5,7 @@ import { track } from "./track.js";
 
 // Primera pasada (datos de la tienda): de a 100 juegos, Steam los manda de a 50 por pedido.
 const CLASSIFY_BATCH_SIZE = 100;
-// Segunda pasada (duración y logros): de a un juego en el backend, así que tandas chicas.
+// Segunda pasada (tu progreso de logros): de a un juego en el backend, así que tandas chicas.
 const ENRICH_BATCH_SIZE = 5;
 const PAUSE_BETWEEN_BATCHES_MS = 800;
 // Cada cuántas tandas de la segunda pasada se vuelve a pedir la biblioteca.
@@ -17,7 +17,7 @@ const REFRESH_EVERY_ENRICH_BATCHES = 6;
  *
  * Además completa en segundo plano lo que falte, en dos pasadas:
  * 1. "store": género, sinopsis, precio, portada, modos de juego. Rápida (50 juegos por pedido).
- * 2. "enrich": duración de HowLongToBeat y tu progreso de logros. Lenta (de a un juego).
+ * 2. "enrich": tu progreso de logros, si lo activaste en tu perfil. Lenta (de a un juego).
  */
 export function useLibrary(steamId, friendSteamId) {
   const [games, setGames] = useState([]);
@@ -25,7 +25,7 @@ export function useLibrary(steamId, friendSteamId) {
   const [error, setError] = useState(null);
   // Código HTTP del último error: 403 = el perfil o los detalles de juegos son privados en Steam.
   const [errorStatus, setErrorStatus] = useState(null);
-  // { phase: "store" | "enrich" | "done", classified, total, withDuration, running }
+  // { phase: "store" | "enrich" | "done", classified, total, enriched, running }
   const [classification, setClassification] = useState(null);
   const [paused, setPaused] = useState(false);
   // Se incrementa para volver a correr la clasificación/enriquecimiento (p. ej. al activar logros).
@@ -84,7 +84,7 @@ export function useLibrary(steamId, friendSteamId) {
         return;
       }
       if (cancelled) return;
-      const base = { classified: progress.classified, total: progress.total, withDuration: progress.with_duration ?? 0 };
+      const base = { classified: progress.classified, total: progress.total, enriched: progress.enriched ?? 0 };
 
       // 1) Datos de la tienda.
       let remaining = progress.total - progress.classified;
@@ -105,7 +105,7 @@ export function useLibrary(steamId, friendSteamId) {
       if (cancelled) return;
       if (progress.total - progress.classified > 0) await reload({ silent: true });
 
-      // 2) Duración y logros.
+      // 2) Tu progreso de logros.
       setClassification((current) => ({ ...current, phase: "enrich" }));
       let batches = 0;
       for (;;) {
@@ -121,7 +121,7 @@ export function useLibrary(steamId, friendSteamId) {
         if (result.processed === 0 || result.remaining === 0) break;
         if (batches % REFRESH_EVERY_ENRICH_BATCHES === 0) {
           const latest = await fetchClassificationStatus(steamId).catch(() => null);
-          if (latest && !cancelled) setClassification((current) => ({ ...current, withDuration: latest.with_duration ?? current.withDuration }));
+          if (latest && !cancelled) setClassification((current) => ({ ...current, enriched: latest.enriched ?? current.enriched }));
           await reload({ silent: true });
         }
         // Un servicio externo nos pausó (rate limit): se sigue la próxima vez que abras la app.
@@ -133,7 +133,7 @@ export function useLibrary(steamId, friendSteamId) {
       await reload({ silent: true });
       setClassification((current) => ({
         ...current,
-        withDuration: latest?.with_duration ?? current.withDuration,
+        enriched: latest?.enriched ?? current.enriched,
         phase: "done",
         running: false,
       }));
@@ -146,7 +146,7 @@ export function useLibrary(steamId, friendSteamId) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [steamId, status === "ready", paused, enrichRun]);
 
-  /** Vuelve a correr la segunda pasada (duración y logros) aunque ya haya terminado. */
+  /** Vuelve a correr la segunda pasada (tu progreso de logros) aunque ya haya terminado. */
   const restartEnrichment = useCallback(() => setEnrichRun((run) => run + 1), []);
 
   /** Cambia campos de un juego en la lista (favorito, oculto, estado…) sin volver a pedirla. */

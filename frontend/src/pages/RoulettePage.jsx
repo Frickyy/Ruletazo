@@ -60,7 +60,6 @@ function RoulettePage({
   onLogin,
   trackAchievements = false,
   onOpenProfile,
-  hltbEnabled = true,
   onCreateRoom,
 }) {
   usePageTitle();
@@ -86,9 +85,9 @@ function RoulettePage({
   const [skipped, setSkipped] = useSessionSet("steamRoulette.skippedToday");
 
   const genres = useMemo(() => genresOf(games), [games]);
-  // La duración sale de HowLongToBeat (si está activado), de IGDB o de quienes terminaron el juego
-  // en Ruletazo. Mientras la tenga menos de la mitad de los juegos, el filtro no se muestra.
-  const durationEnabled = useMemo(() => durationFilterAvailable(games, hltbEnabled), [hltbEnabled, games]);
+  // La duración sale de IGDB o de quienes terminaron el juego en Ruletazo. Mientras la tenga
+  // menos de la mitad de los juegos, el filtro no se muestra.
+  const durationEnabled = useMemo(() => durationFilterAvailable(games), [games]);
   // "En común" solo tiene sentido con la familia sumada.
   const commonOnly = inCommon && hasFamily && includeFamily;
   // Si el filtro de duración no se muestra, tampoco filtra (por si quedó elegido de antes).

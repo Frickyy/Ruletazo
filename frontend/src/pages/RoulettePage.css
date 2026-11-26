@@ -155,7 +155,7 @@
   flex: 0 0 auto;
 }
 
-/* Sin duración (HowLongToBeat apagado), el modo ocupa su lugar para no dejar un hueco. */
+/* Sin filtro de duración (pocos juegos con el dato), el modo ocupa su lugar para no dejar un hueco. */
 .roulette__mode--wide {
   grid-column: span 2;
 }

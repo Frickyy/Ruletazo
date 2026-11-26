@@ -16,7 +16,7 @@ export const PLAYTIME_OPTIONS = [
   { id: "stale", label: tk("Abandonados"), title: tk("Jugados, pero no en los últimos 6 meses") /* STALE_DAYS / 30 */ },
 ];
 
-// Según la duración de cada juego (comunidad, o HowLongToBeat si está activado). Los juegos sin dato quedan fuera al filtrar por duración.
+// Según la duración de cada juego (IGDB o la comunidad). Los juegos sin dato quedan fuera al filtrar por duración.
 export const DURATION_OPTIONS = [
   { id: "any", label: tk("Cualquier duración") },
   { id: "short", label: tk("Cortos (menos de 10 h)"), max: 10 },
@@ -201,12 +201,11 @@ export function pickWeighted(items, weightOf = () => 1, random = Math.random) {
 export const MIN_DURATION_COVERAGE = 0.5;
 
 /**
- * Si se muestran el filtro y el orden por duración: con HowLongToBeat activado, o cuando al menos la
- * mitad de los juegos tiene el dato (de IGDB o de quienes los terminaron en Ruletazo). Con menos,
- * filtrar por duración dejaría afuera a la mayor parte de la biblioteca sin que se note por qué.
+ * Si se muestran el filtro y el orden por duración: cuando al menos la mitad de los juegos tiene el
+ * dato (de IGDB o de quienes los terminaron en Ruletazo). Con menos, filtrar por duración dejaría
+ * afuera a la mayor parte de la biblioteca sin que se note por qué.
  */
-export function durationFilterAvailable(games, hltbEnabled = false) {
-  if (hltbEnabled) return true;
+export function durationFilterAvailable(games) {
   if (!games.length) return false;
   const known = games.filter((game) => game.duration_hours != null).length;
   return known / games.length >= MIN_DURATION_COVERAGE;

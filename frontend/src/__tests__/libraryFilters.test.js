@@ -38,7 +38,7 @@ describe("matchesFilters", () => {
     expect(matchesFilters(game(), { hideSoftware: true })).toBe(true);
   });
 
-  it("filtra por duración según HowLongToBeat y deja afuera los que no tienen dato", () => {
+  it("filtra por duración y deja afuera los que no tienen dato", () => {
     expect(matchesFilters(game({ duration_hours: 6 }), { duration: "short" })).toBe(true);
     expect(matchesFilters(game({ duration_hours: 10 }), { duration: "short" })).toBe(false);
     expect(matchesFilters(game({ duration_hours: 10 }), { duration: "medium" })).toBe(true);
@@ -80,13 +80,13 @@ it("genresOf junta géneros sin repetir", () => {
 });
 
 describe("durationFilterAvailable", () => {
-  it("se muestra con HowLongToBeat o cuando al menos la mitad de los juegos tiene duración", () => {
+  it("se muestra cuando al menos la mitad de los juegos tiene duración", () => {
     const known = game({ duration_hours: 10.4 });
     const unknown = game({ duration_hours: null });
-    expect(durationFilterAvailable([unknown], true)).toBe(true);
-    expect(durationFilterAvailable([], false)).toBe(false);
+    expect(durationFilterAvailable([])).toBe(false);
+    expect(durationFilterAvailable([unknown])).toBe(false);
     // Uno de cada tres (lo que hay hoy con IGDB): filtrar dejaría afuera a casi todos.
-    expect(durationFilterAvailable([known, unknown, unknown], false)).toBe(false);
-    expect(durationFilterAvailable([known, unknown], false)).toBe(true);
+    expect(durationFilterAvailable([known, unknown, unknown])).toBe(false);
+    expect(durationFilterAvailable([known, unknown])).toBe(true);
   });
 });

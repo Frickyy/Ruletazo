@@ -18,7 +18,7 @@ export async function fetchGamesInCommon(steamId) {
   return data;
 }
 
-/** Configuración pública: links para apoyar, tiendas con afiliados, si HowLongToBeat está activo. */
+/** Configuración pública: links para apoyar, tiendas con afiliados, si la duración sale de IGDB. */
 export async function fetchPublicConfig() {
   const { data } = await api.get("/config");
   return data;
