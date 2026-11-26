@@ -20,7 +20,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.game import CachedGameDetails, DurationPage
-from app.services import game_details_service, igdb_client, store_browse
+from app.services import game_details_service, igdb_client, indexnow, store_browse
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +32,8 @@ POPULAR_REVIEWS = 2000
 # Mínimo de reseñas en Steam para tener página (los más vendidos nuevos pueden tener pocas).
 MIN_PAGE_REVIEWS = 500
 STARTUP_DELAY_SECONDS = 120
+# Las páginas, para avisarle a los buscadores (IndexNow) cuáles se crearon o se sacaron.
+PAGES_URL = "https://ruletazo.app/cuanto-dura/"
 REFRESH_INTERVAL_SECONDS = 24 * 60 * 60
 
 
@@ -137,12 +139,14 @@ async def refresh(db: Session) -> dict:
     used = {page.slug: page.appid for page in pages.values()}
     now = datetime.now(timezone.utc)
     created = removed = 0
+    changed: list[str] = []  # direcciones nuevas o sacadas
     for appid in appids:
         row, page = details.get(appid), pages.get(appid)
         quick = times[appid]["quick_hours"] if appid in times else (page.quick_hours if page else None)
         if not qualifies(row, quick):
             # Solo se saca si IGDB respondió: una falla de red no borra páginas.
             if page is not None and appid in times:
+                changed.append(page.slug)
                 db.delete(page)
                 removed += 1
             continue
@@ -153,6 +157,7 @@ async def refresh(db: Session) -> dict:
             page = DurationPage(appid=appid, slug=unique_slug(name, appid, used), name=name)
             db.add(page)
             used[page.slug] = appid
+            changed.append(page.slug)
             created += 1
         elif names.get(appid):
             page.name = names[appid]  # la dirección no cambia aunque cambie el nombre
@@ -162,7 +167,7 @@ async def refresh(db: Session) -> dict:
         page.updated_at = now
     db.commit()
     total = len(entries(db))
-    return {"candidates": len(appids), "pages": total, "created": created, "removed": removed}
+    return {"candidates": len(appids), "pages": total, "created": created, "removed": removed, "changed": changed}
 
 
 def entries(db: Session) -> list[PageEntry]:
@@ -197,7 +202,11 @@ async def refresh_loop(session_factory) -> None:
         try:
             with session_factory() as db:
                 summary = await refresh(db)
+            changed = summary.pop("changed")
             logger.info("Páginas ¿Cuánto dura?: %s", summary)
+            if changed:
+                # Las páginas nuevas o sacadas, y el índice que las lista.
+                await indexnow.submit([PAGES_URL] + [f"{PAGES_URL}{slug}" for slug in changed])
         except Exception:
             logger.exception("No se pudieron actualizar las páginas ¿Cuánto dura?")
         await asyncio.sleep(REFRESH_INTERVAL_SECONDS)
