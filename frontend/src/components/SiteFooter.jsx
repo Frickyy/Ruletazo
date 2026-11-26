@@ -3,10 +3,13 @@ import { t } from "../i18n/index.js";
 import FeedbackDialog from "./FeedbackDialog.jsx";
 import "./SiteFooter.css";
 
+// El código es público: cualquiera puede leerlo y proponer cambios con un pull request.
+const SOURCE_CODE_URL = "https://github.com/Frickyy/Ruletazo";
+
 /**
- * Pie de página: links para apoyar el proyecto (si están configurados), legales, el aviso de
- * que no hay relación con Valve (lo piden los términos de la Steam Web API) y la mención a IGDB
- * cuando la duración de los juegos sale de ahí.
+ * Pie de página: links para apoyar el proyecto (si están configurados), legales, el código en
+ * GitHub, el aviso de que no hay relación con Valve (lo piden los términos de la Steam Web API)
+ * y la mención a IGDB cuando la duración de los juegos sale de ahí.
  */
 function SiteFooter({ config, onNavigate, user }) {
   const supportLinks = config?.support_links ?? [];
@@ -43,6 +46,7 @@ function SiteFooter({ config, onNavigate, user }) {
           <a href="/obs" onClick={(event) => { event.preventDefault(); onNavigate?.("streamer"); }}>{t("Modo streamer")}</a>
           {/* Páginas hechas por el backend (no son parte de la app): link normal. */}
           <a href="/cuanto-dura/">{t("Cuánto dura cada juego")}</a>
+          <a href={SOURCE_CODE_URL} target="_blank" rel="noopener noreferrer">{t("Código en GitHub")}</a>
           <a href="/privacidad" onClick={(event) => { event.preventDefault(); onNavigate?.("privacy"); }}>{t("Privacidad")}</a>
           <a href="/terminos" onClick={(event) => { event.preventDefault(); onNavigate?.("terms"); }}>{t("Términos")}</a>
         </nav>
