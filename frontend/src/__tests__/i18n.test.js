@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import en from "../i18n/en.js";
-import { setLang, t, translateServerMessage } from "../i18n/index.js";
+import { initialLanguage, setLang, t, translateServerMessage } from "../i18n/index.js";
 
 const SRC = join(dirname(fileURLToPath(import.meta.url)), "..");
 // t("…") y tk("…") con el texto literal como primer argumento.
@@ -26,6 +26,24 @@ function usedKeys() {
 }
 
 const placeholders = (text) => [...text.matchAll(/\{(\w+)\}/g)].map((match) => match[1]).sort();
+
+describe("idioma con el que arranca", () => {
+  it("español aunque el navegador esté en inglés (así lo leen los buscadores), con el inglés ofrecido", () => {
+    expect(initialLanguage({ browser: "en-US" })).toEqual({ lang: "es", fromAddress: false, suggestEnglish: true });
+    expect(initialLanguage({ browser: "es-AR" })).toEqual({ lang: "es", fromAddress: false, suggestEnglish: false });
+  });
+
+  it("respeta lo que elegiste antes", () => {
+    expect(initialLanguage({ saved: "en", browser: "es-AR" }).lang).toBe("en");
+    expect(initialLanguage({ saved: "es", browser: "en-US" })).toEqual({ lang: "es", fromAddress: false, suggestEnglish: false });
+  });
+
+  it("la dirección manda: los links en inglés llevan ?lang=en", () => {
+    expect(initialLanguage({ search: "?lang=en", saved: "es" })).toEqual({ lang: "en", fromAddress: true, suggestEnglish: false });
+    expect(initialLanguage({ search: "?perfil=gaben&lang=en" }).lang).toBe("en");
+    expect(initialLanguage({ search: "?lang=fr", browser: "en-US" }).suggestEnglish).toBe(true);
+  });
+});
 
 describe("traducción al inglés", () => {
   afterEach(() => setLang("es"));
