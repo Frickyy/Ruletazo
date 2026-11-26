@@ -152,12 +152,12 @@ const en = {
   // ---------- Barra de clasificación ----------
   "Completando datos de la biblioteca": "Filling in library data",
   "Leyendo tu biblioteca en la tienda de Steam": "Reading your library from the Steam store",
-  "Buscando tu progreso de logros": "Looking up your achievement progress",
+  "Buscando la duración y tu progreso de logros": "Looking up game lengths and your achievement progress",
   "paso {step} de 2": "step {step} of 2",
   "Géneros, modos de juego (cooperativo, multijugador), portadas y precios. Tarda unos segundos.":
     "Genres, game modes (co-op, multiplayer), covers and prices. It takes a few seconds.",
-  "Tu progreso de logros, de a un juego para no saturar a Steam. Podés seguir usando la ruleta: el filtro “Casi al 100%” se va completando.":
-    "Your achievement progress, one game at a time so Steam isn't overloaded. You can keep using the wheel: the “Almost 100%” filter fills in as it goes.",
+  "Primero la duración de todos tus juegos y después tu progreso de logros, de a uno para no saturar a Steam. Podés seguir usando la ruleta: los filtros se van completando.":
+    "First the length of all your games, then your achievement progress, one at a time so Steam isn't overloaded. You can keep using the wheel: the filters fill in as it goes.",
   "En pausa.": "Paused.",
   "Se cortó la conexión con Steam; se retoma la próxima vez que abras la app.": "The connection to Steam dropped; it'll resume the next time you open the app.",
   "Reanudar": "Resume",

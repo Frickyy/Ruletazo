@@ -361,3 +361,55 @@ async def test_steam_429_pauses_background_achievement_requests():
             await client.get_achievement_progress(STEAM_ID64, 620)
 
     assert route.call_count == 1
+
+
+def _store_items_and_identity(monkeypatch):
+    async def fake_items(appids):
+        return {appid: store_browse.parse_item({"appid": appid, "success": 1, "type": 0, "name": f"Juego {appid}"}) for appid in appids}
+
+    async def fake_resolve(identifier):
+        return STEAM_ID64
+
+    monkeypatch.setattr(library_service.store_browse, "get_items", fake_items)
+    monkeypatch.setattr(library_service, "resolve_steam_id", fake_resolve)
+    monkeypatch.setattr(library_service.igdb_client, "enabled", lambda: True)
+
+
+async def test_enrich_looks_up_igdb_for_the_whole_library_at_once(db_session, monkeypatch):
+    _add_entries(db_session, (620, "Portal 2", 0), (400, "Portal", 0))
+    _store_items_and_identity(monkeypatch)
+    calls = []
+
+    async def fake_times(appids):
+        calls.append(sorted(appids))
+        return {appid: {"hours": 10.4 if appid == 620 else None, "samples": 36, "url": "", "quick_hours": 4.6, "full_hours": None} for appid in appids}
+
+    monkeypatch.setattr(library_service.igdb_client, "get_times", fake_times)
+    await library_service.classify_library_batch(db_session, STEAM_ID64, limit=100)
+
+    first = await library_service.enrich_library_batch(db_session, STEAM_ID64, limit=5)
+    again = await library_service.enrich_library_batch(db_session, STEAM_ID64, limit=5)
+
+    # Un solo pedido para toda la biblioteca, y no se repite.
+    assert calls == [[400, 620]]
+    assert (first["processed"], again["processed"]) == (2, 0)
+    portal_2 = db_session.get(CachedGameDetails, 620)
+    assert (portal_2.igdb_hours, portal_2.igdb_quick_hours) == (10.4, 4.6)
+    # Buscado y sin dato creíble: queda marcado para no volver a pedirlo.
+    assert game_details_service.has_igdb_lookup(db_session.get(CachedGameDetails, 400))
+
+
+async def test_enrich_retries_igdb_later_if_it_does_not_answer(db_session, monkeypatch):
+    _add_entries(db_session, (620, "Portal 2", 0))
+    _store_items_and_identity(monkeypatch)
+
+    async def igdb_down(appids):
+        return None
+
+    monkeypatch.setattr(library_service.igdb_client, "get_times", igdb_down)
+    await library_service.classify_library_batch(db_session, STEAM_ID64, limit=100)
+
+    result = await library_service.enrich_library_batch(db_session, STEAM_ID64, limit=5)
+
+    assert result["processed"] == 0
+    assert not game_details_service.has_igdb_lookup(db_session.get(CachedGameDetails, 620))

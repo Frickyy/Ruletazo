@@ -5,7 +5,8 @@ import { track } from "./track.js";
 
 // Primera pasada (datos de la tienda): de a 100 juegos, Steam los manda de a 50 por pedido.
 const CLASSIFY_BATCH_SIZE = 100;
-// Segunda pasada (tu progreso de logros): de a un juego en el backend, así que tandas chicas.
+// Segunda pasada (duración de IGDB de toda la biblioteca, de una, y tu progreso de logros, de a un
+// juego en el backend): tandas chicas.
 const ENRICH_BATCH_SIZE = 5;
 const PAUSE_BETWEEN_BATCHES_MS = 800;
 // Cada cuántas tandas de la segunda pasada se vuelve a pedir la biblioteca.
@@ -17,7 +18,8 @@ const REFRESH_EVERY_ENRICH_BATCHES = 6;
  *
  * Además completa en segundo plano lo que falte, en dos pasadas:
  * 1. "store": género, sinopsis, precio, portada, modos de juego. Rápida (50 juegos por pedido).
- * 2. "enrich": tu progreso de logros, si lo activaste en tu perfil. Lenta (de a un juego).
+ * 2. "enrich": la duración de IGDB de toda la biblioteca (en el primer pedido) y tu progreso de
+ *    logros, si lo activaste en tu perfil (lento: de a un juego).
  */
 export function useLibrary(steamId, friendSteamId) {
   const [games, setGames] = useState([]);
@@ -105,7 +107,7 @@ export function useLibrary(steamId, friendSteamId) {
       if (cancelled) return;
       if (progress.total - progress.classified > 0) await reload({ silent: true });
 
-      // 2) Tu progreso de logros.
+      // 2) Duración y tu progreso de logros.
       setClassification((current) => ({ ...current, phase: "enrich" }));
       let batches = 0;
       for (;;) {

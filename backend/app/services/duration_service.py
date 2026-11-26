@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.models.game import CachedGameDetails, CachedLibraryEntry, CompletionSample
-from app.services import igdb_client
+from app.services import game_details_service, igdb_client
 
 MIN_SAMPLES = 3
 # Menos de media hora no es "terminarlo": suele ser un juego marcado por error o con horas fuera de Steam.
@@ -69,18 +69,24 @@ def durations(db: Session, appids: list[int]) -> dict[int, dict]:
     settings = get_settings()
     result: dict[int, dict] = {}
     if settings.igdb_configured and appids:
-        for appid, hours, samples, url, categories, genres in db.execute(
+        for appid, hours, quick, samples, url, categories, genres, version in db.execute(
             select(
                 CachedGameDetails.appid,
                 CachedGameDetails.igdb_hours,
+                CachedGameDetails.igdb_quick_hours,
                 CachedGameDetails.igdb_samples,
                 CachedGameDetails.igdb_url,
                 CachedGameDetails.player_categories,
                 CachedGameDetails.genres,
+                CachedGameDetails.igdb_version,
             ).where(CachedGameDetails.appid.in_(appids))
         ):
-            # Sin el tiempo rápido (no se guarda en la ficha) se revisa lo demás: juegos sin final, MMO…
-            if igdb_client.makes_sense(hours, samples=samples, categories=categories, genres=genres, check_quick=False):
+            # Las reglas que usan el tiempo rápido (horas de online en vez de campaña) solo valen si
+            # se buscó con la versión que lo guarda: hasta entonces se revisa lo demás (sin final, MMO…).
+            has_quick = (version or 0) >= game_details_service.IGDB_VERSION
+            if igdb_client.makes_sense(
+                hours, samples=samples, categories=categories, genres=genres, quick_hours=quick, check_quick=has_quick
+            ):
                 result[appid] = {"hours": hours, "source": "igdb", "samples": samples, "url": url}
     for appid, (hours, count) in community_durations(db, [appid for appid in appids if appid not in result]).items():
         result[appid] = {"hours": hours, "source": "community", "samples": count}

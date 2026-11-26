@@ -130,7 +130,7 @@ Pensada para no tocar la experiencia: **la plata nunca influye en qué juego sal
 
 ## Duración
 
-Sale de [IGDB](https://www.igdb.com), la base de juegos de Twitch (`services/igdb_client.py`): se busca por appid de Steam, de a muchos juegos por pedido, y solo se le manda ese número. Los tiempos los cargan sus usuarios y en multijugador o sandbox hay valores absurdos, así que solo se usa un dato **creíble**: al menos 3 personas, entre 15 minutos y 150 horas, y con los tiempos rápido, normal y completo en orden (con un margen del 25 %, porque cada promedio sale de gente distinta). Se muestra el normal (la historia con algunos extras), con un link a la ficha de IGDB y la mención en el pie de página. Con las bibliotecas de noviembre de 2026, un tercio de los juegos sin jugar tenía un dato creíble (la mitad de los populares).
+Sale de [IGDB](https://www.igdb.com), la base de juegos de Twitch (`services/igdb_client.py`): se busca por appid de Steam, de a muchos juegos por pedido, y solo se le manda ese número. Los tiempos los cargan sus usuarios y en multijugador o sandbox hay valores absurdos, así que solo se usa un dato **creíble**: al menos 3 personas, entre 15 minutos y 150 horas, y con los tiempos rápido, normal y completo en orden (con un margen del 25 %, porque cada promedio sale de gente distinta). Se muestra el normal (la historia con algunos extras), con un link a la ficha de IGDB y la mención en el pie de página. La segunda pasada de cada biblioteca busca la duración de todos sus juegos de una (de a 200 por pedido) y guarda también el tiempo rápido: en un juego largo con multijugador competitivo, si el rápido falta o es casi igual al normal, el número son horas de online y no se muestra (`igdb_client.makes_sense`). Con las bibliotecas de noviembre de 2026, un tercio de los juegos sin jugar tenía un dato creíble (la mitad de los populares).
 
 Si IGDB no tiene el dato, se usa el de quienes lo terminaron en Ruletazo: al marcar un juego como *Terminado* se guardan sus horas en Steam en ese momento, y la duración es la **mediana** de esas horas, que se muestra recién cuando lo terminaron al menos 3 personas (nunca por persona). Las horas de menos de 30 minutos no cuentan. El filtro y el orden por duración aparecen recién cuando al menos la mitad de los juegos tiene el dato (`durationFilterAvailable`).
 
@@ -161,7 +161,7 @@ Con esos datos también hay páginas para buscadores: `/cuanto-dura/<juego>` (un
 | `GET` | `/api/games/genres` | Géneros disponibles en la biblioteca |
 | `GET` | `/api/games/library/classification-status` | Cuántos juegos tienen datos de la tienda |
 | `POST` | `/api/games/library/classify` | Completa los datos de la tienda de un lote de juegos (de a 50 por pedido) |
-| `POST` | `/api/games/library/enrich` | Completa tu progreso de logros de un lote chico (si lo activaste en tu perfil) |
+| `POST` | `/api/games/library/enrich` | Busca en IGDB la duración de toda la biblioteca (la primera vez) y completa tu progreso de logros de un lote chico (si lo activaste en tu perfil) |
 | `PUT` | `/api/games/state` | Marca un juego como jugando, terminado o abandonado (requiere sesión) |
 | `GET` | `/api/games/states/summary` | Cuántos juegos hay en cada estado y cuántos se terminaron en el año |
 | `GET` | `/api/games/achievements` | Progreso de logros de un juego |
