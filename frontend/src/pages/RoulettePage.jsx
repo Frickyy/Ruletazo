@@ -51,6 +51,8 @@ function RoulettePage({
   onHideAdultChange,
   hideSoftware = true,
   onHideSoftwareChange,
+  hideJunk = false,
+  onHideJunkChange,
   hasFamily,
   playtimeFilter = "all",
   onPlaytimeFilterChange,
@@ -92,7 +94,7 @@ function RoulettePage({
   const commonOnly = inCommon && hasFamily && includeFamily;
   // Si el filtro de duración no se muestra, tampoco filtra (por si quedó elegido de antes).
   const activeDuration = durationEnabled ? duration : "any";
-  const filters = { collection, genre, playtimeFilter, duration: activeDuration, hideAdult, hideSoftware, mode, inCommon: commonOnly, includeFinished };
+  const filters = { collection, genre, playtimeFilter, duration: activeDuration, hideAdult, hideSoftware, hideJunk, mode, inCommon: commonOnly, includeFinished };
   const gamesById = useMemo(() => new Map(games.map((game) => [game.appid, game])), [games]);
 
   // Los juegos que pueden salir: exactamente los que cumplen los filtros actuales.
@@ -102,7 +104,7 @@ function RoulettePage({
     if (!steamId) return DEMO_GAMES.filter((game) => matchesDemoPlaytime(game, playtimeFilter));
     return games.filter((game) => matchesFilters(game, filters)).map(toReelGame);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [steamId, games, collection, genre, playtimeFilter, activeDuration, hideAdult, hideSoftware, mode, commonOnly, includeFinished]);
+  }, [steamId, games, collection, genre, playtimeFilter, activeDuration, hideAdult, hideSoftware, hideJunk, mode, commonOnly, includeFinished]);
   // Los descartados por hoy siguen pasando por el rodillo (si no, la tira se rearmaba de golpe
   // justo al girar), pero no pueden ganar.
   const spinnable = useMemo(() => pool.filter((game) => !skipped.has(game.appid)), [pool, skipped]);
@@ -502,6 +504,13 @@ function RoulettePage({
                 disabled={isSpinning}
                 label={t("Ocultar programas")}
                 title={t("Deja afuera lo que Steam lista como software, como Soundpad o Wallpaper Engine")}
+              />
+              <Toggle
+                checked={hideJunk}
+                onChange={onHideJunkChange}
+                disabled={isSpinning}
+                label={t("Ocultar juegos basura")}
+                title={t("Deja afuera los que tienen menos de 50 reseñas en Steam o reseñas negativas: suelen ser los que se compran por los cromos")}
               />
               {isLoggedIn && (
                 <Toggle

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { durationFilterAvailable, genresOf, isStale, matchesFilters, sortGames } from "../services/libraryFilters.js";
+import { durationFilterAvailable, genresOf, isJunk, isStale, matchesFilters, sortGames } from "../services/libraryFilters.js";
 
 const NOW = Date.UTC(2026, 10, 18);
 const DAY = 24 * 60 * 60;
@@ -23,6 +23,17 @@ describe("matchesFilters", () => {
     expect(matchesFilters(hidden, {})).toBe(false);
     expect(matchesFilters(hidden, { collection: "hidden" })).toBe(true);
     expect(matchesFilters(game(), { collection: "hidden" })).toBe(false);
+  });
+
+  it("oculta los juegos basura solo si se pide, y nunca uno sin datos de la tienda", () => {
+    const cards = game({ store_data: true, review_total: 12, review_score_desc: "Positivas" });
+    const panned = game({ store_data: true, review_total: 5664, review_score_desc: "Mayormente negativas" });
+    const good = game({ store_data: true, review_total: 50, review_score_desc: "Muy positivas" });
+    const unknown = game({ store_data: false, review_total: 0, review_score_desc: "" });
+    expect([cards, panned, good, unknown].map(isJunk)).toEqual([true, true, false, false]);
+    expect(matchesFilters(cards, { hideJunk: true })).toBe(false);
+    expect(matchesFilters(cards, {})).toBe(true);
+    expect(matchesFilters(unknown, { hideJunk: true })).toBe(true);
   });
 
   it("oculta +18 solo si se pide", () => {
