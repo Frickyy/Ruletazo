@@ -8,7 +8,7 @@ Cómo correr, configurar y publicar el proyecto. Qué hace la página y cómo se
 |---|---|
 | Frontend | React 18, Vite, Axios, Vitest |
 | Backend | Python 3.13, FastAPI, SQLAlchemy, Alembic, httpx |
-| Datos | Steam Web API, Steam Store API, IGDB (duración), HowLongToBeat (apagado) |
+| Datos | Steam Web API, Steam Store API, IGDB (duración) |
 | Base de datos | SQLite |
 | Tests | pytest, respx, Vitest |
 
@@ -24,7 +24,7 @@ Cómo correr, configurar y publicar el proyecto. Qué hace la página y cómo se
 
 En desarrollo, Vite reenvía todas las rutas `/api` al backend, así frontend y API comparten el mismo origen y el login con Steam vuelve al mismo puerto. En Docker el backend sirve también el frontend compilado: una sola URL para todo.
 
-Los pedidos a servicios externos pasan por un control de ritmo común (`services/throttle.py`): si Steam, IGDB o HowLongToBeat avisan que nos pasamos, ese servicio se pausa unos minutos en lugar de seguir insistiendo. Además, los endpoints que consultan a Steam con la API key tienen un límite por visitante (`core/rate_limit.py`), para que nadie pueda gastar la cuota de la clave si la app se publica.
+Los pedidos a servicios externos pasan por un control de ritmo común (`services/throttle.py`): si Steam o IGDB avisan que nos pasamos, ese servicio se pausa unos minutos en lugar de seguir insistiendo. Además, los endpoints que consultan a Steam con la API key tienen un límite por visitante (`core/rate_limit.py`), para que nadie pueda gastar la cuota de la clave si la app se publica.
 
 Los datos de la tienda vienen de `IStoreBrowseService/GetItems` (el mismo servicio que usa la tienda), que acepta 50 juegos por pedido y no necesita API key.
 
@@ -63,7 +63,6 @@ Completá `backend/.env`:
 | `FEEDBACK_EMAIL` | Adónde llegan los comentarios del botón "Mandar comentario" (por defecto `ruletazo007@gmail.com`). |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` | Cuenta que manda esos mails. Con Gmail: `smtp.gmail.com`, `587`, la cuenta y una [contraseña de aplicación](https://myaccount.google.com/apppasswords) (hace falta la verificación en dos pasos). Sin usuario y contraseña, los comentarios solo quedan en la tabla `feedback`. |
 | `RESEND_API_KEY`, `EMAIL_FROM` | Alternativa al SMTP por HTTPS con [Resend](https://resend.com), para servidores que bloquean los puertos de mail (DigitalOcean lo hace en cuentas nuevas). Si hay clave, tiene prioridad sobre el SMTP. `EMAIL_FROM` tiene que ser de un dominio verificado en Resend (en producción, `Ruletazo <feedback@ruletazo.app>`). |
-| `HLTB_ENABLED` | `false` (por defecto). Queda apagado: los términos de HowLongToBeat no permiten el acceso automatizado, así que solo se prendería con su permiso por escrito. |
 | `IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET` | Claves de una app registrada en la [consola de Twitch](https://dev.twitch.tv/console) (tipo de cliente *Confidencial*, redirección `http://localhost`; Twitch pide la verificación en dos pasos). Con ellas la duración sale de IGDB (ver *Duración*); sin ellas no se le pide nada. |
 | `SUPPORT_LINKS` | Links para apoyar el proyecto en el pie de página: `Cafecito|https://cafecito.app/usuario,Ko-fi|https://ko-fi.com/usuario`. |
 | `SUPPORTER_STEAM_IDS` | SteamID64 de quienes apoyan el proyecto: muestran la insignia "Supporter" en su perfil y el foro. |
@@ -144,7 +143,6 @@ Con esos datos también hay páginas para buscadores: `/cuanto-dura/<juego>` (un
 ## Limitaciones conocidas
 
 - **Juegos gratis que nunca abriste**: la Steam Web API solo devuelve los free-to-play que jugaste al menos una vez, así que los que agregaste y nunca abriste (por ejemplo *Wuthering Waves* o *The First Descendant*) no aparecen en la biblioteca. Alcanza con abrirlos una vez desde Steam para que aparezcan.
-- **HowLongToBeat** (apagado por defecto) no tiene una API oficial: si se prende, se busca por nombre y, si el sitio cambia, la duración puede faltar.
 - **Duración**: IGDB tiene un dato creíble para pocos juegos chicos; esos juegos salen sin duración hasta que alguien la cargue en IGDB o lo terminen 3 personas en Ruletazo.
 - **Reseñas**: Steam limita los pedidos de reseñas; si se pasa, se reintenta más tarde y mientras tanto la ficha sale sin "lo bueno y lo malo".
 - **Contenido +18**: se detecta con los descriptores de contenido de la tienda. Hasta que un juego tiene esos datos, se usa una aproximación por el nombre.
@@ -162,7 +160,7 @@ Con esos datos también hay páginas para buscadores: `/cuanto-dura/<juego>` (un
 | `GET` | `/api/games/genres` | Géneros disponibles en la biblioteca |
 | `GET` | `/api/games/library/classification-status` | Cuántos juegos tienen datos de la tienda |
 | `POST` | `/api/games/library/classify` | Completa los datos de la tienda de un lote de juegos (de a 50 por pedido) |
-| `POST` | `/api/games/library/enrich` | Completa duración (HLTB) y progreso de logros de un lote chico |
+| `POST` | `/api/games/library/enrich` | Completa tu progreso de logros de un lote chico (si lo activaste en tu perfil) |
 | `PUT` | `/api/games/state` | Marca un juego como jugando, terminado o abandonado (requiere sesión) |
 | `GET` | `/api/games/states/summary` | Cuántos juegos hay en cada estado y cuántos se terminaron en el año |
 | `GET` | `/api/games/achievements` | Progreso de logros de un juego |
@@ -201,7 +199,7 @@ backend/
     models/      tablas de caché, favoritos, ocultos y foro
     routers/     endpoints de juegos, autenticación y foro
     schemas/     modelos de respuesta
-    services/    clientes de Steam, Store, IGDB y HowLongToBeat, ritmo de pedidos, biblioteca y foro
+    services/    clientes de Steam, Store e IGDB, ritmo de pedidos, biblioteca y foro
   migrations/    migraciones de Alembic
   tests/
 frontend/
