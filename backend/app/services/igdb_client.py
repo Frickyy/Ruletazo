@@ -73,6 +73,48 @@ def credible_hours(entry: dict | None) -> float | None:
     return round(hours, 1)
 
 
+# Categorías de jugadores de la tienda (ver store_browse): un jugador, y MMO o JcJ (en línea, local, LAN).
+SINGLE_PLAYER_CATEGORY = 2
+COMPETITIVE_CATEGORIES = {20, 36, 37, 47, 49}
+MMO_GENRE = "Multijugador masivo"
+
+
+def makes_sense(
+    hours: float | None,
+    *,
+    samples: int = 0,
+    categories=(),
+    genres=(),
+    quick_hours: float | None = None,
+    check_quick: bool = True,
+) -> bool:
+    """¿Tiene sentido decir cuánto dura este juego? Además de un dato creíble (credible_hours), se
+    descartan los juegos sin final o con el dato roto, que IGDB no distingue:
+
+    - solo multijugador competitivo (Fall Guys, Among Us) o MMO (Destiny 2, Final Fantasy XIV);
+    - muy cortos con pocos datos (Forza Horizon 5: "1 h" con 4 personas);
+    - con `check_quick` (hace falta el tiempo rápido): horas de online en vez de campaña, cuando el
+      tiempo rápido falta o es casi igual al normal en un juego largo con JcJ (GTA V, Rocket League),
+      o tiempos muy desparejos (Counter-Strike 2: 1 h rápido y 14 h normal).
+    """
+    if hours is None:
+        return False
+    categories = set(categories or [])
+    competitive = bool(categories & COMPETITIVE_CATEGORIES)
+    if SINGLE_PLAYER_CATEGORY not in categories and competitive:
+        return False
+    if MMO_GENRE in (genres or []):
+        return False
+    if hours < 2 and (samples or 0) < 6:
+        return False
+    if check_quick:
+        if competitive and hours >= 50 and (quick_hours is None or quick_hours >= 0.8 * hours):
+            return False
+        if quick_hours and hours / quick_hours > 6:
+            return False
+    return True
+
+
 def extra_hours(entry: dict | None, hours: float | None) -> tuple[float | None, float | None]:
     """Los otros dos tiempos (yendo directo a la historia y al 100 %), solo si el normal es creíble
     y estos van en orden con él. Para las páginas "¿Cuánto dura…?"."""
