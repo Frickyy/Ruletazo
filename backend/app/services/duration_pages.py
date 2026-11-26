@@ -63,13 +63,19 @@ def unique_slug(name: str, appid: int, used: dict[str, int]) -> str:
     return f"{base}-{appid}" if base else str(appid)
 
 
-def qualifies(details: CachedGameDetails | None) -> bool:
+def qualifies(details: CachedGameDetails | None, quick_hours: float | None = None) -> bool:
     return (
         details is not None
-        and details.igdb_hours is not None
         and not details.is_adult
         and not details.is_software
         and (details.review_total or 0) >= MIN_PAGE_REVIEWS
+        and igdb_client.makes_sense(
+            details.igdb_hours,
+            samples=details.igdb_samples,
+            categories=details.player_categories,
+            genres=details.genres,
+            quick_hours=quick_hours,
+        )
     )
 
 
@@ -133,7 +139,8 @@ async def refresh(db: Session) -> dict:
     created = removed = 0
     for appid in appids:
         row, page = details.get(appid), pages.get(appid)
-        if not qualifies(row):
+        quick = times[appid]["quick_hours"] if appid in times else (page.quick_hours if page else None)
+        if not qualifies(row, quick):
             # Solo se saca si IGDB respondió: una falla de red no borra páginas.
             if page is not None and appid in times:
                 db.delete(page)

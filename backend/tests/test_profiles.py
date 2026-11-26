@@ -377,6 +377,20 @@ def test_igdb_comes_before_the_community_and_after_hltb(db_session, monkeypatch)
     assert duration_service.durations(db_session, [10])[10]["source"] == "community"
 
 
+def test_cards_skip_igdb_times_of_games_without_an_end(db_session, monkeypatch):
+    from app.core.config import Settings
+    from app.models.game import CachedGameDetails
+    from app.services import duration_service
+
+    db_session.add(CachedGameDetails(appid=10, igdb_hours=99.5, igdb_samples=30, genres=["Rol", "Multijugador masivo"], fetched_at=datetime.now(timezone.utc)))
+    db_session.add(CachedGameDetails(appid=20, igdb_hours=28.6, igdb_samples=10, player_categories=[1, 9, 36, 49], fetched_at=datetime.now(timezone.utc)))
+    db_session.add(CachedGameDetails(appid=30, igdb_hours=36.2, igdb_samples=32, player_categories=[2], fetched_at=datetime.now(timezone.utc)))
+    db_session.commit()
+    monkeypatch.setattr(duration_service, "get_settings", lambda: Settings(igdb_client_id="cliente", igdb_client_secret="secreto"))
+
+    assert set(duration_service.durations(db_session, [10, 20, 30])) == {30}
+
+
 def test_config_says_when_igdb_is_on(monkeypatch):
     from app.core.config import Settings
     from app.routers import profiles

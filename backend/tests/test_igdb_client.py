@@ -136,3 +136,23 @@ async def test_without_keys_nothing_is_requested(monkeypatch):
 
     assert await igdb_client.get_times([620]) is None
     assert not respx.calls
+
+
+def test_makes_sense_drops_games_without_an_end_or_with_broken_data():
+    story = dict(samples=36, categories=[2], genres=["Aventura"])
+    assert igdb_client.makes_sense(10.4, quick_hours=4.6, **story)
+    assert not igdb_client.makes_sense(None, **story)
+    # Solo multijugador competitivo (Fall Guys) o MMO (Destiny 2).
+    assert not igdb_client.makes_sense(28.6, samples=10, categories=[1, 9, 36, 49], quick_hours=15.9)
+    assert not igdb_client.makes_sense(5.5, samples=10, categories=[1, 2, 36], genres=["Multijugador masivo"])
+    # Cooperativo de historia sin modo un jugador (It Takes Two): sí.
+    assert igdb_client.makes_sense(14.5, samples=22, categories=[1, 9, 24, 38, 39], quick_hours=11.2)
+    # Horas de online en vez de campaña (GTA V), pero no un juego largo de verdad (ELDEN RING).
+    assert not igdb_client.makes_sense(127.5, samples=74, categories=[1, 2, 36, 49], quick_hours=115.1)
+    assert igdb_client.makes_sense(116.8, samples=28, categories=[1, 2, 36, 49], quick_hours=43.6)
+    assert igdb_client.makes_sense(132.1, samples=28, categories=[1, 2, 9, 38], quick_hours=128.2)  # Baldur's Gate 3
+    # Tiempos muy desparejos (Counter-Strike 2) y muy corto con pocos datos (Forza Horizon 5).
+    assert not igdb_client.makes_sense(14.0, samples=6, categories=[1, 27], quick_hours=1.0)
+    assert not igdb_client.makes_sense(1.0, samples=4, categories=[1, 2], quick_hours=1.0)
+    # Sin el tiempo rápido (la ficha), esas dos reglas no se aplican.
+    assert igdb_client.makes_sense(127.5, samples=74, categories=[1, 2, 36, 49], check_quick=False)

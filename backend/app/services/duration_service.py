@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.models.game import CachedGameDetails, CachedLibraryEntry, CompletionSample
+from app.services import igdb_client
 
 MIN_SAMPLES = 3
 # Menos de media hora no es "terminarlo": suele ser un juego marcado por error o con horas fuera de Steam.
@@ -76,12 +77,18 @@ def durations(db: Session, appids: list[int]) -> dict[int, dict]:
                 result[appid] = {"hours": hours, "source": "hltb", "samples": 0}
     pending = [appid for appid in appids if appid not in result]
     if settings.igdb_configured and pending:
-        for appid, hours, samples, url in db.execute(
+        for appid, hours, samples, url, categories, genres in db.execute(
             select(
-                CachedGameDetails.appid, CachedGameDetails.igdb_hours, CachedGameDetails.igdb_samples, CachedGameDetails.igdb_url
+                CachedGameDetails.appid,
+                CachedGameDetails.igdb_hours,
+                CachedGameDetails.igdb_samples,
+                CachedGameDetails.igdb_url,
+                CachedGameDetails.player_categories,
+                CachedGameDetails.genres,
             ).where(CachedGameDetails.appid.in_(pending))
         ):
-            if hours is not None:
+            # Sin el tiempo rápido (no se guarda en la ficha) se revisa lo demás: juegos sin final, MMO…
+            if igdb_client.makes_sense(hours, samples=samples, categories=categories, genres=genres, check_quick=False):
                 result[appid] = {"hours": hours, "source": "igdb", "samples": samples, "url": url}
     for appid, (hours, count) in community_durations(db, [appid for appid in appids if appid not in result]).items():
         result[appid] = {"hours": hours, "source": "community", "samples": count}

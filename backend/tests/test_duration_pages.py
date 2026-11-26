@@ -65,7 +65,7 @@ async def test_refresh_creates_pages_only_for_credible_popular_games(db_session,
     db_session.commit()
 
     async def candidates(db):
-        return [620, 1, 2, 3, 4, 50]
+        return [620, 1, 2, 3, 4, 5, 50]
 
     async def store(appids):
         data = {
@@ -74,6 +74,7 @@ async def test_refresh_creates_pages_only_for_credible_popular_games(db_session,
             2: {"name": "Para adultos", "review_total": 9000, "is_adult": True},
             3: {"name": "Casi nadie lo tiene", "review_total": 40},
             4: {"name": "Portal 2", "review_total": 8000},  # mismo nombre que otro: otra dirección
+            5: {"name": "Fall Guys", "review_total": 90000, "player_categories": [1, 9, 36, 49]},  # sin final
         }
         result = {}
         for appid in appids:
@@ -86,7 +87,7 @@ async def test_refresh_creates_pages_only_for_credible_popular_games(db_session,
         return result
 
     async def igdb(appids):
-        hours = {620: 10.4, 2: 20.0, 3: 5.0, 4: 7.0, 50: None}  # 50 dejó de tener un dato creíble
+        hours = {620: 10.4, 2: 20.0, 3: 5.0, 4: 7.0, 5: 28.6, 50: None}  # 50 dejó de tener un dato creíble
         return {appid: {"hours": hours.get(appid), "samples": 36, "url": "", "quick_hours": 4.6, "full_hours": None} for appid in appids}
 
     monkeypatch.setattr(duration_pages, "popular_appids", candidates)
