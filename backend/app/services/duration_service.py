@@ -6,8 +6,7 @@ la mediana y no el promedio, porque las horas de Steam incluyen tiempo en menús
 abierto, y alguien que lo dejó corriendo una semana no debe correr el número.
 
 Solo se muestra con al menos MIN_SAMPLES personas, y nunca por persona: es un dato agregado.
-Antes se usa IGDB, si hay claves y tiene un dato creíble (ver igdb_client), y antes que todo
-HowLongToBeat, si está activado (HLTB_ENABLED) y tiene el dato.
+Antes se usa IGDB, si hay claves y tiene un dato creíble (ver igdb_client).
 """
 
 from datetime import datetime, timezone
@@ -65,18 +64,11 @@ def community_durations(db: Session, appids: list[int]) -> dict[int, tuple[float
 
 
 def durations(db: Session, appids: list[int]) -> dict[int, dict]:
-    """La duración que muestra la página, de la primera fuente que la tenga: HowLongToBeat (si está
-    activado), IGDB (si hay claves; con el link a su ficha en "url") o quienes lo terminaron en Ruletazo."""
+    """La duración que muestra la página, de la primera fuente que la tenga: IGDB (si hay claves;
+    con el link a su ficha en "url") o quienes lo terminaron en Ruletazo."""
     settings = get_settings()
     result: dict[int, dict] = {}
-    if settings.hltb_enabled and appids:
-        for appid, hours in db.execute(
-            select(CachedGameDetails.appid, CachedGameDetails.hltb_main_hours).where(CachedGameDetails.appid.in_(appids))
-        ):
-            if hours is not None:
-                result[appid] = {"hours": hours, "source": "hltb", "samples": 0}
-    pending = [appid for appid in appids if appid not in result]
-    if settings.igdb_configured and pending:
+    if settings.igdb_configured and appids:
         for appid, hours, samples, url, categories, genres in db.execute(
             select(
                 CachedGameDetails.appid,
@@ -85,7 +77,7 @@ def durations(db: Session, appids: list[int]) -> dict[int, dict]:
                 CachedGameDetails.igdb_url,
                 CachedGameDetails.player_categories,
                 CachedGameDetails.genres,
-            ).where(CachedGameDetails.appid.in_(pending))
+            ).where(CachedGameDetails.appid.in_(appids))
         ):
             # Sin el tiempo rápido (no se guarda en la ficha) se revisa lo demás: juegos sin final, MMO…
             if igdb_client.makes_sense(hours, samples=samples, categories=categories, genres=genres, check_quick=False):

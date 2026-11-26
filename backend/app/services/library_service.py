@@ -6,7 +6,6 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from app.core.config import get_settings
 from app.models.game import CachedGameDetails, CachedLibraryEntry, GameState, UserGameProgress
 from app.schemas.game import Game
 from app.services import (
@@ -14,7 +13,6 @@ from app.services import (
     duration_service,
     game_details_service,
     hidden_service,
-    hltb_client,
     profile_service,
     store_browse,
     throttle,
@@ -140,7 +138,7 @@ async def get_random_from_library(
     playtime_filter: str = "all",
     viewer_steam_id=ANY_VIEWER,
 ) -> Game | None:
-    """Elige un juego al azar del pool filtrado y lo enriquece (Store/HLTB/logros) al toque."""
+    """Elige un juego al azar del pool filtrado y lo enriquece (tienda, duración, logros) al toque."""
     games = await get_filtered_library(
         db, identifier, friend_identifier, collection, genre, search, sort_by, sort_direction, playtime_filter,
         viewer_steam_id=viewer_steam_id,
@@ -226,15 +224,15 @@ async def get_game_details(
 
 
 async def get_classification_status(db: Session, identifier: str) -> dict:
-    """Cuántos juegos de la biblioteca ya tienen metadatos de la Store vs. el total."""
+    """Sobre el total de la biblioteca: cuántos juegos ya tienen los datos de la tienda (primera
+    pasada) y cuántos ya no necesitan la segunda (tu progreso de logros)."""
     steam_id = await resolve_steam_id(identifier)
-    appids = [entry.appid for entry in _get_cached_entries(db, steam_id)]
-    details_map = _get_cached_details_map(db, appids)
-    classified = sum(1 for appid in appids if _is_classified(details_map.get(appid)))
-    with_duration = sum(
-        1 for appid in appids if details_map.get(appid) is not None and game_details_service.has_hltb_lookup(details_map[appid])
-    )
-    return {"classified": classified, "total": len(appids), "with_duration": with_duration}
+    entries = _get_cached_entries(db, steam_id)
+    details_map = _get_cached_details_map(db, [entry.appid for entry in entries])
+    classified = sum(1 for entry in entries if _is_classified(details_map.get(entry.appid)))
+    needs_progress = _progress_pending(db, steam_id)
+    enriched = sum(1 for entry in entries if not needs_progress(entry))
+    return {"classified": classified, "total": len(entries), "enriched": enriched}
 
 
 async def classify_library_batch(db: Session, identifier: str, limit: int) -> dict:
@@ -273,34 +271,28 @@ async def classify_library_batch(db: Session, identifier: str, limit: int) -> di
     }
 
 
-async def enrich_library_batch(db: Session, identifier: str, limit: int) -> dict:
-    """Segunda pasada, más lenta: duración (HowLongToBeat) y tu progreso de logros.
-
-    Va de a un juego porque HLTB no tiene pedidos por lote. La duración es lo que usa el filtro
-    "Cortos / Medianos / Largos" y el progreso, el filtro "Casi al 100%".
-    """
-    steam_id = await resolve_steam_id(identifier)
-    entries = _get_cached_entries(db, steam_id)
-    details_map = _get_cached_details_map(db, [entry.appid for entry in entries])
+def _progress_pending(db: Session, steam_id: str):
+    """Para qué juegos falta pedir tu progreso de logros. Solo si lo activaste en tu perfil (Steam
+    pide consultar datos de un usuario solo cuando él lo pide) y solo los que jugaste: sin horas
+    no hay logros desbloqueados que contar."""
+    track_achievements = profile_service.tracks_achievements(db, steam_id)
     progress_map = _get_progress_map(db, steam_id)
 
-    hltb_enabled = get_settings().hltb_enabled
-    # Tu progreso de logros solo se pide si lo activaste en tu perfil (Steam pide consultar datos
-    # de un usuario solo cuando él lo pide).
-    track_achievements = profile_service.tracks_achievements(db, steam_id)
-
-    def needs_hltb(entry) -> bool:
-        if not hltb_enabled:
-            return False
-        details = details_map.get(entry.appid)
-        return details is not None and _is_classified(details) and not game_details_service.has_hltb_lookup(details)
-
     def needs_progress(entry) -> bool:
-        # Solo los que jugaste: sin horas no hay logros desbloqueados que contar.
         return track_achievements and entry.playtime_forever_minutes > 0 and entry.appid not in progress_map
 
+    return needs_progress
+
+
+async def enrich_library_batch(db: Session, identifier: str, limit: int) -> dict:
+    """Segunda pasada, más lenta: tu progreso de logros, de a un juego (Steam no lo da por lote).
+    Es lo que usa el filtro "Casi al 100%"."""
+    steam_id = await resolve_steam_id(identifier)
+    entries = _get_cached_entries(db, steam_id)
+    needs_progress = _progress_pending(db, steam_id)
+
     now = time.monotonic()
-    pending = [entry for entry in entries if needs_hltb(entry) or needs_progress(entry)]
+    pending = [entry for entry in entries if needs_progress(entry)]
     # Los que fallaron hace poco se saltean un rato: si no, un juego que siempre falla
     # quedaría primero en la lista y la pasada no avanzaría nunca.
     retry_later = [entry for entry in pending if now - _enrich_failures.get((steam_id, entry.appid), -1e9) < _RETRY_FAILED_AFTER_SECONDS]
@@ -309,32 +301,21 @@ async def enrich_library_batch(db: Session, identifier: str, limit: int) -> dict
     failed = 0
     async with SteamClient() as client:
         for entry in to_process:
-            if needs_hltb(entry):
-                hltb = await hltb_client.get_completion_times(entry.name)
-                if hltb.get("failed"):
-                    failed += 1
-                    _enrich_failures[(steam_id, entry.appid)] = now
-                else:
-                    details = details_map[entry.appid]
-                    details.hltb_main_hours = hltb["main_hours"]
-                    details.hltb_completionist_hours = hltb["completionist_hours"]
-                    details.hltb_version = game_details_service.HLTB_VERSION
-            if needs_progress(entry):
-                try:
-                    progress = await client.get_achievement_progress(steam_id, entry.appid)
-                except SteamAPIError:
-                    failed += 1
-                    _enrich_failures[(steam_id, entry.appid)] = now
-                else:
-                    db.merge(
-                        UserGameProgress(
-                            steam_id=steam_id,
-                            appid=entry.appid,
-                            unlocked=progress["unlocked"],
-                            total=progress["total"],
-                            fetched_at=datetime.now(timezone.utc),
-                        )
+            try:
+                progress = await client.get_achievement_progress(steam_id, entry.appid)
+            except SteamAPIError:
+                failed += 1
+                _enrich_failures[(steam_id, entry.appid)] = now
+            else:
+                db.merge(
+                    UserGameProgress(
+                        steam_id=steam_id,
+                        appid=entry.appid,
+                        unlocked=progress["unlocked"],
+                        total=progress["total"],
+                        fetched_at=datetime.now(timezone.utc),
                     )
+                )
             db.commit()
 
     return {
@@ -342,8 +323,8 @@ async def enrich_library_batch(db: Session, identifier: str, limit: int) -> dict
         # Los que se saltean por fallas recientes no cuentan: se reintentan en otra sesión.
         "remaining": max(len(ready) - len(to_process), 0),
         "failed": failed > 0,
-        # Si HowLongToBeat o la Steam Web API nos limitaron, no tiene sentido seguir pidiendo ahora.
-        "paused": throttle.is_cooling_down("hltb") or throttle.is_cooling_down("achievements"),
+        # Si la Steam Web API nos limitó, no tiene sentido seguir pidiendo ahora.
+        "paused": throttle.is_cooling_down("achievements"),
     }
 
 
@@ -420,10 +401,6 @@ def apply_cached_details(game: Game, details: CachedGameDetails) -> None:
     game.review_total = details.review_total
     game.review_good = game_details_service.split_excerpts(details.review_pros)
     game.review_bad = game_details_service.split_excerpts(details.review_cons)
-    # Con HowLongToBeat apagado no se muestran ni los datos que hayan quedado guardados.
-    hltb_on = get_settings().hltb_enabled
-    game.hltb_main_hours = details.hltb_main_hours if hltb_on else None
-    game.hltb_completionist_hours = details.hltb_completionist_hours if hltb_on else None
     game.achievement_difficulty = game_details_service.difficulty_label(details)
     game.is_adult = bool(details.is_adult) or looks_adult_by_name(game.name)
     game.is_software = bool(details.is_software)

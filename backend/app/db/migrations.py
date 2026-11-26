@@ -28,7 +28,6 @@ _LEGACY_DETAIL_COLUMNS = {
     "review_pros": "TEXT DEFAULT ''",
     "review_cons": "TEXT DEFAULT ''",
     "reviews_version": "INTEGER DEFAULT 0",
-    "hltb_version": "INTEGER DEFAULT 0",
 }
 
 

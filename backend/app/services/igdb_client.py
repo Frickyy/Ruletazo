@@ -1,6 +1,6 @@
 """Cliente de IGDB, la base de juegos de Twitch: cuánto se tarda en terminar un juego.
 
-Busca por el número del juego en Steam (no por nombre, como HowLongToBeat) y de a muchos juegos por
+Busca por el número del juego en Steam (no por nombre) y de a muchos juegos por
 pedido. A IGDB solo le llega ese número, nada de quién tiene el juego. Necesita IGDB_CLIENT_ID e
 IGDB_CLIENT_SECRET, de una app registrada en https://dev.twitch.tv/console; sin ellos no se pide nada.
 

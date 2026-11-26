@@ -171,7 +171,7 @@ async def test_classify_batch_uses_one_store_request(db_session, monkeypatch):
     assert status["classified"] == 2
 
 
-async def test_enrich_batch_fetches_duration_and_progress(db_session, monkeypatch):
+async def test_enrich_batch_fetches_progress(db_session, monkeypatch):
     _add_entries(db_session, (620, "Portal 2", 300))
     profile_service.update_preferences(db_session, STEAM_ID64, track_achievements=True)
 
@@ -180,9 +180,6 @@ async def test_enrich_batch_fetches_duration_and_progress(db_session, monkeypatc
 
     async def fake_resolve(identifier):
         return STEAM_ID64
-
-    async def fake_hltb(name):
-        return {"main_hours": 8.5, "completionist_hours": 21.0}
 
     class FakeClient:
         async def __aenter__(self):
@@ -196,14 +193,16 @@ async def test_enrich_batch_fetches_duration_and_progress(db_session, monkeypatc
 
     monkeypatch.setattr(library_service.store_browse, "get_items", fake_items)
     monkeypatch.setattr(library_service, "resolve_steam_id", fake_resolve)
-    monkeypatch.setattr(library_service.hltb_client, "get_completion_times", fake_hltb)
     monkeypatch.setattr(library_service, "SteamClient", FakeClient)
     await library_service.classify_library_batch(db_session, STEAM_ID64, limit=100)
+    before = await library_service.get_classification_status(db_session, STEAM_ID64)
 
     result = await library_service.enrich_library_batch(db_session, STEAM_ID64, limit=5)
 
+    assert (before["enriched"], before["total"]) == (0, 1)
     assert result["remaining"] == 0
     assert db_session.get(UserGameProgress, (STEAM_ID64, 620)).unlocked == 45
+    assert (await library_service.get_classification_status(db_session, STEAM_ID64))["enriched"] == 1
     again = await library_service.enrich_library_batch(db_session, STEAM_ID64, limit=5)
     assert again["processed"] == 0
 

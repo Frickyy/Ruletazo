@@ -13,8 +13,6 @@ def _make_details(**overrides) -> CachedGameDetails:
         review_total=0,
         review_positive=0,
         featured_reviews=[],
-        hltb_main_hours=None,
-        hltb_completionist_hours=None,
         achievement_total=0,
         achievement_avg_percent=None,
         fetched_at=datetime.now(timezone.utc),
@@ -77,21 +75,10 @@ def test_missing_or_outdated_row_is_not_classified():
     assert library_service._is_classified(_make_details(store_metadata_version=0)) is False
 
 
-def test_hltb_miss_counts_as_looked_up():
-    details = _make_details(hltb_version=game_details_service.HLTB_VERSION)
-    assert game_details_service.has_hltb_lookup(details) is True
-
-
-def test_hltb_never_looked_up():
-    details = _make_details(hltb_version=0)
-    assert game_details_service.has_hltb_lookup(details) is False
-
-
 def _complete_details(**overrides):
     defaults = dict(
         store_metadata_version=game_details_service.STORE_METADATA_VERSION,
         reviews_version=game_details_service.REVIEWS_VERSION,
-        hltb_version=game_details_service.HLTB_VERSION,
         igdb_version=game_details_service.IGDB_VERSION,
     )
     defaults.update(overrides)
@@ -115,7 +102,6 @@ def _track_fetches(monkeypatch):
         fake("reviews", {"failed": False, "good": ["Bien"], "bad": []}),
     )
     monkeypatch.setattr(game_details_service, "_fetch_achievements", fake("achievements", {"total": 0, "average_percent": None}))
-    monkeypatch.setattr(game_details_service.hltb_client, "get_completion_times", fake("hltb", {"main_hours": 1, "completionist_hours": 2}))
     monkeypatch.setattr(
         game_details_service.igdb_client,
         "get_times",
@@ -151,16 +137,13 @@ async def test_nothing_is_fetched_while_reviews_are_rate_limited(db_session, mon
 
 
 async def test_expired_details_refresh_every_part(db_session, monkeypatch):
-    from app.core.config import Settings
-
-    monkeypatch.setattr(game_details_service, "get_settings", lambda: Settings(hltb_enabled=True))
     db_session.add(_complete_details(fetched_at=datetime.now(timezone.utc) - timedelta(days=30)))
     db_session.commit()
     calls = _track_fetches(monkeypatch)
 
     await game_details_service.get_or_fetch_details(db_session, 10, "Juego")
 
-    assert sorted(calls) == ["achievements", "hltb", "reviews", "store"]
+    assert sorted(calls) == ["achievements", "reviews", "store"]
 
 
 async def test_igdb_duration_is_looked_up_once_and_kept(db_session, monkeypatch):

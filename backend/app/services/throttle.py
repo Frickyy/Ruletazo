@@ -1,6 +1,6 @@
 """Ritmo de pedidos a los servicios externos, compartido por toda la app.
 
-Cada servicio (Store, reseñas, HowLongToBeat…) tiene un intervalo mínimo entre pedidos.
+Cada servicio (Store, reseñas, IGDB…) tiene un intervalo mínimo entre pedidos.
 Si un servicio avisa que nos pasamos (Steam redirige a la portada o responde 429), se lo
 "enfría": durante un rato los pedidos a ese servicio fallan al instante en vez de insistir,
 que es lo que alarga el bloqueo.
@@ -19,7 +19,6 @@ MIN_INTERVAL_SECONDS = {
     "store": 0.25,
     "storebrowse": 0.5,
     "reviews": 1.5,
-    "hltb": 1.0,
     # IGDB permite 4 pedidos por segundo.
     "igdb": 0.3,
     # Progreso de logros (Steam Web API con la API key) durante la clasificación en segundo plano.
