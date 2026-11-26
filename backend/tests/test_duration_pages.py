@@ -1,6 +1,8 @@
+import asyncio
 from datetime import datetime, timezone
 
 import httpx
+import pytest
 import respx
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -99,6 +101,8 @@ async def test_refresh_creates_pages_only_for_credible_popular_games(db_session,
     slugs = {page.appid: page.slug for page in db_session.query(DurationPage)}
     assert slugs == {620: "portal-2", 4: "portal-2-4"}
     assert summary["created"] == 2 and summary["removed"] == 1
+    # Las que se crearon o se sacaron, para avisarle a los buscadores (IndexNow).
+    assert sorted(summary["changed"]) == ["portal-2", "portal-2-4", "viejo"]
     portal = db_session.get(DurationPage, 620)
     assert (portal.name, portal.quick_hours, portal.full_hours) == ("Portal 2", 4.6, None)
     assert db_session.get(CachedGameDetails, 620).igdb_hours == 10.4
@@ -189,3 +193,52 @@ def test_index_and_sitemap_list_every_page(db_session):
 
     redirect = client.get("/cuanto-dura")
     assert redirect.status_code == 301 and redirect.headers["location"] == "/cuanto-dura/"
+
+
+async def test_the_daily_refresh_tells_indexnow_about_new_and_removed_pages(monkeypatch):
+    sleeps, sent = [], []
+
+    async def fake_sleep(seconds):
+        sleeps.append(seconds)
+        if len(sleeps) > 1:
+            raise asyncio.CancelledError  # corta el ciclo después de la primera actualización
+
+    async def fake_refresh(db):
+        return {"candidates": 3, "pages": 2, "created": 1, "removed": 1, "changed": ["nuevo", "viejo"]}
+
+    async def fake_submit(urls):
+        sent.append(urls)
+        return True
+
+    class FakeSession:
+        def __enter__(self):
+            return None
+
+        def __exit__(self, *exc_info):
+            return False
+
+    monkeypatch.setattr(duration_pages.asyncio, "sleep", fake_sleep)
+    monkeypatch.setattr(duration_pages, "refresh", fake_refresh)
+    monkeypatch.setattr(duration_pages.indexnow, "submit", fake_submit)
+
+    with pytest.raises(asyncio.CancelledError):
+        await duration_pages.refresh_loop(FakeSession)
+
+    assert sent == [[
+        "https://ruletazo.app/cuanto-dura/",
+        "https://ruletazo.app/cuanto-dura/nuevo",
+        "https://ruletazo.app/cuanto-dura/viejo",
+    ]]
+
+
+def test_names_drop_trademark_symbols(db_session):
+    assert pages_router.display_name("Middle-earth™: Shadow of War™") == "Middle-earth: Shadow of War"
+    assert pages_router.display_name("DOOM® Eternal") == "DOOM Eternal"
+    db_session.add(DurationPage(appid=356190, slug="middle-earth-shadow-of-war", name="Middle-earth™: Shadow of War™"))
+    db_session.add(_details(356190, hours=30.0))
+    db_session.commit()
+
+    html = _client(db_session).get("/cuanto-dura/middle-earth-shadow-of-war").text
+
+    assert "<title>¿Cuánto dura Middle-earth: Shadow of War? · Ruletazo</title>" in html
+    assert "™" not in html

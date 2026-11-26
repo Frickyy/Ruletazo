@@ -108,6 +108,10 @@ function DemoPanel({ onLogin }) {
             </li>
           ))}
         </ol>
+        {/* Páginas hechas por el backend (no son parte de la app): link normal. */}
+        <p className="hint">
+          {t("¿Querés saber cuánto lleva un juego antes de empezarlo?")} <a href="/cuanto-dura/">{t("Mirá cuánto dura cada juego")}</a>
+        </p>
       </section>
       {onLogin && (
         <section className="idle-panel__block idle-panel__block--side idle-cta" aria-labelledby="idle-cta">

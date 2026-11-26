@@ -661,6 +661,8 @@ const en = {
   "Tocá o apretá espacio para girar": "Click or press space to spin",
   "Modo streamer": "Streamer mode",
   "Cuánto dura cada juego": "How long each game takes",
+  "¿Querés saber cuánto lleva un juego antes de empezarlo?": "Want to know how long a game takes before you start it?",
+  "Mirá cuánto dura cada juego": "See how long each game takes",
   "Código en GitHub": "Code on GitHub",
   "Más páginas": "More pages",
   "La ruleta en tu stream": "The roulette on your stream",
