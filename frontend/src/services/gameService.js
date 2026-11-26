@@ -60,7 +60,7 @@ export async function removeFavorite(steamId, appid) {
   return data;
 }
 
-// Segunda pasada de la clasificación: duración (HowLongToBeat) y tu progreso de logros.
+// Segunda pasada de la clasificación: tu progreso de logros.
 export async function enrichLibraryBatch(steamId, limit = 5) {
   const { data } = await api.post("/games/library/enrich", null, { params: { steamid: steamId, limit }, timeout: 90000 });
   return data;

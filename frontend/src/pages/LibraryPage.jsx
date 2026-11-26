@@ -39,7 +39,6 @@ function LibraryPage({
   includeFamily,
   onIncludeFamilyChange,
   onManageFamily,
-  hltbEnabled = true,
   guest = null,
   onLogin,
 }) {
@@ -61,9 +60,9 @@ function LibraryPage({
   const deferredSearch = useDeferredValue(search);
 
   const genres = useMemo(() => genresOf(games), [games]);
-  // La duración sale de HowLongToBeat (si está activado), de IGDB o de quienes terminaron el juego
-  // en Ruletazo. Mientras la tenga menos de la mitad de los juegos, el filtro no se muestra.
-  const durationEnabled = useMemo(() => durationFilterAvailable(games, hltbEnabled), [hltbEnabled, games]);
+  // La duración sale de IGDB o de quienes terminaron el juego en Ruletazo. Mientras la tenga
+  // menos de la mitad de los juegos, el filtro no se muestra.
+  const durationEnabled = useMemo(() => durationFilterAvailable(games), [games]);
   const hiddenCount = useMemo(() => games.filter((game) => game.is_hidden).length, [games]);
   const filtered = useMemo(() => {
     const filters = { collection, genre, playtimeFilter, duration: durationEnabled ? duration : "any", hideAdult, hideSoftware, mode, state: stateFilter, search: deferredSearch };

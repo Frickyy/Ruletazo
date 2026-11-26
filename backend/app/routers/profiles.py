@@ -24,12 +24,11 @@ class PreferencesIn(BaseModel):
 @router.get("/config")
 def public_config() -> dict:
     """Lo que el frontend necesita saber de la configuración: links para apoyar el proyecto,
-    tiendas con afiliados y de dónde puede salir la duración (HowLongToBeat, IGDB)."""
+    tiendas con afiliados y si la duración puede salir de IGDB."""
     settings = get_settings()
     return {
         "support_links": settings.support_link_list,
         "affiliate_stores": settings.affiliate_store_list,
-        "hltb_enabled": settings.hltb_enabled,
         # Para la mención a IGDB en el pie de página.
         "igdb_enabled": settings.igdb_configured,
         "contact_email": settings.contact_email,

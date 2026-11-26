@@ -77,7 +77,7 @@ function App() {
       cancelled = true;
     };
   }, [guestId]);
-  // Configuración pública: links para apoyar, tiendas con afiliados, si hay duración (HLTB).
+  // Configuración pública: links para apoyar, tiendas con afiliados, si la duración sale de IGDB.
   const [config, setConfig] = useState(null);
   useEffect(() => {
     fetchPublicConfig().then(setConfig).catch(() => setConfig(null));
@@ -338,7 +338,6 @@ function App() {
             onLogin={handleSteamLogin}
             trackAchievements={Boolean(profile?.track_achievements)}
             onOpenProfile={() => openProfile(null)}
-            hltbEnabled={config?.hltb_enabled === true}
             onCreateRoom={isLoggedIn ? handleCreateRoom : undefined}
           />
         )}
@@ -373,7 +372,6 @@ function App() {
             includeFamily={includeFamily}
             onIncludeFamilyChange={setIncludeFamily}
             onManageFamily={() => setActiveView("family")}
-            hltbEnabled={config?.hltb_enabled === true}
           />
         )}
 

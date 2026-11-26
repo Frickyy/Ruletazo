@@ -133,7 +133,7 @@ function GameCard({ game, isStale = false, isDemo = false, onToggleFavorite, onS
       <div className="game-card__side">
         <dl className="game-card__stats">
           <div>
-            <dt>{game.duration_source === "hltb" ? t("Historia principal (HLTB)") : t("Duración")}</dt>
+            <dt>{t("Duración")}</dt>
             <dd>
               <span className="mono">{formatHours(game.duration_hours)}</span>
               {game.duration_source === "community" && (
@@ -156,12 +156,6 @@ function GameCard({ game, isStale = false, isDemo = false, onToggleFavorite, onS
               )}
             </dd>
           </div>
-          {game.hltb_completionist_hours != null && (
-            <div>
-              <dt>{t("Completista (HLTB)")}</dt>
-              <dd className="mono">{formatHours(game.hltb_completionist_hours)}</dd>
-            </div>
-          )}
           <div>
             <dt>{t("Reseñas")}</dt>
             <dd>
@@ -267,7 +261,7 @@ function Verdict({ kind, title, excerpts = [] }) {
   );
 }
 
-/** HowLongToBeat devuelve decimales (ej. 21.88): se muestran redondeados. */
+/** Las horas vienen con decimales (ej. 21.88): se muestran redondeadas. */
 function formatHours(hours) {
   if (hours == null) return "—";
   if (hours < 1) return "< 1 h";

@@ -1,5 +1,5 @@
 """Enriquecimiento de un juego: géneros/sinopsis/reseñas (Store API), tiempo estimado
-para completarlo (IGDB, o HowLongToBeat si está activado) y dificultad de logros (Steam Web API).
+para completarlo (IGDB) y dificultad de logros (Steam Web API).
 
 Se cachea por appid con un TTL largo porque, a diferencia de la biblioteca de un
 usuario, esta información casi no cambia de un día para el otro.
@@ -11,9 +11,8 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 
-from app.core.config import get_settings
 from app.models.game import CachedGameDetails
-from app.services import hltb_client, igdb_client, store_browse, throttle
+from app.services import igdb_client, store_browse, throttle
 from app.services.steam_client import SteamClient
 from app.services.store_client import SteamStoreClient
 
@@ -27,8 +26,6 @@ STORE_METADATA_VERSION = 10
 # Subir este número fuerza a volver a pedir "lo bueno / lo malo" de las reseñas.
 # 2: varias frases por lado, filtradas (review_digest), y los errores de Steam ya no se cachean.
 REVIEWS_VERSION = 2
-# Subir este número fuerza a volver a buscar en HowLongToBeat los juegos que no tuvieron resultado.
-HLTB_VERSION = 1
 # Subir este número fuerza a volver a buscar en IGDB (por ejemplo, si cambia qué dato cuenta como creíble).
 IGDB_VERSION = 1
 
@@ -56,16 +53,6 @@ def has_store_metadata(details: CachedGameDetails) -> bool:
 def has_review_highlights(details: CachedGameDetails) -> bool:
     """True si ya se buscaron "lo bueno / lo malo" con la versión actual (aunque Steam no haya tenido)."""
     return (details.reviews_version or 0) >= REVIEWS_VERSION
-
-
-def has_hltb_lookup(details: CachedGameDetails) -> bool:
-    """True si ya se buscó en HLTB, haya tenido resultado o no.
-
-    Antes se exigía tener horas: un juego que no está en HLTB volvía a pedir Store, reseñas,
-    logros y HLTB cada vez que salía en la ruleta.
-    """
-    has_result = details.hltb_main_hours is not None or details.hltb_completionist_hours is not None
-    return has_result or (details.hltb_version or 0) >= HLTB_VERSION
 
 
 def has_igdb_lookup(details: CachedGameDetails) -> bool:
@@ -110,26 +97,24 @@ async def get_or_fetch_details(db: Session, appid: int, name: str) -> CachedGame
     """Devuelve los detalles de `appid`, pidiendo solo lo que falta o venció.
 
     Antes, si faltaba una sola parte (por ejemplo las reseñas, mientras Steam las tenía
-    bloqueadas) se volvía a pedir todo: tienda, HowLongToBeat y logros, y cada giro tardaba
+    bloqueadas) se volvía a pedir todo: tienda, duración y logros, y cada giro tardaba
     varios segundos. Ahora se piden solo las partes que hacen falta, y las reseñas no se piden
     mientras ese servicio está en pausa por rate limit (ver throttle.py).
     """
     cached = get_cached_details(db, appid)
     expired = cached is None or not is_fresh(cached)
     needs_store = expired or not has_store_metadata(cached)
-    needs_hltb = (expired or not has_hltb_lookup(cached)) and get_settings().hltb_enabled
     needs_igdb = (expired or not has_igdb_lookup(cached)) and igdb_client.enabled() and not throttle.is_cooling_down("igdb")
     needs_reviews = (expired or not has_review_highlights(cached)) and not throttle.is_cooling_down("reviews")
     needs_achievements = expired
-    if not (needs_store or needs_hltb or needs_igdb or needs_reviews or needs_achievements):
+    if not (needs_store or needs_igdb or needs_reviews or needs_achievements):
         return cached
 
     logger.info("Enriqueciendo detalles de '%s' (appid %s)", name, appid)
-    store_details, reviews, achievements, hltb, igdb = await asyncio.gather(
+    store_details, reviews, achievements, igdb = await asyncio.gather(
         _fetch_app_details(appid) if needs_store else _skip(),
         _fetch_reviews(appid) if needs_reviews else _skip(),
         _fetch_achievements(appid) if needs_achievements else _skip(),
-        hltb_client.get_completion_times(name) if needs_hltb else _skip(),
         igdb_client.get_times([appid]) if needs_igdb else _skip(),
     )
 
@@ -147,11 +132,6 @@ async def get_or_fetch_details(db: Session, appid: int, name: str) -> CachedGame
         cached.review_pros = join_excerpts(reviews["good"])
         cached.review_cons = join_excerpts(reviews["bad"])
         cached.reviews_version = REVIEWS_VERSION
-    if hltb is not None and not hltb.get("failed"):
-        # Un error de red no borra las horas que ya había ni cuenta como "no está en HLTB".
-        cached.hltb_main_hours = hltb["main_hours"]
-        cached.hltb_completionist_hours = hltb["completionist_hours"]
-        cached.hltb_version = HLTB_VERSION
     if igdb is not None:
         # None es que IGDB no respondió: se conserva lo que había y se reintenta la próxima vez.
         apply_igdb(cached, igdb[appid])

@@ -28,10 +28,9 @@ def db_session():
 @pytest.fixture(autouse=True)
 def _no_throttle(monkeypatch):
     """Sin pausas entre pedidos ni servicios enfriados entre un test y otro."""
-    from app.services import hltb_client, igdb_client, throttle
+    from app.services import igdb_client, throttle
 
     throttle.reset()
-    hltb_client._security_cache.clear()
     igdb_client.reset()
     monkeypatch.setattr(throttle, "MIN_INTERVAL_SECONDS", {})
     yield

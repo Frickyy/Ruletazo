@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 class Game(BaseModel):
     """Representa un juego mostrado en la ruleta o en la biblioteca.
 
-    Los campos de enriquecimiento (`genres`, `short_description`, reseñas, HowLongToBeat,
+    Los campos de enriquecimiento (`genres`, `short_description`, reseñas, duración,
     dificultad de logros) tienen default porque solo están completos una vez que
     `game_details_service` clasificó ese appid (ver services/game_details_service.py).
     """
@@ -46,9 +46,7 @@ class Game(BaseModel):
     # Frases cortas de las reseñas más útiles de Steam (ver services/review_digest.py).
     review_good: list[str] = Field(default_factory=list)
     review_bad: list[str] = Field(default_factory=list)
-    hltb_main_hours: float | None = None
-    hltb_completionist_hours: float | None = None
-    # Duración que muestra la página: "hltb", "igdb" o "community" (mediana de quienes lo terminaron).
+    # Duración que muestra la página: "igdb" o "community" (mediana de quienes lo terminaron).
     duration_hours: float | None = None
     duration_source: str | None = None
     # Personas detrás del dato (en IGDB o en Ruletazo) y, con IGDB, el link a la ficha del juego allá.

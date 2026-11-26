@@ -233,7 +233,7 @@ async def get_classification_status(
     steamid: str = Query(..., description="SteamID64 o vanity URL."),
     db: Session = Depends(get_db),
 ) -> dict:
-    """Cuántos juegos de la biblioteca ya tienen género/reseñas/HLTB/logros clasificados."""
+    """Cuántos juegos de la biblioteca ya tienen los datos de la tienda y tu progreso de logros."""
     return await _unwrap_steam_errors(library_service.get_classification_status(db, steamid))
 
 
@@ -261,7 +261,7 @@ async def enrich_library(
     limit: int = Query(default=5, ge=1, le=20, description="Cuántos juegos procesar (duración y logros)."),
     db: Session = Depends(get_db),
 ) -> dict:
-    """Segunda pasada de la clasificación: duración (HowLongToBeat) y progreso de logros."""
+    """Segunda pasada de la clasificación: tu progreso de logros."""
     return await _unwrap_steam_errors(library_service.enrich_library_batch(db, steamid, limit))
 
 

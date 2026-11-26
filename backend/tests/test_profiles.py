@@ -115,12 +115,10 @@ def test_named_url_settings_only_accept_https():
 
 
 def test_public_config(monkeypatch):
-    monkeypatch.setattr(
-        profiles, "get_settings", lambda: Settings(support_links="Ko-fi|https://ko-fi.com/x", hltb_enabled=False)
-    )
+    monkeypatch.setattr(profiles, "get_settings", lambda: Settings(support_links="Ko-fi|https://ko-fi.com/x"))
     config = profiles.public_config()
     assert config["support_links"] == [{"name": "Ko-fi", "url": "https://ko-fi.com/x"}]
-    assert config["hltb_enabled"] is False
+    assert "hltb_enabled" not in config
 
 
 def test_forum_authors_carry_supporter_badge(db_session, monkeypatch):
@@ -133,13 +131,12 @@ def test_forum_authors_carry_supporter_badge(db_session, monkeypatch):
     assert authors == {"Ana": True, "Beto": False}
 
 
-async def test_enrich_skips_hltb_when_disabled_and_progress_without_opt_in(db_session, monkeypatch):
+async def test_enrich_skips_progress_without_opt_in(db_session, monkeypatch):
     from app.services import store_browse
 
     _library(db_session, ANA, (620, "Portal 2"))
     db_session.query(CachedLibraryEntry).update({"playtime_forever_minutes": 300})
     db_session.commit()
-    calls = []
 
     async def fake_resolve(identifier):
         return ANA
@@ -147,20 +144,15 @@ async def test_enrich_skips_hltb_when_disabled_and_progress_without_opt_in(db_se
     async def fake_items(appids):
         return {620: store_browse.parse_item({"appid": 620, "success": 1, "type": 0, "name": "Portal 2"})}
 
-    async def fake_hltb(name):
-        calls.append("hltb")
-        return {"main_hours": 1, "completionist_hours": 2}
-
     monkeypatch.setattr(library_service, "resolve_steam_id", fake_resolve)
     monkeypatch.setattr(library_service.store_browse, "get_items", fake_items)
-    monkeypatch.setattr(library_service.hltb_client, "get_completion_times", fake_hltb)
-    monkeypatch.setattr(library_service, "get_settings", lambda: Settings(hltb_enabled=False))
     await library_service.classify_library_batch(db_session, ANA, limit=100)
 
     result = await library_service.enrich_library_batch(db_session, ANA, limit=5)
+    status = await library_service.get_classification_status(db_session, ANA)
 
-    assert calls == []
-    assert result["processed"] == 0  # ni duración (apagada) ni logros (no activado)
+    assert result["processed"] == 0  # el progreso de logros se pide solo si lo activaste
+    assert status["enriched"] == status["total"] == 1
 
 
 def test_delete_user_data_removes_everything_of_that_user_only(db_session):
@@ -323,19 +315,15 @@ def test_unfinishing_or_tiny_playtime_does_not_count(db_session):
     assert db_session.query(CompletionSample).count() == 0
 
 
-def test_hltb_is_off_by_default_and_community_fills_in(db_session, monkeypatch):
-    from app.core.config import Settings
+def test_without_igdb_data_the_community_fills_in(db_session):
     from app.models.game import CachedGameDetails
     from app.services import duration_service
 
-    db_session.add(CachedGameDetails(appid=10, hltb_main_hours=20.0, fetched_at=datetime.now(timezone.utc)))
+    db_session.add(CachedGameDetails(appid=10, fetched_at=datetime.now(timezone.utc)))
     for index, minutes in enumerate((540, 600, 660)):
         _finish(db_session, f"7656119800000010{index}", 10, minutes)
 
-    assert Settings().hltb_enabled is False
     assert duration_service.durations(db_session, [10]) == {10: {"hours": 10.0, "source": "community", "samples": 3}}
-    monkeypatch.setattr(duration_service, "get_settings", lambda: Settings(hltb_enabled=True))
-    assert duration_service.durations(db_session, [10])[10]["source"] == "hltb"
 
 
 def test_deleting_data_removes_completion_samples(db_session):
@@ -346,14 +334,14 @@ def test_deleting_data_removes_completion_samples(db_session):
     assert db_session.query(CompletionSample).count() == 0
 
 
-def test_igdb_comes_before_the_community_and_after_hltb(db_session, monkeypatch):
+def test_igdb_comes_before_the_community(db_session, monkeypatch):
     from app.core.config import Settings
     from app.models.game import CachedGameDetails
     from app.services import duration_service
 
     db_session.add(
         CachedGameDetails(
-            appid=10, hltb_main_hours=20.0, igdb_hours=10.4, igdb_samples=36,
+            appid=10, igdb_hours=10.4, igdb_samples=36,
             igdb_url="https://www.igdb.com/games/portal-2", fetched_at=datetime.now(timezone.utc),
         )
     )
@@ -368,9 +356,6 @@ def test_igdb_comes_before_the_community_and_after_hltb(db_session, monkeypatch)
     found = duration_service.durations(db_session, [10, 20])
     assert found[10] == {"hours": 10.4, "source": "igdb", "samples": 36, "url": "https://www.igdb.com/games/portal-2"}
     assert found[20]["source"] == "community"
-
-    monkeypatch.setattr(duration_service, "get_settings", lambda: with_igdb.model_copy(update={"hltb_enabled": True}))
-    assert duration_service.durations(db_session, [10])[10]["source"] == "hltb"
 
     # Sin claves no se muestra lo que haya quedado guardado de IGDB.
     monkeypatch.setattr(duration_service, "get_settings", lambda: Settings(igdb_client_id="", igdb_client_secret=""))

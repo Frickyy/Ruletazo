@@ -30,8 +30,7 @@ class CachedLibraryEntry(Base):
 
 class CachedGameDetails(Base):
     """Caché de datos enriquecidos de un juego: géneros/sinopsis/reseñas (Store API),
-    tiempo estimado para completarlo (IGDB, o HowLongToBeat si está activado) y dificultad de
-    logros (Steam Web API).
+    tiempo estimado para completarlo (IGDB) y dificultad de logros (Steam Web API).
 
     Se cachea por `appid` (no por usuario): es información global del juego, no de quién
     lo posee. TTL largo (`DETAILS_CACHE_TTL` en `services/game_details_service.py`) porque
@@ -63,10 +62,6 @@ class CachedGameDetails(Base):
     review_pros: Mapped[str] = mapped_column(Text, default="")
     review_cons: Mapped[str] = mapped_column(Text, default="")
     reviews_version: Mapped[int] = mapped_column(Integer, default=0)
-    hltb_main_hours: Mapped[float | None] = mapped_column(Float, nullable=True)
-    hltb_completionist_hours: Mapped[float | None] = mapped_column(Float, nullable=True)
-    # Se buscó en HLTB con esta versión (aunque no haya habido resultado). Ver HLTB_VERSION.
-    hltb_version: Mapped[int] = mapped_column(Integer, default=0)
     # Según IGDB: horas para terminarlo (la historia con algunos extras), solo si el dato es creíble
     # (ver igdb_client.credible_hours); cuántas personas cargaron su tiempo, y la ficha del juego en IGDB.
     igdb_hours: Mapped[float | None] = mapped_column(Float, nullable=True)
