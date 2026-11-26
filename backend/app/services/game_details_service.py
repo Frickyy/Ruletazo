@@ -49,7 +49,7 @@ def is_fresh(details: CachedGameDetails) -> bool:
 
 def has_store_metadata(details: CachedGameDetails) -> bool:
     """Old cache rows lack price/release metadata and must be refreshed from Store API."""
-    return details.store_metadata_version >= STORE_METADATA_VERSION
+    return (details.store_metadata_version or 0) >= STORE_METADATA_VERSION
 
 
 def has_review_highlights(details: CachedGameDetails) -> bool:

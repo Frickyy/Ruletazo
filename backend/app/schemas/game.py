@@ -43,6 +43,9 @@ class Game(BaseModel):
     release_date: str = ""
     review_score_desc: str = ""
     review_total: int = 0
+    # Ya hay datos de la tienda con la versión actual: hasta entonces no se sabe cuántas reseñas tiene
+    # (la opción "Ocultar juegos basura" no esconde un juego sin estos datos).
+    store_data: bool = False
     # Frases cortas de las reseñas más útiles de Steam (ver services/review_digest.py).
     review_good: list[str] = Field(default_factory=list)
     review_bad: list[str] = Field(default_factory=list)
