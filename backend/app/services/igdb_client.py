@@ -34,6 +34,9 @@ ORDER_TOLERANCE = 1.25
 # El tiempo al 100 % se muestra hasta este tope: más arriba suelen ser juegos sin final.
 MAX_FULL_HOURS = 300
 _HEADERS = {"User-Agent": "Ruletazo/1.0 (+https://ruletazo.app)", "Accept": "application/json"}
+# Un puntaje de IGDB se muestra con al menos estas críticas o votos de usuarios.
+MIN_CRITIC_REVIEWS = 3
+MIN_USER_RATINGS = 10
 # El token de la app dura unos 60 días: se guarda en memoria y se renueva un día antes de que venza.
 _token: dict = {}
 
@@ -128,7 +131,8 @@ def extra_hours(entry: dict | None, hours: float | None) -> tuple[float | None, 
 
 
 async def get_times(appids: list[int]) -> dict[int, dict] | None:
-    """{appid: {"hours", "samples", "url", "quick_hours", "full_hours"}} para cada appid pedido. `hours` es None si IGDB no tiene
+    """{appid: {"hours", "samples", "url", "quick_hours", "full_hours", "critic_score", "critic_count",
+    "user_score", "user_count"}} para cada appid pedido. `hours` es None si IGDB no tiene
     un dato creíble o no conoce el juego. Devuelve None si IGDB no respondió: así el juego no queda
     marcado como buscado y se reintenta la próxima vez."""
     if not appids or not enabled():
@@ -138,7 +142,10 @@ async def get_times(appids: list[int]) -> dict[int, dict] | None:
             games: dict[int, dict] = {}
             for start in range(0, len(appids), BATCH_SIZE):
                 uids = ",".join(f'"{appid}"' for appid in appids[start : start + BATCH_SIZE])
-                query = f"fields uid,game.url; where external_game_source = {STEAM_SOURCE} & uid = ({uids}); limit 500;"
+                query = (
+                    "fields uid,game.url,game.aggregated_rating,game.aggregated_rating_count,game.rating,game.rating_count;"
+                    f" where external_game_source = {STEAM_SOURCE} & uid = ({uids}); limit 500;"
+                )
                 for row in await _query(client, "external_games", query):
                     uid, game = str(row.get("uid", "")), row.get("game")
                     if uid.isdigit() and isinstance(game, dict) and "id" in game:
@@ -170,8 +177,24 @@ async def get_times(appids: list[int]) -> dict[int, dict] | None:
             "url": url if url.startswith("https://www.igdb.com/") and len(url) <= 255 else "",
             "quick_hours": quick_hours,
             "full_hours": full_hours,
+            **_scores(game),
         }
     return result
+
+
+def _scores(game: dict) -> dict:
+    """Los puntajes de la crítica y de los usuarios en IGDB (0 a 100), con cuántos hay detrás."""
+
+    def score(key: str) -> float | None:
+        value = game.get(key)
+        return round(float(value), 1) if isinstance(value, (int, float)) and 0 <= value <= 100 else None
+
+    return {
+        "critic_score": score("aggregated_rating"),
+        "critic_count": int(game.get("aggregated_rating_count") or 0),
+        "user_score": score("rating"),
+        "user_count": int(game.get("rating_count") or 0),
+    }
 
 
 async def _query(client: httpx.AsyncClient, endpoint: str, body: str) -> list[dict]:

@@ -3,6 +3,17 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
+class CriticScore(BaseModel):
+    """Un puntaje de 0 a 100 para la tarjeta (ver game_details_service.critic_scores)."""
+
+    # "metacritic", "igdb_critics", "igdb_users" o "steam".
+    source: str
+    score: int
+    # Críticas, votos o reseñas detrás del puntaje (0 si la fuente no lo dice).
+    count: int = 0
+    url: str = ""
+
+
 class Game(BaseModel):
     """Representa un juego mostrado en la ruleta o en la biblioteca.
 
@@ -46,6 +57,8 @@ class Game(BaseModel):
     # Ya hay datos de la tienda con la versión actual: hasta entonces no se sabe cuántas reseñas tiene
     # (la opción "Ocultar juegos basura" no esconde un juego sin estos datos).
     store_data: bool = False
+    # Metacritic, crítica y usuarios de IGDB, usuarios de Steam (los que haya).
+    critics: list[CriticScore] = Field(default_factory=list)
     # Frases cortas de las reseñas más útiles de Steam (ver services/review_digest.py).
     review_good: list[str] = Field(default_factory=list)
     review_bad: list[str] = Field(default_factory=list)

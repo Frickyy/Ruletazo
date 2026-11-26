@@ -422,6 +422,7 @@ def apply_cached_details(game: Game, details: CachedGameDetails) -> None:
     game.review_score_desc = details.review_score_desc
     game.review_total = details.review_total
     game.store_data = game_details_service.has_store_metadata(details)
+    game.critics = game_details_service.critic_scores(details)
     game.review_good = game_details_service.split_excerpts(details.review_pros)
     game.review_bad = game_details_service.split_excerpts(details.review_cons)
     game.achievement_difficulty = game_details_service.difficulty_label(details)
