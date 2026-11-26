@@ -25,6 +25,13 @@ def test_credible_hours_uses_the_normal_time():
     assert igdb_client.credible_hours(entry) == 10.4
 
 
+def test_extra_hours_only_when_they_make_sense():
+    assert igdb_client.extra_hours({"hastily": 4.6 * HOUR, "completely": 27.1 * HOUR}, 10.4) == (4.6, 27.1)
+    # PEAK: 6,2 h para terminarlo y 1556 h "al 100 %": el segundo no se muestra.
+    assert igdb_client.extra_hours({"hastily": 5.6 * HOUR, "completely": 1556 * HOUR}, 6.2) == (5.6, None)
+    assert igdb_client.extra_hours({"hastily": 4 * HOUR}, None) == (None, None)
+
+
 def test_credible_hours_falls_back_to_the_quick_time():
     assert igdb_client.credible_hours({"hastily": 2 * HOUR, "count": 3}) == 2.0
 
@@ -82,9 +89,10 @@ async def test_get_times_maps_steam_appids_to_hours_and_links(configured):
     result = await igdb_client.get_times([620, 4000, 999999])
 
     assert result == {
-        620: {"hours": 10.4, "samples": 36, "url": "https://www.igdb.com/games/portal-2"},
-        4000: {"hours": None, "samples": 7, "url": ""},  # dato absurdo y link que no es de IGDB
-        999999: {"hours": None, "samples": 0, "url": ""},  # no está en IGDB
+        620: {"hours": 10.4, "samples": 36, "url": "https://www.igdb.com/games/portal-2", "quick_hours": 4.6, "full_hours": 27.1},
+        # Dato absurdo y link que no es de IGDB.
+        4000: {"hours": None, "samples": 7, "url": "", "quick_hours": None, "full_hours": None},
+        999999: {"hours": None, "samples": 0, "url": "", "quick_hours": None, "full_hours": None},  # no está en IGDB
     }
     # Solo viajan números de juego, con las claves de la app.
     body = external.calls.last.request.content.decode()
@@ -101,7 +109,7 @@ async def test_an_expired_token_is_renewed_once(configured):
     respx.post(TOKEN_URL).mock(side_effect=[_token("viejo"), _token("nuevo")])
     respx.post(EXTERNAL_URL).mock(side_effect=[httpx.Response(401, json={}), httpx.Response(200, json=[])])
 
-    assert await igdb_client.get_times([620]) == {620: {"hours": None, "samples": 0, "url": ""}}
+    assert await igdb_client.get_times([620]) == {620: {"hours": None, "samples": 0, "url": "", "quick_hours": None, "full_hours": None}}
 
 
 @respx.mock

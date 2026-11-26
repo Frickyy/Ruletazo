@@ -79,6 +79,24 @@ class CachedGameDetails(Base):
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 
+class DurationPage(Base):
+    """Un juego con página propia en /cuanto-dura/<slug> (ver services/duration_pages.py).
+
+    El tiempo "normal" para terminarlo y los datos de la tienda están en CachedGameDetails; acá
+    van la dirección, el nombre y los otros dos tiempos de IGDB, si son creíbles.
+    """
+
+    __tablename__ = "duration_pages"
+
+    appid: Mapped[int] = mapped_column(Integer, primary_key=True)
+    slug: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    name: Mapped[str] = mapped_column(String(255))
+    # Yendo directo a la historia (hastily) y al 100 % (completely), en horas.
+    quick_hours: Mapped[float | None] = mapped_column(Float, nullable=True)
+    full_hours: Mapped[float | None] = mapped_column(Float, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
 class FavoriteGame(Base):
     """Un juego marcado como favorito por un usuario, para la colección "Favoritos" de la ruleta."""
 
