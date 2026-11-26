@@ -30,7 +30,7 @@ IMMUTABLE = "public, max-age=31536000, immutable"
 SHORT = "public, max-age=3600"
 
 # Primera parte de la dirección de cada sección (VIEW_SLUGS en frontend/src/routes.js).
-APP_SECTIONS = frozenset({"ruleta", "biblioteca", "familia", "foro", "perfil", "privacidad", "terminos", "sala"})
+APP_SECTIONS = frozenset({"ruleta", "biblioteca", "familia", "foro", "perfil", "privacidad", "terminos", "sala", "obs"})
 # Lo de cada persona (su biblioteca, su familia, su perfil) y las salas, que duran un rato, no
 # van a Google. Con hash nunca se indexaron: así los perfiles siguen fuera de los buscadores.
 NOINDEX_SECTIONS = frozenset({"biblioteca", "familia", "perfil", "sala"})

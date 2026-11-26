@@ -27,6 +27,7 @@ EVENTS = frozenset(
         "share",  # compartió lo que le tocó
         "backlog_share",  # compartió su pila sin jugar
         "room_create",  # armó una sala grupal
+        "streamer_overlay",  # abrió la ruleta del modo streamer (la fuente de OBS)
     }
 )
 

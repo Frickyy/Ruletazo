@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
  *   /perfil/<steamid>                 el perfil de otra persona
  *   /sala/<código>                    una sala para elegir en grupo
  *   /privacidad · /terminos
+ *   /obs                              modo streamer (con ?perfil= o ?demo=1 es la superposición, ver main.jsx)
  *
  * Los links viejos con hash (/#/sala/ABC123) siguen andando: al entrar se pasan a la dirección nueva.
  */
@@ -26,6 +27,7 @@ const VIEW_SLUGS = {
   privacy: "privacidad",
   terms: "terminos",
   room: "sala",
+  streamer: "obs",
 };
 const SLUG_VIEWS = Object.fromEntries(Object.entries(VIEW_SLUGS).map(([view, slug]) => [slug, view]));
 

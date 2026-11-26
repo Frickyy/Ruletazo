@@ -39,7 +39,8 @@ function SiteFooter({ config, onNavigate, user }) {
             {t("Mandar comentario")}
           </button>
         </div>
-        <nav className="site-footer__links" aria-label={t("Legales")}>
+        <nav className="site-footer__links" aria-label={t("Más páginas")}>
+          <a href="/obs" onClick={(event) => { event.preventDefault(); onNavigate?.("streamer"); }}>{t("Modo streamer")}</a>
           <a href="/privacidad" onClick={(event) => { event.preventDefault(); onNavigate?.("privacy"); }}>{t("Privacidad")}</a>
           <a href="/terminos" onClick={(event) => { event.preventDefault(); onNavigate?.("terms"); }}>{t("Términos")}</a>
         </nav>

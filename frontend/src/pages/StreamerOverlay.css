@@ -1,0 +1,110 @@
+/* Fondo de la página según ?fondo=: transparente para OBS, verde para croma, o el oscuro del sitio. */
+html.obs-overlay--transparente,
+html.obs-overlay--transparente body {
+  background: transparent;
+}
+
+html.obs-overlay--verde,
+html.obs-overlay--verde body {
+  background: #00ff00;
+}
+
+html.obs-overlay,
+html.obs-overlay body {
+  min-height: 100%;
+  overflow: hidden;
+}
+
+.obs {
+  position: fixed;
+  inset: 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Un panel oscuro propio: se lee igual sobre cualquier fondo del stream. Se diseña a 800×450 y
+   --obs-scale (StreamerOverlay.jsx) lo agranda o achica al tamaño de la fuente. */
+.obs__panel {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  gap: 14px;
+  width: 760px;
+  transform: translate(-50%, -50%) scale(var(--obs-scale, 1));
+  padding: 16px 18px 18px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  /* Opaco: con fondo verde, un panel translúcido se teñiría y el croma lo recortaría mal. */
+  background: var(--bg);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+}
+
+.obs__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.obs__title {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.obs__brand {
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.obs__result {
+  display: grid;
+  gap: 4px;
+  min-height: 62px;
+  place-content: center;
+  text-align: center;
+}
+
+.obs__game {
+  font-family: var(--font-display);
+  font-size: 1.9rem;
+  line-height: 1.1;
+  color: var(--text);
+  animation: obs-pop 260ms ease-out;
+}
+
+.obs__meta {
+  font-size: 1.05rem;
+  color: var(--muted);
+}
+
+.obs__note {
+  font-size: 1.05rem;
+  color: var(--muted);
+}
+
+@keyframes obs-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .obs__game {
+    animation: none;
+  }
+}

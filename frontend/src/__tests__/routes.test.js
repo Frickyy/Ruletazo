@@ -17,7 +17,7 @@ describe("rutas", () => {
   });
 
   it("arma la dirección de vuelta igual a como la lee", () => {
-    for (const path of ["/", "/biblioteca", "/foro", "/foro/juego/620", "/foro/juego/620/discusiones", "/foro/juego/620/hilo/7", "/perfil", "/sala/ABC234"]) {
+    for (const path of ["/", "/biblioteca", "/foro", "/foro/juego/620", "/foro/juego/620/discusiones", "/foro/juego/620/hilo/7", "/perfil", "/sala/ABC234", "/obs"]) {
       expect(pathOfRoute(parseRoute(path))).toBe(path);
     }
   });
