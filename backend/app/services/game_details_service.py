@@ -11,6 +11,7 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.models.game import CachedGameDetails
 from app.services import igdb_client, store_browse, throttle
 from app.services.steam_client import SteamClient
@@ -98,14 +99,19 @@ async def get_or_fetch_details(db: Session, appid: int, name: str) -> CachedGame
 
     Antes, si faltaba una sola parte (por ejemplo las reseñas, mientras Steam las tenía
     bloqueadas) se volvía a pedir todo: tienda, duración y logros, y cada giro tardaba
-    varios segundos. Ahora se piden solo las partes que hacen falta, y las reseñas no se piden
-    mientras ese servicio está en pausa por rate limit (ver throttle.py).
+    varios segundos. Ahora se piden solo las partes que hacen falta. Las frases de las reseñas
+    se piden solo si están prendidas (REVIEW_HIGHLIGHTS_ENABLED) y no mientras ese servicio está
+    en pausa por rate limit (ver throttle.py).
     """
     cached = get_cached_details(db, appid)
     expired = cached is None or not is_fresh(cached)
     needs_store = expired or not has_store_metadata(cached)
     needs_igdb = (expired or not has_igdb_lookup(cached)) and igdb_client.enabled() and not throttle.is_cooling_down("igdb")
-    needs_reviews = (expired or not has_review_highlights(cached)) and not throttle.is_cooling_down("reviews")
+    needs_reviews = (
+        get_settings().review_highlights_enabled
+        and (expired or not has_review_highlights(cached))
+        and not throttle.is_cooling_down("reviews")
+    )
     needs_achievements = expired
     if not (needs_store or needs_igdb or needs_reviews or needs_achievements):
         return cached

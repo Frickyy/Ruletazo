@@ -110,7 +110,27 @@ def _track_fetches(monkeypatch):
     return calls
 
 
+def _reviews_on(monkeypatch):
+    from app.core.config import Settings
+
+    monkeypatch.setattr(game_details_service, "get_settings", lambda: Settings(review_highlights_enabled=True))
+
+
+async def test_steam_reviews_are_not_asked_while_they_are_off(db_session, monkeypatch):
+    # Steam redirige /appreviews a su portada: apagado, ni la ficha vencida ni la que no las tiene las piden.
+    db_session.add(_complete_details(fetched_at=datetime.now(timezone.utc) - timedelta(days=30)))
+    db_session.add(_complete_details(appid=11, reviews_version=0))
+    db_session.commit()
+    calls = _track_fetches(monkeypatch)
+
+    await game_details_service.get_or_fetch_details(db_session, 10, "Juego")
+    await game_details_service.get_or_fetch_details(db_session, 11, "Otro")
+
+    assert sorted(calls) == ["achievements", "store"]
+
+
 async def test_only_missing_reviews_are_fetched(db_session, monkeypatch):
+    _reviews_on(monkeypatch)
     db_session.add(_complete_details(reviews_version=0, review_score_desc="Muy positivas", review_total=94499))
     db_session.commit()
     calls = _track_fetches(monkeypatch)
@@ -126,6 +146,7 @@ async def test_only_missing_reviews_are_fetched(db_session, monkeypatch):
 async def test_nothing_is_fetched_while_reviews_are_rate_limited(db_session, monkeypatch):
     from app.services import throttle
 
+    _reviews_on(monkeypatch)
     db_session.add(_complete_details(reviews_version=0))
     db_session.commit()
     calls = _track_fetches(monkeypatch)
@@ -137,6 +158,7 @@ async def test_nothing_is_fetched_while_reviews_are_rate_limited(db_session, mon
 
 
 async def test_expired_details_refresh_every_part(db_session, monkeypatch):
+    _reviews_on(monkeypatch)
     db_session.add(_complete_details(fetched_at=datetime.now(timezone.utc) - timedelta(days=30)))
     db_session.commit()
     calls = _track_fetches(monkeypatch)
