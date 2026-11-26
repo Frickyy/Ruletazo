@@ -360,8 +360,10 @@ function App() {
 
         {activeView === "library" && (
           <LibraryPage
-            steamId={steamId}
+            steamId={librarySteamId}
             guest={guest}
+            onGuest={setGuestId}
+            ready={sessionChecked}
             onLogin={handleSteamLogin}
             library={library}
             hideAdult={hideAdult}
