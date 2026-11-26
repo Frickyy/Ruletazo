@@ -35,6 +35,8 @@ function LibraryPage({
   onHideAdultChange,
   hideSoftware = true,
   onHideSoftwareChange,
+  hideJunk = false,
+  onHideJunkChange,
   playtimeFilter = "all",
   onPlaytimeFilterChange,
   includeFamily,
@@ -72,13 +74,13 @@ function LibraryPage({
   const durationEnabled = useMemo(() => durationFilterAvailable(games), [games]);
   const hiddenCount = useMemo(() => games.filter((game) => game.is_hidden).length, [games]);
   const filtered = useMemo(() => {
-    const filters = { collection, genre, playtimeFilter, duration: durationEnabled ? duration : "any", hideAdult, hideSoftware, mode, state: stateFilter, search: deferredSearch };
+    const filters = { collection, genre, playtimeFilter, duration: durationEnabled ? duration : "any", hideAdult, hideSoftware, hideJunk, mode, state: stateFilter, search: deferredSearch };
     return sortGames(
       games.filter((game) => matchesFilters(game, filters)),
       sortBy,
       sortDirection,
     );
-  }, [games, collection, genre, playtimeFilter, duration, durationEnabled, hideAdult, hideSoftware, mode, stateFilter, deferredSearch, sortBy, sortDirection]);
+  }, [games, collection, genre, playtimeFilter, duration, durationEnabled, hideAdult, hideSoftware, hideJunk, mode, stateFilter, deferredSearch, sortBy, sortDirection]);
 
   // Resumen de estados: se vuelve a pedir cuando cambia algún estado.
   const statesKey = useMemo(() => games.filter((game) => game.state).map((game) => `${game.appid}:${game.state}`).join(","), [games]);
@@ -90,7 +92,7 @@ function LibraryPage({
   // Filtros nuevos → se vuelve a mostrar desde el principio.
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
-  }, [collection, genre, playtimeFilter, duration, hideAdult, hideSoftware, mode, stateFilter, deferredSearch, sortBy, sortDirection]);
+  }, [collection, genre, playtimeFilter, duration, hideAdult, hideSoftware, hideJunk, mode, stateFilter, deferredSearch, sortBy, sortDirection]);
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -301,6 +303,10 @@ function LibraryPage({
           <label className="checkbox" title={t("Deja afuera lo que Steam lista como software, como Soundpad o Wallpaper Engine")}>
             <input type="checkbox" checked={hideSoftware} onChange={(event) => onHideSoftwareChange?.(event.target.checked)} />
             {t("Ocultar programas")}
+          </label>
+          <label className="checkbox" title={t("Deja afuera los que tienen menos de 50 reseñas en Steam o reseñas negativas: suelen ser los que se compran por los cromos")}>
+            <input type="checkbox" checked={hideJunk} onChange={(event) => onHideJunkChange?.(event.target.checked)} />
+            {t("Ocultar juegos basura")}
           </label>
           <label className="checkbox">
             <input type="checkbox" checked={includeFamily} onChange={(event) => onIncludeFamilyChange?.(event.target.checked)} />

@@ -216,3 +216,15 @@ def test_igdb_lookup_keeps_the_quick_time():
 
     assert (details.igdb_hours, details.igdb_quick_hours) == (27.0, 15.5)
     assert game_details_service.has_igdb_lookup(details)
+
+
+def test_games_say_whether_their_store_data_is_known():
+    from app.schemas.game import Game
+
+    current = Game(appid=10, name="Juego", header_image="")
+    library_service.apply_cached_details(current, _make_details(store_metadata_version=game_details_service.STORE_METADATA_VERSION, review_total=12))
+    old = Game(appid=10, name="Juego", header_image="")
+    library_service.apply_cached_details(old, _make_details(store_metadata_version=0, review_total=12))
+
+    assert (current.store_data, current.review_total) == (True, 12)
+    assert old.store_data is False

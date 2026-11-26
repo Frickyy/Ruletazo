@@ -65,6 +65,17 @@ export const SORT_OPTIONS = [
  * - includeFinished: si es false, los terminados no entran (la ruleta los saca por defecto)
  * - state: filtro por estado de la página Biblioteca (ver STATE_OPTIONS)
  */
+// "Juegos basura": los que casi nadie reseñó en Steam o que tienen reseñas negativas. Suelen ser los
+// que se compran baratos por los cromos. Un juego sin datos de la tienda no cuenta: todavía no se
+// sabe cuántas reseñas tiene.
+export const JUNK_MAX_REVIEWS = 50;
+const NEGATIVE_REVIEWS = ["Mayormente negativas", "Negativas", "Muy negativas", "Extremadamente negativas"];
+
+export function isJunk(game) {
+  if (!game.store_data) return false;
+  return (game.review_total ?? 0) < JUNK_MAX_REVIEWS || NEGATIVE_REVIEWS.includes(game.review_score_desc);
+}
+
 export function matchesFilters(game, filters = {}, now = Date.now()) {
   const {
     collection = "all",
@@ -73,6 +84,7 @@ export function matchesFilters(game, filters = {}, now = Date.now()) {
     duration = "any",
     hideAdult = false,
     hideSoftware = false,
+    hideJunk = false,
     search = "",
     mode = "any",
     inCommon = false,
@@ -98,6 +110,7 @@ export function matchesFilters(game, filters = {}, now = Date.now()) {
   if (mode === "local" && !game.local_multiplayer) return false;
   if (hideAdult && game.is_adult) return false;
   if (hideSoftware && game.is_software) return false;
+  if (hideJunk && isJunk(game)) return false;
   if (genre && !(game.genres ?? []).includes(genre)) return false;
   if (search && !game.name.toLocaleLowerCase("es").includes(search.trim().toLocaleLowerCase("es"))) return false;
 
