@@ -293,10 +293,16 @@ const en = {
   // ---------- Biblioteca ----------
   "No se pudo actualizar favoritos.": "Couldn't update favorites.",
   "No se pudo volver a mostrar el juego.": "Couldn't show the game again.",
-  "En la ruleta estás usando la biblioteca de {name}. Iniciá sesión con Steam para explorarla, marcar favoritos y guardar qué estás jugando.":
-    "On the wheel you're using {name}'s library. Sign in through Steam to browse it, mark favorites and save what you're playing.",
+  "Es la biblioteca de {name}. Para marcar favoritos y guardar qué estás jugando, iniciá sesión con Steam.":
+    "This is {name}'s library. To mark favorites and save what you're playing, sign in through Steam.",
   "un perfil público": "a public profile",
-  "Iniciá sesión con Steam para ver tu biblioteca.": "Sign in through Steam to see your library.",
+  "Toda tu colección de Steam en una lista, con búsqueda y los mismos filtros que la ruleta.":
+    "Your whole Steam collection in one list, with search and the same filters as the wheel.",
+  "Pegá el link de tu perfil de Steam para ver tu biblioteca": "Paste your Steam profile link to see your library",
+  "Ver mi biblioteca": "See my library",
+  "Sin datos todavía": "No data yet",
+  "Se completa cuando lo terminan 3 personas en Ruletazo: marcalo como Terminado cuando lo termines.":
+    "It fills in once 3 people finish it on Ruletazo: mark it as Finished when you do.",
   "{shown} de {total} juegos": "{shown} of {total} games",
   "En {year} terminaste {finished} juego y empezaste {started}.": "In {year} you finished {finished} game and started {started}.",
   "En {year} terminaste {finished} juegos y empezaste {started}.": "In {year} you finished {finished} games and started {started}.",
@@ -312,7 +318,6 @@ const en = {
   "Cargando biblioteca…": "Loading library…",
   "Ambas": "Both",
   "Coop": "Co-op",
-  "{hours} h para terminarlo": "{hours} h to beat",
   "{hours} h jugadas": "{hours} h played",
   "{unlocked}/{total} logros": "{unlocked}/{total} achievements",
   "Volver a mostrar": "Show again",

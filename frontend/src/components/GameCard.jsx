@@ -135,7 +135,13 @@ function GameCard({ game, isStale = false, isDemo = false, onToggleFavorite, onS
           <div>
             <dt>{t("Duración")}</dt>
             <dd>
-              <span className="mono">{formatHours(game.duration_hours)}</span>
+              {game.duration_hours == null ? (
+                <span className="muted" title={t("Se completa cuando lo terminan 3 personas en Ruletazo: marcalo como Terminado cuando lo termines.")}>
+                  {t("Sin datos todavía")}
+                </span>
+              ) : (
+                <span className="mono">{formatHours(game.duration_hours)}</span>
+              )}
               {game.duration_source === "community" && (
                 <span className="muted game-card__source" title={t("Mediana de las horas en Steam de quienes lo marcaron como terminado en Ruletazo")}>
                   {" "}· {t("según {n} jugadores", { n: game.duration_samples })}
