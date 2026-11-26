@@ -91,7 +91,9 @@ Se puede usar `**negrita**`, `||spoiler||` (queda oculto hasta que lo tocan) y l
 
 ## Otras cosas
 
-- **Duración de los juegos**: sale de las horas de la gente que los terminó en Ruletazo (con al menos 3 personas, y nunca se muestran las de alguien en particular). Al principio pocos juegos tienen duración; se va completando a medida que la gente marca juegos como terminados.
+- **Duración de los juegos**: sale de [IGDB](https://www.igdb.com), una base de juegos que arma su comunidad. Si IGDB no tiene un dato creíble, se usan las horas de la gente que lo terminó en Ruletazo (con al menos 3 personas, y nunca se muestran las de alguien en particular).
+- **Cuánto dura cada juego**: en [ruletazo.app/cuanto-dura](https://ruletazo.app/cuanto-dura/) hay una página por juego popular con las horas que lleva terminarlo.
+- **Modo streamer**: en [ruletazo.app/obs](https://ruletazo.app/obs) armás una fuente de navegador para OBS con la ruleta de tu biblioteca, con fondo transparente.
 - **Español e inglés**: botón **ES / EN** arriba. La primera vez se elige según el idioma de tu navegador.
 - **Como app en el celular**: desde el navegador, *Agregar a pantalla de inicio*, y se abre como una app más.
 - **Sonido** del rodillo, opcional.
@@ -118,6 +120,8 @@ El detalle está en la **Política de privacidad** y los **Términos**, en el pi
 
 ---
 
-¿Querés ver cómo está hecho o proponer una mejora? Está todo en [DESARROLLO.md](DESARROLLO.md).
+## Contribuir
 
-El código es público para leerlo, pero no es de uso libre: no se puede copiar, montar en otra página ni redistribuir sin permiso. Ver [LICENSE](LICENSE).
+¿Encontraste un error o tenés una idea? Podés abrir un *issue* o mandar un pull request: lo revisamos y, si entra, queda en la página. Cómo correrla en tu compu y qué revisar antes de mandar cambios está en [CONTRIBUTING.md](CONTRIBUTING.md), y cómo está hecha, en [DESARROLLO.md](DESARROLLO.md). Las fallas de seguridad se avisan en privado: ver [SECURITY.md](SECURITY.md).
+
+El código es público para leerlo y proponer mejoras, pero no es de uso libre: no se puede copiar a otro proyecto, montar en otra página ni redistribuir sin permiso. Ver [LICENSE](LICENSE).

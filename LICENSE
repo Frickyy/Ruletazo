@@ -1,33 +1,36 @@
-Ruletazo - Source-Available License (View Only)
+Ruletazo - Source-Available License
 
 Copyright (c) 2026 Frickyy (https://github.com/Frickyy). All rights reserved.
 
-The source code in this repository is published so that anyone can read it.
-It is not open source software.
+The source code in this repository is published so that anyone can read it
+and propose improvements. It is not open source software.
 
 1. What you may do
 
-   You may view and read the source code, fork this repository on GitHub to
-   the extent required by the GitHub Terms of Service, and run it on your own
-   computer, only for yourself, to study it or to prepare a contribution.
+   You may view and read the source code, fork this repository on GitHub, and
+   run and modify it on your own computer, only for yourself, to study it or
+   to prepare a contribution to this repository (for example a pull request).
 
 2. What you may not do
 
    Without prior written permission from the copyright holder, you may not:
 
    a. copy, modify, merge or translate the code, in whole or in part, into
-      another project;
+      another project (changes made only to propose them to this repository
+      are allowed, as described in section 1);
    b. run, host or deploy the software, or any part or derivative of it, so
       that other people can use it (for example as a website, app or service);
-   c. distribute, publish, sublicense or sell the code or any derivative of it;
+   c. distribute, publish, sublicense or sell the code or any derivative of it,
+      except as a pull request or patch sent to this repository;
    d. use the name "Ruletazo", its logo or its look to identify another
       product or service.
 
 3. Contributions
 
    If you send a contribution (for example a pull request or a patch), you
-   agree that the copyright holder may use, modify and distribute it as part
-   of Ruletazo under any terms, without compensation.
+   confirm that you wrote it or otherwise have the right to send it, and you
+   agree that the copyright holder may use, modify, relicense and distribute
+   it as part of Ruletazo under any terms, without compensation.
 
 4. Third-party material
 
@@ -45,8 +48,10 @@ To ask for permission, write to ruletazo007@gmail.com.
 
 Resumen en español (el texto en inglés de arriba es el que vale):
 
-El código está publicado para que cualquiera lo pueda leer (y correrlo en su
-propia compu para estudiarlo), pero no es de uso libre. Sin permiso por escrito no se puede copiar a otro proyecto, modificar,
-montar como página o servicio, redistribuir ni vender, y tampoco usar el nombre
-"Ruletazo". Si mandás una contribución, aceptás que se use en Ruletazo. Para
-pedir permiso: ruletazo007@gmail.com.
+El código está publicado para que cualquiera lo pueda leer y proponer mejoras:
+podés hacer un fork, correrlo y cambiarlo en tu compu para estudiarlo o para
+mandar un pull request a este repositorio. Pero no es de uso libre: sin permiso
+por escrito no se puede copiar a otro proyecto, montar como página o servicio,
+redistribuir ni vender, y tampoco usar el nombre "Ruletazo". Si mandás una
+contribución, confirmás que es tuya (o que tenés derecho a mandarla) y aceptás
+que se use en Ruletazo. Para pedir permiso: ruletazo007@gmail.com.
