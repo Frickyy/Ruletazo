@@ -36,7 +36,7 @@ Los juegos que ya terminaste y los de contenido para adultos quedan afuera, salv
 
 ### Cuando sale un juego
 
-Debajo del rodillo aparece su ficha: duración, puntaje de la comunidad, **lo bueno y lo malo** según las reseñas más útiles de Steam (frases cortas, sin groserías), dificultad de los logros, tu progreso y precio.
+Debajo del rodillo aparece su ficha: duración, puntaje de las reseñas de Steam, dificultad de los logros, tu progreso y precio.
 
 Desde ahí podés:
 
@@ -115,8 +115,7 @@ El detalle está en la **Política de privacidad** y los **Términos**, en el pi
 
 - **Juegos gratis que nunca abriste**: Steam solo informa los free-to-play que jugaste al menos una vez. Abrilos una vez desde Steam y aparecen.
 - ***Casi al 100%* vacío**: tus logros tienen que ser públicos en Steam, y el seguimiento tiene que estar activado en tu perfil.
-- **Una ficha sin "lo bueno y lo malo"**: Steam limita cuántas reseñas se pueden pedir seguido. Se completa sola más tarde.
-- **En inglés**, las sinopsis y las frases de reseñas siguen en español, porque Steam las entrega así.
+- **En inglés**, las sinopsis siguen en español, porque Steam las entrega así.
 
 ---
 

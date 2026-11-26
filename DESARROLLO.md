@@ -64,6 +64,7 @@ Completá `backend/.env`:
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` | Cuenta que manda esos mails. Con Gmail: `smtp.gmail.com`, `587`, la cuenta y una [contraseña de aplicación](https://myaccount.google.com/apppasswords) (hace falta la verificación en dos pasos). Sin usuario y contraseña, los comentarios solo quedan en la tabla `feedback`. |
 | `RESEND_API_KEY`, `EMAIL_FROM` | Alternativa al SMTP por HTTPS con [Resend](https://resend.com), para servidores que bloquean los puertos de mail (DigitalOcean lo hace en cuentas nuevas). Si hay clave, tiene prioridad sobre el SMTP. `EMAIL_FROM` tiene que ser de un dominio verificado en Resend (en producción, `Ruletazo <feedback@ruletazo.app>`). |
 | `IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET` | Claves de una app registrada en la [consola de Twitch](https://dev.twitch.tv/console) (tipo de cliente *Confidencial*, redirección `http://localhost`; Twitch pide la verificación en dos pasos). Con ellas la duración sale de IGDB (ver *Duración*); sin ellas no se le pide nada. |
+| `REVIEW_HIGHLIGHTS_ENABLED` | `false` (por defecto). "Lo bueno y lo malo" de las reseñas de Steam: está apagado porque Steam redirige ese pedido (`/appreviews`) a su portada desde noviembre de 2026. Prenderlo si vuelve a responder. |
 | `SUPPORT_LINKS` | Links para apoyar el proyecto en el pie de página: `Cafecito|https://cafecito.app/usuario,Ko-fi|https://ko-fi.com/usuario`. |
 | `SUPPORTER_STEAM_IDS` | SteamID64 de quienes apoyan el proyecto: muestran la insignia "Supporter" en su perfil y el foro. |
 | `AFFILIATE_STORES` | Tiendas con link de afiliado en el foro de cada juego: `Humble|https://www.humblebundle.com/store/search?search={query}&partner=TU_ID`. |
@@ -144,9 +145,9 @@ Con esos datos también hay páginas para buscadores: `/cuanto-dura/<juego>` (un
 
 - **Juegos gratis que nunca abriste**: la Steam Web API solo devuelve los free-to-play que jugaste al menos una vez, así que los que agregaste y nunca abriste (por ejemplo *Wuthering Waves* o *The First Descendant*) no aparecen en la biblioteca. Alcanza con abrirlos una vez desde Steam para que aparezcan.
 - **Duración**: IGDB tiene un dato creíble para pocos juegos chicos; esos juegos salen sin duración hasta que alguien la cargue en IGDB o lo terminen 3 personas en Ruletazo.
-- **Reseñas**: Steam limita los pedidos de reseñas; si se pasa, se reintenta más tarde y mientras tanto la ficha sale sin "lo bueno y lo malo".
+- **Lo bueno y lo malo de las reseñas**: Steam dejó de responder el pedido de reseñas (`/appreviews` redirige a su portada desde noviembre de 2026), así que está apagado (`REVIEW_HIGHLIGHTS_ENABLED`). El puntaje y el total de reseñas siguen viniendo de la tienda.
 - **Contenido +18**: se detecta con los descriptores de contenido de la tienda. Hasta que un juego tiene esos datos, se usa una aproximación por el nombre.
-- **Inglés**: las sinopsis de los juegos y las frases de reseñas vienen de Steam en español, así que en inglés esas partes siguen en español.
+- **Inglés**: las sinopsis de los juegos vienen de Steam en español, así que en inglés siguen en español.
 - **Logros**: el filtro *Casi al 100%* necesita que tus logros sean públicos en Steam; si son privados, esos juegos cuentan como "sin logros".
 - **Límite por visitante y rate limits**: viven en memoria, así que valen para un solo proceso del backend.
 
