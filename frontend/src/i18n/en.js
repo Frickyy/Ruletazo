@@ -82,8 +82,8 @@ const en = {
   "Ocultar +18": "Hide 18+",
   "Ocultar programas": "Hide software",
   "Ocultar juegos basura": "Hide junk games",
-  "Deja afuera los que tienen menos de 50 reseñas en Steam o reseñas negativas: suelen ser los que se compran por los cromos":
-    "Leaves out games with fewer than 50 Steam reviews or negative reviews: they're usually the ones bought for trading cards",
+  "Deja afuera los que tienen menos de 50 reseñas en Steam o reseñas negativas: suelen ser los que se compran por los cromos. Nunca saca tus favoritos":
+    "Leaves out games with fewer than 50 Steam reviews or negative reviews: they're usually the ones bought for trading cards. Never hides your favorites",
   "Deja afuera lo que Steam lista como software, como Soundpad o Wallpaper Engine": "Leaves out what Steam lists as software, like Soundpad or Wallpaper Engine",
   "Incluir terminados": "Include finished",
   "Por defecto los juegos marcados como terminados no salen": "By default, games marked as finished don't come up",

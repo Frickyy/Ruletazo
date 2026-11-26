@@ -304,7 +304,7 @@ function LibraryPage({
             <input type="checkbox" checked={hideSoftware} onChange={(event) => onHideSoftwareChange?.(event.target.checked)} />
             {t("Ocultar programas")}
           </label>
-          <label className="checkbox" title={t("Deja afuera los que tienen menos de 50 reseñas en Steam o reseñas negativas: suelen ser los que se compran por los cromos")}>
+          <label className="checkbox" title={t("Deja afuera los que tienen menos de 50 reseñas en Steam o reseñas negativas: suelen ser los que se compran por los cromos. Nunca saca tus favoritos")}>
             <input type="checkbox" checked={hideJunk} onChange={(event) => onHideJunkChange?.(event.target.checked)} />
             {t("Ocultar juegos basura")}
           </label>
