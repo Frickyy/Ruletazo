@@ -70,8 +70,19 @@ class CachedGameDetails(Base):
     igdb_quick_hours: Mapped[float | None] = mapped_column(Float, nullable=True)
     igdb_samples: Mapped[int] = mapped_column(Integer, default=0)
     igdb_url: Mapped[str] = mapped_column(String(255), default="")
+    # Puntaje de 0 a 100 de la crítica (aggregated_rating) y de los usuarios (rating) en IGDB, con
+    # cuántas críticas o votos hay detrás. La tarjeta los muestra si son suficientes (critic_scores).
+    igdb_critic_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    igdb_critic_count: Mapped[int] = mapped_column(Integer, default=0)
+    igdb_user_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    igdb_user_count: Mapped[int] = mapped_column(Integer, default=0)
     # Se buscó en IGDB con esta versión (aunque no haya tenido dato). Ver IGDB_VERSION.
     igdb_version: Mapped[int] = mapped_column(Integer, default=0)
+    # Metacritic según la ficha de Steam (/api/appdetails): se pide solo al abrir la tarjeta.
+    metacritic_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    metacritic_url: Mapped[str] = mapped_column(String(255), default="")
+    # Se buscó el Metacritic con esta versión (aunque no tenga). Ver CRITICS_VERSION.
+    critics_version: Mapped[int] = mapped_column(Integer, default=0)
     achievement_total: Mapped[int] = mapped_column(Integer, default=0)
     achievement_avg_percent: Mapped[float | None] = mapped_column(Float, nullable=True)
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)

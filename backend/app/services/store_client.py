@@ -130,6 +130,16 @@ class SteamStoreClient:
             "store_available": True,
         }
 
+    async def get_metacritic(self, appid: int) -> dict | None:
+        """{"score", "url"} de Metacritic según la ficha de Steam; score None si no tiene.
+        None si Steam no respondió (se reintenta la próxima vez)."""
+        payload = await self._get_json("store", "/api/appdetails", {"appids": appid, "filters": "metacritic"})
+        if payload is None:
+            return None
+        data = ((payload.get(str(appid)) or {}).get("data")) or {}
+        metacritic = data.get("metacritic") if isinstance(data, dict) else None
+        return parse_metacritic(metacritic)
+
     async def get_review_digest(self, appid: int) -> dict:
         """"Lo bueno" y "lo malo" en frases cortas (ver review_digest).
 
@@ -212,6 +222,15 @@ _NON_GAME_NAME_RE = re.compile(
     r"\b(?:soundtrack|ost|original score|artbook|art book|wallpapers?|demo|playtest|dedicated server|sdk)\b",
     re.IGNORECASE,
 )
+
+def parse_metacritic(metacritic: dict | None) -> dict:
+    """El puntaje (0 a 100) y el link a la ficha de Metacritic, sin el código de seguimiento de Steam."""
+    score = (metacritic or {}).get("score")
+    if not isinstance(score, int) or not 0 < score <= 100:
+        return {"score": None, "url": ""}
+    url = str(metacritic.get("url") or "").split("?")[0]
+    return {"score": score, "url": url if url.startswith("https://www.metacritic.com/") and len(url) <= 255 else ""}
+
 
 def parse_search_results(payload: dict, limit: int = 10) -> list[dict]:
     """Convierte la respuesta de storesearch en [{appid, name, image}] (solo juegos, sin bandas sonoras ni extras)."""

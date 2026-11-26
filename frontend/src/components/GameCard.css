@@ -212,6 +212,91 @@
   font-size: 0.75rem;
 }
 
+/* ---------- Crítica ---------- */
+
+.critics__title {
+  margin: 0 0 0.5rem;
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.critics__empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.critics__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr));
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.critics__item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  height: 100%;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  color: var(--text);
+  text-decoration: none;
+}
+
+a.critics__item:hover,
+a.critics__item:focus-visible {
+  border-color: var(--line-strong);
+}
+
+.critics__score {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: var(--radius-sm);
+  color: #131211;
+  font-family: var(--font-numeric);
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.critics__score--high {
+  background: #6fd3a4;
+}
+
+.critics__score--mid {
+  background: #f2c94c;
+}
+
+.critics__score--low {
+  background: #ff8a7a;
+}
+
+.critics__source {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.critics__label {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
 /* ---------- Logros ---------- */
 
 .game-achievements {

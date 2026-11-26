@@ -83,7 +83,7 @@ def durations(db: Session, appids: list[int]) -> dict[int, dict]:
         ):
             # Las reglas que usan el tiempo rápido (horas de online en vez de campaña) solo valen si
             # se buscó con la versión que lo guarda: hasta entonces se revisa lo demás (sin final, MMO…).
-            has_quick = (version or 0) >= game_details_service.IGDB_VERSION
+            has_quick = (version or 0) >= game_details_service.IGDB_QUICK_HOURS_VERSION
             if igdb_client.makes_sense(
                 hours, samples=samples, categories=categories, genres=genres, quick_hours=quick, check_quick=has_quick
             ):

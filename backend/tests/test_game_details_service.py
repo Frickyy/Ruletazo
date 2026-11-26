@@ -228,3 +228,41 @@ def test_games_say_whether_their_store_data_is_known():
 
     assert (current.store_data, current.review_total) == (True, 12)
     assert old.store_data is False
+
+
+def test_critic_scores_only_show_with_enough_reviews_behind():
+    details = _make_details(
+        store_metadata_version=game_details_service.STORE_METADATA_VERSION,
+        review_total=200,
+        review_positive=180,
+    )
+    details.appid = 620
+    details.metacritic_score = 95
+    details.metacritic_url = "https://www.metacritic.com/game/pc/portal-2"
+    details.igdb_url = "https://www.igdb.com/games/portal-2"
+    details.igdb_critic_score, details.igdb_critic_count = 92.4, 9
+    details.igdb_user_score, details.igdb_user_count = 91.3, 4552
+
+    assert [(s["source"], s["score"], s["count"]) for s in game_details_service.critic_scores(details)] == [
+        ("metacritic", 95, 0),
+        ("igdb_critics", 92, 9),
+        ("igdb_users", 91, 4552),
+        ("steam", 90, 200),
+    ]
+
+    # Una sola crítica, pocos votos y pocas reseñas no alcanzan; sin Metacritic no se muestra.
+    details.metacritic_score = None
+    details.igdb_critic_count, details.igdb_user_count = 1, 4
+    details.review_total = 5
+    assert game_details_service.critic_scores(details) == []
+
+
+def test_metacritic_link_drops_steam_tracking_and_foreign_links():
+    from app.services.store_client import parse_metacritic
+
+    assert parse_metacritic({"score": 95, "url": "https://www.metacritic.com/game/pc/portal-2?ftag=MCD-06-10aaa1f"}) == {
+        "score": 95,
+        "url": "https://www.metacritic.com/game/pc/portal-2",
+    }
+    assert parse_metacritic({"score": 80, "url": "https://otro.com/x"}) == {"score": 80, "url": ""}
+    assert parse_metacritic(None) == {"score": None, "url": ""}

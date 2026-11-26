@@ -29,7 +29,12 @@ STORE_METADATA_VERSION = 10
 REVIEWS_VERSION = 2
 # Subir este número fuerza a volver a buscar en IGDB (por ejemplo, si cambia qué dato cuenta como creíble).
 # 2: también el tiempo rápido (igdb_quick_hours), para descartar en la ficha horas de online.
-IGDB_VERSION = 2
+# 3: también los puntajes de la crítica y de los usuarios.
+IGDB_VERSION = 3
+# Desde esta versión la caché tiene el tiempo rápido (lo usa duration_service).
+IGDB_QUICK_HOURS_VERSION = 2
+# Subir este número fuerza a volver a pedir el Metacritic a la ficha de Steam.
+CRITICS_VERSION = 1
 
 # Store API / reseñas / logros cambian poco: se reutilizan varios días antes de
 # volver a golpear las 3 APIs externas para el mismo juego.
@@ -68,7 +73,41 @@ def apply_igdb(cached: CachedGameDetails, found: dict) -> None:
     cached.igdb_quick_hours = found.get("quick_hours")
     cached.igdb_samples = found["samples"]
     cached.igdb_url = found["url"]
+    cached.igdb_critic_score = found.get("critic_score")
+    cached.igdb_critic_count = found.get("critic_count", 0)
+    cached.igdb_user_score = found.get("user_score")
+    cached.igdb_user_count = found.get("user_count", 0)
     cached.igdb_version = IGDB_VERSION
+
+
+# El % de reseñas positivas de Steam se muestra con al menos estas reseñas.
+STEAM_MIN_REVIEWS = 10
+
+
+def has_critics_lookup(details: CachedGameDetails) -> bool:
+    return (details.critics_version or 0) >= CRITICS_VERSION
+
+
+def critic_scores(details: CachedGameDetails) -> list[dict]:
+    """Los puntajes de 0 a 100 que muestra la tarjeta: Metacritic, la crítica y los usuarios de IGDB
+    y los usuarios de Steam. Los de IGDB y Steam, solo con suficientes críticas o votos detrás."""
+    scores = []
+    if details.metacritic_score:
+        scores.append({"source": "metacritic", "score": details.metacritic_score, "count": 0, "url": details.metacritic_url or ""})
+    igdb_url = details.igdb_url or ""
+    if details.igdb_critic_score is not None and (details.igdb_critic_count or 0) >= igdb_client.MIN_CRITIC_REVIEWS:
+        scores.append({"source": "igdb_critics", "score": round(details.igdb_critic_score), "count": details.igdb_critic_count, "url": igdb_url})
+    if details.igdb_user_score is not None and (details.igdb_user_count or 0) >= igdb_client.MIN_USER_RATINGS:
+        scores.append({"source": "igdb_users", "score": round(details.igdb_user_score), "count": details.igdb_user_count, "url": igdb_url})
+    total = details.review_total or 0
+    if total >= STEAM_MIN_REVIEWS and has_store_metadata(details):
+        scores.append({
+            "source": "steam",
+            "score": round(100 * (details.review_positive or 0) / total),
+            "count": total,
+            "url": f"https://store.steampowered.com/app/{details.appid}/#app_reviews_hash",
+        })
+    return scores
 
 
 # "Lo bueno" y "lo malo" se guardan como varias frases en una columna de texto, una por línea.
@@ -115,15 +154,18 @@ async def get_or_fetch_details(db: Session, appid: int, name: str) -> CachedGame
         and not throttle.is_cooling_down("reviews")
     )
     needs_achievements = expired
-    if not (needs_store or needs_igdb or needs_reviews or needs_achievements):
+    # El Metacritic sale de /api/appdetails, que acepta un juego por pedido: solo para la tarjeta.
+    needs_critics = (expired or not has_critics_lookup(cached)) and not throttle.is_cooling_down("store")
+    if not (needs_store or needs_igdb or needs_reviews or needs_achievements or needs_critics):
         return cached
 
     logger.info("Enriqueciendo detalles de '%s' (appid %s)", name, appid)
-    store_details, reviews, achievements, igdb = await asyncio.gather(
+    store_details, reviews, achievements, igdb, metacritic = await asyncio.gather(
         _fetch_app_details(appid) if needs_store else _skip(),
         _fetch_reviews(appid) if needs_reviews else _skip(),
         _fetch_achievements(appid) if needs_achievements else _skip(),
         igdb_client.get_times([appid]) if needs_igdb else _skip(),
+        _fetch_metacritic(appid) if needs_critics else _skip(),
     )
 
     if cached is None:
@@ -143,6 +185,11 @@ async def get_or_fetch_details(db: Session, appid: int, name: str) -> CachedGame
     if igdb is not None:
         # None es que IGDB no respondió: se conserva lo que había y se reintenta la próxima vez.
         apply_igdb(cached, igdb[appid])
+    if metacritic is not None:
+        # None es que Steam no respondió: se reintenta la próxima vez.
+        cached.metacritic_score = metacritic["score"]
+        cached.metacritic_url = metacritic["url"]
+        cached.critics_version = CRITICS_VERSION
     if achievements is not None:
         cached.achievement_total = achievements["total"]
         cached.achievement_avg_percent = achievements["average_percent"]
@@ -181,6 +228,11 @@ def apply_store_details(cached: CachedGameDetails, store_details: dict) -> None:
         cached.review_total = store_details.get("review_total", 0)
         cached.review_positive = store_details.get("review_positive", 0)
     cached.store_metadata_version = STORE_METADATA_VERSION
+
+
+async def _fetch_metacritic(appid: int) -> dict | None:
+    async with SteamStoreClient() as client:
+        return await client.get_metacritic(appid)
 
 
 async def _fetch_reviews(appid: int) -> dict:

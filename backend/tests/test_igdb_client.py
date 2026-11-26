@@ -64,6 +64,9 @@ def test_credible_hours_rejects_junk(entry):
     assert igdb_client.credible_hours(entry) is None
 
 
+NO_SCORES = {"critic_score": None, "critic_count": 0, "user_score": None, "user_count": 0}
+
+
 @respx.mock
 async def test_get_times_maps_steam_appids_to_hours_and_links(configured):
     token = respx.post(TOKEN_URL).mock(return_value=_token())
@@ -71,7 +74,7 @@ async def test_get_times_maps_steam_appids_to_hours_and_links(configured):
         return_value=httpx.Response(
             200,
             json=[
-                {"id": 1, "uid": "620", "game": {"id": 72, "url": "https://www.igdb.com/games/portal-2"}},
+                {"id": 1, "uid": "620", "game": {"id": 72, "url": "https://www.igdb.com/games/portal-2", "aggregated_rating": 92.444, "aggregated_rating_count": 9, "rating": 91.33, "rating_count": 4552}},
                 {"id": 2, "uid": "4000", "game": {"id": 1, "url": "https://example.com/otra-cosa"}},
             ],
         )
@@ -89,10 +92,13 @@ async def test_get_times_maps_steam_appids_to_hours_and_links(configured):
     result = await igdb_client.get_times([620, 4000, 999999])
 
     assert result == {
-        620: {"hours": 10.4, "samples": 36, "url": "https://www.igdb.com/games/portal-2", "quick_hours": 4.6, "full_hours": 27.1},
+        620: {
+            "hours": 10.4, "samples": 36, "url": "https://www.igdb.com/games/portal-2", "quick_hours": 4.6, "full_hours": 27.1,
+            "critic_score": 92.4, "critic_count": 9, "user_score": 91.3, "user_count": 4552,
+        },
         # Dato absurdo y link que no es de IGDB.
-        4000: {"hours": None, "samples": 7, "url": "", "quick_hours": None, "full_hours": None},
-        999999: {"hours": None, "samples": 0, "url": "", "quick_hours": None, "full_hours": None},  # no está en IGDB
+        4000: {"hours": None, "samples": 7, "url": "", "quick_hours": None, "full_hours": None, **NO_SCORES},
+        999999: {"hours": None, "samples": 0, "url": "", "quick_hours": None, "full_hours": None, **NO_SCORES},  # no está en IGDB
     }
     # Solo viajan números de juego, con las claves de la app.
     body = external.calls.last.request.content.decode()
@@ -109,7 +115,7 @@ async def test_an_expired_token_is_renewed_once(configured):
     respx.post(TOKEN_URL).mock(side_effect=[_token("viejo"), _token("nuevo")])
     respx.post(EXTERNAL_URL).mock(side_effect=[httpx.Response(401, json={}), httpx.Response(200, json=[])])
 
-    assert await igdb_client.get_times([620]) == {620: {"hours": None, "samples": 0, "url": "", "quick_hours": None, "full_hours": None}}
+    assert await igdb_client.get_times([620]) == {620: {"hours": None, "samples": 0, "url": "", "quick_hours": None, "full_hours": None, **NO_SCORES}}
 
 
 @respx.mock

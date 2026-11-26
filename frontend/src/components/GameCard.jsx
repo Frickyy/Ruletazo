@@ -203,6 +203,7 @@ function GameCard({ game, isStale = false, isDemo = false, onToggleFavorite, onS
             </div>
           )}
         </dl>
+        <Critics scores={game.critics} />
         {(game.review_good?.length > 0 || game.review_bad?.length > 0) && (
           <div className="game-card__verdict">
             <Verdict kind="good" title={t("Lo bueno")} excerpts={game.review_good} />
@@ -248,6 +249,55 @@ function GameCard({ game, isStale = false, isDemo = false, onToggleFavorite, onS
         </section>
       )}
     </article>
+  );
+}
+
+// Cada fuente de puntajes: nombre y qué hay detrás del número (para el texto al pasar el mouse).
+const CRITIC_SOURCES = {
+  metacritic: { name: "Metacritic", detail: () => t("Promedio de la crítica en Metacritic") },
+  igdb_critics: { name: "IGDB", label: "crítica", detail: (n) => t("Promedio de {n} críticas reunidas por IGDB", { n }) },
+  igdb_users: { name: "IGDB", label: "usuarios", detail: (n) => t("Promedio de {n} votos de usuarios de IGDB", { n }) },
+  steam: { name: "Steam", label: "usuarios", detail: (n) => t("Reseñas positivas sobre {n} en Steam", { n }) },
+};
+
+/** Puntajes de 0 a 100: verde desde 75, amarillo desde 50, rojo abajo (como Metacritic). */
+function Critics({ scores = [] }) {
+  return (
+    <section className="critics" aria-label={t("Crítica")}>
+      <h3 className="critics__title">{t("Crítica")}</h3>
+      {scores.length === 0 ? (
+        <p className="critics__empty">{t("Todavía no hay puntajes de la crítica para este juego.")}</p>
+      ) : (
+        <ul className="critics__list">
+          {scores.map((item) => {
+            const source = CRITIC_SOURCES[item.source];
+            if (!source) return null;
+            const level = item.score >= 75 ? "high" : item.score >= 50 ? "mid" : "low";
+            const detail = source.detail(formatNumber(item.count));
+            const content = (
+              <>
+                <span className={`critics__score critics__score--${level}`}>{item.score}</span>
+                <span className="critics__source">
+                  {source.name}
+                  {source.label && <span className="critics__label">{t(source.label)}</span>}
+                </span>
+              </>
+            );
+            return (
+              <li key={item.source} title={detail}>
+                {item.url ? (
+                  <a className="critics__item" href={item.url} target="_blank" rel="noopener noreferrer" aria-label={`${source.name}${source.label ? ` (${t(source.label)})` : ""}: ${item.score}/100. ${detail}`}>
+                    {content}
+                  </a>
+                ) : (
+                  <span className="critics__item">{content}</span>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
   );
 }
 
