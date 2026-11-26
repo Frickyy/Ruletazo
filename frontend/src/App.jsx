@@ -7,6 +7,7 @@ const ForumPage = lazy(() => import("./pages/ForumPage.jsx"));
 const LegalPage = lazy(() => import("./pages/LegalPage.jsx"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage.jsx"));
 const RoomPage = lazy(() => import("./pages/RoomPage.jsx"));
+const StreamerPage = lazy(() => import("./pages/StreamerPage.jsx"));
 import SiteFooter from "./components/SiteFooter.jsx";
 import SteamLoginButton from "./components/SteamLoginButton.jsx";
 import { fetchRecentActivity } from "./services/forumService.js";
@@ -394,6 +395,7 @@ function App() {
         )}
 
         {(activeView === "privacy" || activeView === "terms") && <LegalPage kind={activeView} config={config} />}
+        {activeView === "streamer" && <StreamerPage defaultProfile={librarySteamId} />}
 
         {activeView === "family" && (
           <section className="family-page">
