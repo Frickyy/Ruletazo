@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
+from app.core.security_headers import SecurityHeadersMiddleware
 from app.core.static_files import FrontendStaticFiles
 from app.db.backup import backup_loop
 from app.db.session import SessionLocal, init_db
@@ -36,11 +37,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         task.cancel()
 
 
+# La documentación interactiva de la API (/docs, /redoc, /openapi.json) queda solo en desarrollo.
+_docs = {"docs_url": None, "redoc_url": None, "openapi_url": None} if settings.is_production else {}
+
 app = FastAPI(
     title="Ruletazo API",
     description="Backend de la Ruleta de Juegos y Analizador de Biblioteca de Steam.",
     version="0.1.0",
     lifespan=lifespan,
+    **_docs,
 )
 
 # Los orígenes permitidos se definen en CORS_ORIGINS (backend/.env).
@@ -51,6 +56,8 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
+# Encabezados de seguridad en todas las respuestas (ver core/security_headers.py).
+app.add_middleware(SecurityHeadersMiddleware, production=settings.is_production)
 
 app.include_router(games.router)
 app.include_router(auth.router)

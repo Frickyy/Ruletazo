@@ -654,6 +654,7 @@ const en = {
   "Tocá o apretá espacio para girar": "Click or press space to spin",
   "Modo streamer": "Streamer mode",
   "Cuánto dura cada juego": "How long each game takes",
+  "Código en GitHub": "Code on GitHub",
   "Más páginas": "More pages",
   "La ruleta en tu stream": "The roulette on your stream",
   "Una fuente de navegador para OBS con la ruleta de tu biblioteca de Steam: fondo transparente, el juego que salga y nada más. Gratis, como el resto de la página.": "A browser source for OBS with the roulette of your Steam library: transparent background, the game that comes up and nothing else. Free, like the rest of the site.",

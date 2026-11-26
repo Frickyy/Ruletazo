@@ -33,8 +33,10 @@ Los datos de la tienda vienen de `IStoreBrowseService/GetItems` (el mismo servic
 ### Requisitos
 
 - Python 3.11 o superior
-- Node.js 18 o superior
-- Una [clave de la Steam Web API](https://steamcommunity.com/dev/apikey) (gratuita)
+- Node.js 22.12 o superior (24 recomendado)
+- Una [clave de la Steam Web API](https://steamcommunity.com/dev/apikey) (gratuita) para cargar bibliotecas reales. Sin ella la página anda con una biblioteca de ejemplo.
+
+Para contribuir, mirá también [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ### 1. Backend
 
@@ -61,7 +63,7 @@ Completá `backend/.env`:
 | `FEEDBACK_EMAIL` | Adónde llegan los comentarios del botón "Mandar comentario" (por defecto `ruletazo007@gmail.com`). |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` | Cuenta que manda esos mails. Con Gmail: `smtp.gmail.com`, `587`, la cuenta y una [contraseña de aplicación](https://myaccount.google.com/apppasswords) (hace falta la verificación en dos pasos). Sin usuario y contraseña, los comentarios solo quedan en la tabla `feedback`. |
 | `RESEND_API_KEY`, `EMAIL_FROM` | Alternativa al SMTP por HTTPS con [Resend](https://resend.com), para servidores que bloquean los puertos de mail (DigitalOcean lo hace en cuentas nuevas). Si hay clave, tiene prioridad sobre el SMTP. `EMAIL_FROM` tiene que ser de un dominio verificado en Resend (en producción, `Ruletazo <feedback@ruletazo.app>`). |
-| `HLTB_ENABLED` | `false` (por defecto). Prenderlo solo con permiso por escrito de Ziff Davis (ver *Riesgos antes de monetizar*). |
+| `HLTB_ENABLED` | `false` (por defecto). Queda apagado: los términos de HowLongToBeat no permiten el acceso automatizado, así que solo se prendería con su permiso por escrito. |
 | `IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET` | Claves de una app registrada en la [consola de Twitch](https://dev.twitch.tv/console) (tipo de cliente *Confidencial*, redirección `http://localhost`; Twitch pide la verificación en dos pasos). Con ellas la duración sale de IGDB (ver *Duración*); sin ellas no se le pide nada. |
 | `SUPPORT_LINKS` | Links para apoyar el proyecto en el pie de página: `Cafecito|https://cafecito.app/usuario,Ko-fi|https://ko-fi.com/usuario`. |
 | `SUPPORTER_STEAM_IDS` | SteamID64 de quienes apoyan el proyecto: muestran la insignia "Supporter" en su perfil y el foro. |
@@ -74,7 +76,7 @@ Levantá la API:
 uvicorn app.main:app --reload --port 8000
 ```
 
-Al arrancar se aplican solas las migraciones pendientes de la base (Alembic); una base creada con una versión anterior se actualiza sin perder datos. La documentación interactiva queda en <http://localhost:8000/docs>.
+Al arrancar se aplican solas las migraciones pendientes de la base (Alembic); una base creada con una versión anterior se actualiza sin perder datos. La documentación interactiva queda en <http://localhost:8000/docs> (solo en desarrollo: en producción está apagada).
 
 ### 2. Frontend
 
@@ -103,15 +105,10 @@ El puerto queda abierto solo en `127.0.0.1`: desde afuera se entra por un túnel
 
 ### Producción (ruletazo.app)
 
-- Servidor: DigitalOcean (SFO3), Ubuntu 24.04, código en `/opt/ruletazo` (clonado con una deploy key de solo lectura).
+- Corre con este mismo `docker compose`, detrás de un túnel de Cloudflare: el puerto del backend no queda abierto a internet.
 - `backend/.env` con `ENVIRONMENT=production`, `FRONTEND_URL` y `CORS_ORIGINS` en `https://ruletazo.app`, y un `.env` en la raíz con `FRONTEND_URL=https://ruletazo.app` para compilar la vista previa.
-- `cloudflared` corre como servicio (`/etc/cloudflared/config.yml`) y manda `ruletazo.app` y `www.ruletazo.app` a `http://127.0.0.1:8000`.
-- Actualizar a la última versión de `main`:
-
-  ```bash
-  ssh root@IP_DEL_SERVIDOR   # ruletazo.app apunta a Cloudflare, no al servidor
-  cd /opt/ruletazo && git pull && docker compose up -d --build
-  ```
+- Todas las respuestas llevan encabezados de seguridad (`core/security_headers.py`): solo corre JavaScript del mismo dominio y la página no se puede meter en un iframe de otro sitio (salvo el modo streamer). En producción, además, el navegador entra siempre por HTTPS.
+- Para actualizar a la última versión de `main`: `git pull && docker compose up -d --build` en la carpeta del proyecto.
 
 ## Tests
 
@@ -129,20 +126,20 @@ Pensada para no tocar la experiencia: **la plata nunca influye en qué juego sal
 - **Apoyo voluntario** (`SUPPORT_LINKS`): botones en el pie de página. Quien aporta puede recibir la insignia "Supporter" (`SUPPORTER_STEAM_IDS`, por ahora se carga a mano).
 - **Links de afiliado** (`AFFILIATE_STORES`): en el foro de cada juego, "Buscar en otras tiendas", marcados como afiliados y con `rel="sponsored"`.
 - Sin publicidad ni planes pagos por ahora.
+- Los datos de Steam de una persona se piden solo cuando carga su perfil, y la página no da a entender ninguna relación con Valve. La duración de IGDB se muestra con un link a su ficha y la mención en el pie de página.
 
-### Riesgos antes de monetizar
-- **Steam Web API**: sus términos (de 2010) licencian los datos para el "uso personal" de los usuarios, prohíben dar a entender una relación con Valve y piden una política de privacidad, informar qué datos se guardan y consultar datos de un usuario solo cuando él lo pide. Varios endpoints que usa la app (biblioteca, tienda) no figuran en la documentación oficial. Lo más prudente es **pedir permiso por escrito a Valve** (webapi@valvesoftware.com) antes de monetizar, y no ofrecer planes pagos que den acceso a datos de Steam.
-- **HowLongToBeat**: los términos de uso de Ziff Davis, su dueña, prohíben usar robots o programas para extraer datos del sitio y mostrarlos en otro programa, con o sin fines comerciales. Por eso viene **apagado** (`HLTB_ENABLED=false`) y solo debería prenderse con permiso por escrito.
-- **IGDB**: su API es gratis para proyectos con y sin fines de lucro y deja guardar los datos, pero a los productos que ganan plata les pide un acuerdo (gratis) con una mención visible. Hoy hay solo donaciones voluntarias; antes de activar links de afiliado conviene escribir a partner@igdb.com.
+## Duración
 
-### Duración
 Sale de [IGDB](https://www.igdb.com), la base de juegos de Twitch (`services/igdb_client.py`): se busca por appid de Steam, de a muchos juegos por pedido, y solo se le manda ese número. Los tiempos los cargan sus usuarios y en multijugador o sandbox hay valores absurdos, así que solo se usa un dato **creíble**: al menos 3 personas, entre 15 minutos y 150 horas, y con los tiempos rápido, normal y completo en orden (con un margen del 25 %, porque cada promedio sale de gente distinta). Se muestra el normal (la historia con algunos extras), con un link a la ficha de IGDB y la mención en el pie de página. Con las bibliotecas de noviembre de 2026, un tercio de los juegos sin jugar tenía un dato creíble (la mitad de los populares).
 
 Si IGDB no tiene el dato, se usa el de quienes lo terminaron en Ruletazo: al marcar un juego como *Terminado* se guardan sus horas en Steam en ese momento, y la duración es la **mediana** de esas horas, que se muestra recién cuando lo terminaron al menos 3 personas (nunca por persona). Las horas de menos de 30 minutos no cuentan. El filtro y el orden por duración aparecen recién cuando al menos la mitad de los juegos tiene el dato (`durationFilterAvailable`).
 
 Con esos datos también hay páginas para buscadores: `/cuanto-dura/<juego>` (una por juego popular con un dato creíble), el índice `/cuanto-dura/` y su sitemap (`/cuanto-dura/sitemap.xml`, anotado en `robots.txt`). Las arma el backend sin la app de React (`routers/duration_pages.py`). Qué juegos entran lo decide `services/duration_pages.py`: los más jugados y los más vendidos de la semana en Steam, más los populares que ya aparecieron en bibliotecas. En producción se actualiza solo una vez por día.
+
+## Otras notas
+
 - **El nombre**: la app se llama Ruletazo, sin "Steam", para no dar a entender una relación con Valve. Internamente se conservan algunos nombres viejos (la base `steam_roulette.db`, las claves `steamRoulette.*` del navegador) para no perder datos ni preferencias.
-- La política de privacidad y los términos (`#/privacidad`, `#/terminos`) son un **borrador**: revisalos con alguien con conocimiento legal de tu país y completá el país del servidor (`DATA_LOCATION` en `frontend/src/pages/LegalPage.jsx`).
+- **Privacidad y términos** (`/privacidad`, `/terminos`, en `frontend/src/pages/LegalPage.jsx`): si un cambio guarda datos nuevos o los usa de otra forma, hay que actualizarlos en el mismo pull request.
 
 ## Limitaciones conocidas
 
