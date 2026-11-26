@@ -59,6 +59,12 @@ def short_hours(hours: float) -> str:
     return f"{value:g}".replace(".", ",") + " h"
 
 
+def display_name(name: str) -> str:
+    """El nombre sin ™, ® ni ©, que en los resultados de Google se ven feos
+    ("Middle-earth™: Shadow of War™" → "Middle-earth: Shadow of War")."""
+    return re.sub(r"\s{2,}", " ", re.sub(r"[™®©]", "", name)).strip()
+
+
 def _thousands(number: int) -> str:
     return f"{number:,}".replace(",", ".")
 
@@ -107,12 +113,12 @@ def _cover(entry: PageEntry) -> str:
 
 
 def _game_link(entry: PageEntry) -> str:
-    return f'<li><a href="{BASE}{escape(entry.page.slug)}">{escape(entry.page.name)}</a> <small>{short_hours(entry.hours)}</small></li>'
+    return f'<li><a href="{BASE}{escape(entry.page.slug)}">{escape(display_name(entry.page.name))}</a> <small>{short_hours(entry.hours)}</small></li>'
 
 
 def render_page(entry: PageEntry, related: list[PageEntry]) -> str:
     page, details = entry.page, entry.details
-    name = page.name
+    name = display_name(page.name)
     times = []
     if page.quick_hours is not None:
         times.append(f"<li>Yendo directo a la historia: {hours_text(page.quick_hours)}</li>")
