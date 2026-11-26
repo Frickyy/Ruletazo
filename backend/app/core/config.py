@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     # en https://dev.twitch.tv/console. Sin los dos no se le pide nada a IGDB ni se muestra su dato.
     igdb_client_id: str = ""
     igdb_client_secret: str = ""
+    # "Lo bueno y lo malo" de las reseñas de Steam (/appreviews). Apagado: desde noviembre de 2026
+    # Steam redirige ese pedido a su portada, así que cada ficha hacía pedidos que siempre fallaban.
+    # Prenderlo si Steam vuelve a responderlo. El puntaje y el total de reseñas vienen de la tienda.
+    review_highlights_enabled: bool = False
     # Monetización (todo opcional; vacío = no se muestra):
     # links para apoyar el proyecto, "Nombre|URL" separados por coma (ej. "Cafecito|https://cafecito.app/x").
     support_links: str = ""
