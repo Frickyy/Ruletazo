@@ -111,6 +111,11 @@
   border-bottom: 1px solid var(--line);
 }
 
+/* Biblioteca de un perfil pegado: sin el botón de favorito. */
+.library-row--read-only {
+  grid-template-columns: 138px minmax(0, 1fr) auto;
+}
+
 .library-row__image {
   width: 138px;
   aspect-ratio: 460 / 215;
@@ -179,6 +184,10 @@
   .library-row .favorite-button {
     grid-column: 3;
     grid-row: 1 / span 2;
+  }
+
+  .library-row--read-only {
+    grid-template-columns: 96px minmax(0, 1fr);
   }
 }
 

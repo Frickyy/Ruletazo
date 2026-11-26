@@ -1,3 +1,4 @@
+import GuestStart from "../components/GuestStart.jsx";
 import SteamLoginButton from "../components/SteamLoginButton.jsx";
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { addFavorite, fetchStateSummary, removeFavorite, unhideGame } from "../services/gameService.js";
@@ -40,7 +41,10 @@ function LibraryPage({
   onIncludeFamilyChange,
   onManageFamily,
   guest = null,
+  onGuest,
   onLogin,
+  // false mientras se averigua si hay sesión: así no aparece el formulario un instante.
+  ready = true,
 }) {
   usePageTitle(t("Biblioteca"));
   const { games, status, error: loadError, updateGame, classification, setClassificationPaused } = library;
@@ -58,6 +62,9 @@ function LibraryPage({
   const sentinelRef = useRef(null);
   // Mientras se escribe, la lista se actualiza sin trabar el campo de búsqueda.
   const deferredSearch = useDeferredValue(search);
+  // Biblioteca de un perfil pegado, sin sesión: se ve y se filtra, pero favoritos, ocultos y
+  // estados son de cada cuenta.
+  const readOnly = Boolean(guest);
 
   const genres = useMemo(() => genresOf(games), [games]);
   // La duración sale de IGDB o de quienes terminaron el juego en Ruletazo. Mientras la tenga
@@ -76,9 +83,9 @@ function LibraryPage({
   // Resumen de estados: se vuelve a pedir cuando cambia algún estado.
   const statesKey = useMemo(() => games.filter((game) => game.state).map((game) => `${game.appid}:${game.state}`).join(","), [games]);
   useEffect(() => {
-    if (!steamId) return;
+    if (!steamId || readOnly) return;
     fetchStateSummary().then(setSummary).catch(() => setSummary(null));
-  }, [steamId, statesKey]);
+  }, [steamId, readOnly, statesKey]);
 
   // Filtros nuevos → se vuelve a mostrar desde el principio.
   useEffect(() => {
@@ -123,14 +130,21 @@ function LibraryPage({
     return (
       <section className="library-page">
         <h1>{t("Biblioteca")}</h1>
-        <p className="hint">
-          {guest
-            ? t("En la ruleta estás usando la biblioteca de {name}. Iniciá sesión con Steam para explorarla, marcar favoritos y guardar qué estás jugando.", {
-                name: guest.name || t("un perfil público"),
-              })
-            : t("Iniciá sesión con Steam para ver tu biblioteca.")}
-        </p>
-        {onLogin && <SteamLoginButton onClick={onLogin} />}
+        {ready && (
+          <>
+            <p className="hint">{t("Toda tu colección de Steam en una lista, con búsqueda y los mismos filtros que la ruleta.")}</p>
+            {onGuest ? (
+              <GuestStart
+                onGuest={onGuest}
+                onLogin={onLogin}
+                label={t("Pegá el link de tu perfil de Steam para ver tu biblioteca")}
+                submitLabel={t("Ver mi biblioteca")}
+              />
+            ) : (
+              onLogin && <SteamLoginButton onClick={onLogin} />
+            )}
+          </>
+        )}
       </section>
     );
   }
@@ -147,6 +161,22 @@ function LibraryPage({
           </p>
         )}
       </div>
+
+      {readOnly && (
+        <p className="hint library-page__guest">
+          {t("Es la biblioteca de {name}. Para marcar favoritos y guardar qué estás jugando, iniciá sesión con Steam.", {
+            name: guest.name || t("un perfil público"),
+          })}
+          {onLogin && (
+            <>
+              {" "}
+              <button type="button" className="text-button" onClick={onLogin}>
+                {t("Iniciar sesión con Steam")}
+              </button>
+            </>
+          )}
+        </p>
+      )}
 
       {summary && Object.values(summary.counts).some(Boolean) && (
         <dl className="library-summary">
@@ -184,17 +214,19 @@ function LibraryPage({
           />
         </div>
 
-        <div className="segmented" role="group" aria-label={t("Colección")}>
-          <button type="button" aria-pressed={collection === "all"} onClick={() => setCollection("all")}>
-            {t("Todos")}
-          </button>
-          <button type="button" aria-pressed={collection === "favorites"} onClick={() => setCollection("favorites")}>
-            {t("Favoritos")}
-          </button>
-          <button type="button" aria-pressed={collection === "hidden"} onClick={() => setCollection("hidden")}>
-            {t("Ocultos")}{hiddenCount > 0 ? ` (${hiddenCount})` : ""}
-          </button>
-        </div>
+        {!readOnly && (
+          <div className="segmented" role="group" aria-label={t("Colección")}>
+            <button type="button" aria-pressed={collection === "all"} onClick={() => setCollection("all")}>
+              {t("Todos")}
+            </button>
+            <button type="button" aria-pressed={collection === "favorites"} onClick={() => setCollection("favorites")}>
+              {t("Favoritos")}
+            </button>
+            <button type="button" aria-pressed={collection === "hidden"} onClick={() => setCollection("hidden")}>
+              {t("Ocultos")}{hiddenCount > 0 ? ` (${hiddenCount})` : ""}
+            </button>
+          </div>
+        )}
 
         <select className="select" value={playtimeFilter} onChange={(event) => onPlaytimeFilterChange?.(event.target.value)} aria-label={t("Horas jugadas")}>
           {PLAYTIME_OPTIONS.map((option) => (
@@ -204,13 +236,15 @@ function LibraryPage({
           ))}
         </select>
 
-        <select className="select" value={stateFilter} onChange={(event) => setStateFilter(event.target.value)} aria-label={t("Estado")}>
-          {STATE_OPTIONS.map((option) => (
-            <option key={option.id} value={option.id}>
-              {t(option.label)}
-            </option>
-          ))}
-        </select>
+        {!readOnly && (
+          <select className="select" value={stateFilter} onChange={(event) => setStateFilter(event.target.value)} aria-label={t("Estado")}>
+            {STATE_OPTIONS.map((option) => (
+              <option key={option.id} value={option.id}>
+                {t(option.label)}
+              </option>
+            ))}
+          </select>
+        )}
 
         <select className="select" value={mode} onChange={(event) => setMode(event.target.value)} aria-label={t("Modo de juego")}>
           {MODE_OPTIONS.map((option) => (
@@ -289,7 +323,7 @@ function LibraryPage({
 
       <ul className="library-page__list">
         {filtered.slice(0, visibleCount).map((game) => (
-          <li key={game.appid} className="library-row">
+          <li key={game.appid} className={readOnly ? "library-row library-row--read-only" : "library-row"}>
             <img className="library-row__image" src={game.header_image} alt="" loading="lazy" />
             <div className="library-row__body">
               <p className="library-row__name">
@@ -313,7 +347,7 @@ function LibraryPage({
               <span>{game.price_cents != null ? formatPrice(game.price_cents) : ""}</span>
               <span>{game.release_date ? formatReleaseDate(game.release_date) : ""}</span>
             </p>
-            {game.is_hidden ? (
+            {readOnly ? null : game.is_hidden ? (
               <button type="button" className="button library-row__unhide" onClick={() => handleUnhide(game)}>
                 {t("Volver a mostrar")}
               </button>
