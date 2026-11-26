@@ -14,3 +14,7 @@ frontend/.env
 ### Editor / SO ###
 .vscode/
 .DS_Store
+
+### Docker Compose ###
+# Variables de la raíz que lee docker compose (FRONTEND_URL). No se suben.
+/.env
