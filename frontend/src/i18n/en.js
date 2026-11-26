@@ -301,6 +301,10 @@ const en = {
   "Pegá el link de tu perfil de Steam para ver tu biblioteca": "Paste your Steam profile link to see your library",
   "Ver mi biblioteca": "See my library",
   "Sin datos todavía": "No data yet",
+  "Algo falló al mostrar esta parte de la página": "Something went wrong showing this part of the page",
+  "Recargá la página para seguir. Si vuelve a pasar, contanos qué estabas haciendo con «Mandar comentario», al pie de la página.":
+    "Reload the page to carry on. If it happens again, tell us what you were doing with “Send feedback” at the bottom of the page.",
+  "Recargar la página": "Reload the page",
   "Se completa cuando lo terminan 3 personas en Ruletazo: marcalo como Terminado cuando lo termines.":
     "It fills in once 3 people finish it on Ruletazo: mark it as Finished when you do.",
   "{shown} de {total} juegos": "{shown} of {total} games",

@@ -14,6 +14,7 @@ import { fetchRecentActivity } from "./services/forumService.js";
 import { fetchPublicConfig } from "./services/profileService.js";
 import { createRoom } from "./services/roomService.js";
 import { track, trackOnce } from "./services/track.js";
+import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import SteamIdInput from "./components/SteamIdInput.jsx";
 import { fetchSession, fetchSteamProfile, logoutSession } from "./services/gameService.js";
 import { useRoute } from "./routes.js";
@@ -317,6 +318,8 @@ function App() {
       {authMessage && <p className="auth-message" role="status">{authMessage}</p>}
 
       <main className="main-panel">
+        {/* Una por sección: si una falla, el resto de la página sigue andando y al cambiar de sección se vuelve a intentar. */}
+        <ErrorBoundary key={activeView}>
         <Suspense fallback={<p className="hint">{t("Cargando…")}</p>}>
         {activeView === "roulette" && (
           <RoulettePage
@@ -439,6 +442,7 @@ function App() {
           </section>
         )}
         </Suspense>
+        </ErrorBoundary>
       </main>
 
       <SiteFooter config={config} onNavigate={(view) => setActiveView(view)} user={profile} />

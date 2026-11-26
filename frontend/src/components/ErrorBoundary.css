@@ -1,0 +1,21 @@
+/* Aviso cuando una parte de la página falla al dibujarse (ver ErrorBoundary.jsx). */
+.error-boundary {
+  max-width: 34rem;
+  margin: 3rem auto;
+  padding: 1.5rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text);
+  text-align: center;
+}
+
+.error-boundary h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.25rem;
+}
+
+.error-boundary p {
+  margin: 0 0 1.25rem;
+  color: var(--text-soft);
+}
