@@ -3,3 +3,4 @@ Allow: /
 Disallow: /api/
 
 Sitemap: https://ruletazo.app/sitemap.xml
+Sitemap: https://ruletazo.app/cuanto-dura/sitemap.xml

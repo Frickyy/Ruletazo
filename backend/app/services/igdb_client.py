@@ -31,6 +31,8 @@ MAX_HOURS = 150
 # Rápido <= normal <= completo, con un margen: cada promedio sale de gente distinta y en los juegos
 # cortos se cruzan un poco (Unpacking: 3,3 / 3,0 / 5,7 h). Más que eso es un dato roto.
 ORDER_TOLERANCE = 1.25
+# El tiempo al 100 % se muestra hasta este tope: más arriba suelen ser juegos sin final.
+MAX_FULL_HOURS = 300
 _HEADERS = {"User-Agent": "Ruletazo/1.0 (+https://ruletazo.app)", "Accept": "application/json"}
 # El token de la app dura unos 60 días: se guarda en memoria y se renueva un día antes de que venza.
 _token: dict = {}
@@ -71,8 +73,20 @@ def credible_hours(entry: dict | None) -> float | None:
     return round(hours, 1)
 
 
+def extra_hours(entry: dict | None, hours: float | None) -> tuple[float | None, float | None]:
+    """Los otros dos tiempos (yendo directo a la historia y al 100 %), solo si el normal es creíble
+    y estos van en orden con él. Para las páginas "¿Cuánto dura…?"."""
+    if not entry or hours is None:
+        return None, None
+    quick = (entry.get("hastily") or 0) / 3600
+    full = (entry.get("completely") or 0) / 3600
+    quick_hours = round(quick, 1) if MIN_HOURS <= quick <= hours * ORDER_TOLERANCE else None
+    full_hours = round(full, 1) if full and hours <= full * ORDER_TOLERANCE and full <= MAX_FULL_HOURS else None
+    return quick_hours, full_hours
+
+
 async def get_times(appids: list[int]) -> dict[int, dict] | None:
-    """{appid: {"hours", "samples", "url"}} para cada appid pedido. `hours` es None si IGDB no tiene
+    """{appid: {"hours", "samples", "url", "quick_hours", "full_hours"}} para cada appid pedido. `hours` es None si IGDB no tiene
     un dato creíble o no conoce el juego. Devuelve None si IGDB no respondió: así el juego no queda
     marcado como buscado y se reintenta la próxima vez."""
     if not appids or not enabled():
@@ -105,11 +119,15 @@ async def get_times(appids: list[int]) -> dict[int, dict] | None:
         game = games.get(appid, {})
         entry = times.get(game.get("id")) or {}
         url = str(game.get("url") or "")
+        hours = credible_hours(entry)
+        quick_hours, full_hours = extra_hours(entry, hours)
         result[appid] = {
-            "hours": credible_hours(entry),
+            "hours": hours,
             "samples": int(entry.get("count") or 0),
             # Solo fichas de IGDB: es un link que se muestra en la página.
             "url": url if url.startswith("https://www.igdb.com/") and len(url) <= 255 else "",
+            "quick_hours": quick_hours,
+            "full_hours": full_hours,
         }
     return result
 

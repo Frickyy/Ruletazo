@@ -41,6 +41,8 @@ function SiteFooter({ config, onNavigate, user }) {
         </div>
         <nav className="site-footer__links" aria-label={t("Más páginas")}>
           <a href="/obs" onClick={(event) => { event.preventDefault(); onNavigate?.("streamer"); }}>{t("Modo streamer")}</a>
+          {/* Páginas hechas por el backend (no son parte de la app): link normal. */}
+          <a href="/cuanto-dura/">{t("Cuánto dura cada juego")}</a>
           <a href="/privacidad" onClick={(event) => { event.preventDefault(); onNavigate?.("privacy"); }}>{t("Privacidad")}</a>
           <a href="/terminos" onClick={(event) => { event.preventDefault(); onNavigate?.("terms"); }}>{t("Términos")}</a>
         </nav>

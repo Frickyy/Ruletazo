@@ -10,8 +10,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import get_settings
 from app.core.static_files import FrontendStaticFiles
 from app.db.backup import backup_loop
-from app.db.session import init_db
-from app.routers import auth, feedback, forum, games, profiles, rooms, usage
+from app.db.session import SessionLocal, init_db
+from app.routers import auth, duration_pages, feedback, forum, games, profiles, rooms, usage
+from app.services import duration_pages as duration_pages_service
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 # httpx registra cada URL completa en nivel INFO, incluida la STEAM_API_KEY que viaja como parámetro.
@@ -24,12 +25,15 @@ settings.check_production_ready()
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     init_db()  # aplica las migraciones pendientes
-    backup_task = None
+    tasks = []
     if settings.backup_dir:
-        backup_task = asyncio.create_task(backup_loop(settings.database_url, settings.backup_dir, settings.backup_keep))
+        tasks.append(asyncio.create_task(backup_loop(settings.database_url, settings.backup_dir, settings.backup_keep)))
+    # Las páginas "¿Cuánto dura…?" se actualizan una vez por día (piden datos a Steam e IGDB).
+    if settings.is_production and settings.igdb_configured:
+        tasks.append(asyncio.create_task(duration_pages_service.refresh_loop(SessionLocal)))
     yield
-    if backup_task is not None:
-        backup_task.cancel()
+    for task in tasks:
+        task.cancel()
 
 
 app = FastAPI(
@@ -55,6 +59,8 @@ app.include_router(profiles.router)
 app.include_router(rooms.router)
 app.include_router(feedback.router)
 app.include_router(usage.router)
+# Antes que el frontend (montado en "/"): /cuanto-dura/... son páginas hechas por el backend.
+app.include_router(duration_pages.router)
 
 
 @app.get("/api/health", tags=["health"])
