@@ -372,8 +372,9 @@ function RoulettePage({
       </header>
 
       <Reel pool={pool} spin={spin} onSettled={() => setSettledSpinId(spin?.id)} sound={sound} />
+      {/* Para lectores de pantalla: el juego se anuncia apenas frena el rodillo, sin esperar la ficha. */}
       <p className="visually-hidden" aria-live="polite">
-        {isSpinning ? t("Girando la ruleta…") : shownGame ? t("Te tocó {name}", { name: shownGame.name }) : ""}
+        {isSpinning ? t("Girando la ruleta…") : settledWinner ? t("Te tocó {name}", { name: settledWinner.name }) : ""}
       </p>
 
       {/* Controles en una grilla de 4 columnas, todo al mismo alto:
