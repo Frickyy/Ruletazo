@@ -13,6 +13,7 @@ from app.services import (
     duration_service,
     game_details_service,
     hidden_service,
+    igdb_client,
     profile_service,
     store_browse,
     throttle,
@@ -284,11 +285,32 @@ def _progress_pending(db: Session, steam_id: str):
     return needs_progress
 
 
+async def _lookup_igdb_durations(db: Session, entries) -> int:
+    """La duración de IGDB de todos los juegos de la biblioteca que todavía no la buscaron, de a
+    200 por pedido: una biblioteca de mil juegos se completa en unos segundos (antes se buscaba
+    solo al abrir la ficha de cada juego, y la mayoría quedaba sin duración). Devuelve cuántos."""
+    if not igdb_client.enabled() or throttle.is_cooling_down("igdb"):
+        return 0
+    details_map = _get_cached_details_map(db, [entry.appid for entry in entries])
+    pending = [appid for appid, details in details_map.items() if not game_details_service.has_igdb_lookup(details)]
+    if not pending:
+        return 0
+    found = await igdb_client.get_times(pending)
+    if found is None:
+        return 0  # IGDB no respondió: quedan sin marcar y se reintenta la próxima vez
+    for appid, times in found.items():
+        game_details_service.apply_igdb(details_map[appid], times)
+    db.commit()
+    return len(found)
+
+
 async def enrich_library_batch(db: Session, identifier: str, limit: int) -> dict:
-    """Segunda pasada, más lenta: tu progreso de logros, de a un juego (Steam no lo da por lote).
-    Es lo que usa el filtro "Casi al 100%"."""
+    """Segunda pasada: primero la duración de IGDB de toda la biblioteca (de una, ver
+    _lookup_igdb_durations) y después tu progreso de logros, de a un juego porque Steam no lo da
+    por lote. Son lo que usan los filtros de duración y "Casi al 100%"."""
     steam_id = await resolve_steam_id(identifier)
     entries = _get_cached_entries(db, steam_id)
+    durations_found = await _lookup_igdb_durations(db, entries)
     needs_progress = _progress_pending(db, steam_id)
 
     now = time.monotonic()
@@ -319,7 +341,7 @@ async def enrich_library_batch(db: Session, identifier: str, limit: int) -> dict
             db.commit()
 
     return {
-        "processed": len(to_process),
+        "processed": len(to_process) + durations_found,
         # Los que se saltean por fallas recientes no cuentan: se reintentan en otra sesión.
         "remaining": max(len(ready) - len(to_process), 0),
         "failed": failed > 0,
