@@ -130,13 +130,31 @@
   list-style: none;
 }
 
-.game-card__state {
+.segmented.game-card__state {
+  /* Tres botones del mismo ancho (el del más largo), sin estirarse a todo el ancho. */
+  display: inline-grid;
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
+  align-self: flex-start;
   margin-top: 0.4rem;
 }
 
 .game-card__state button {
   min-height: 36px;
   font-size: 0.8125rem;
+}
+
+/* En el celular no entran los tres a su ancho natural: ocupan toda la fila, en tercios iguales. */
+@media (max-width: 480px) {
+  .segmented.game-card__state {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-self: stretch;
+  }
+
+  .game-card__state button {
+    padding: 0 0.4rem;
+  }
 }
 
 .game-card__hide {
