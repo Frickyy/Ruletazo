@@ -261,7 +261,7 @@ const CRITIC_SOURCES = {
 };
 
 /** Puntajes de 0 a 100: verde desde 75, amarillo desde 50, rojo abajo (como Metacritic). */
-function Critics({ scores = [] }) {
+export function Critics({ scores = [] }) {
   return (
     <section className="critics" aria-label={t("Crítica")}>
       <h3 className="critics__title">{t("Crítica")}</h3>
@@ -301,7 +301,7 @@ function Critics({ scores = [] }) {
   );
 }
 
-function Verdict({ kind, title, excerpts = [] }) {
+export function Verdict({ kind, title, excerpts = [] }) {
   if (excerpts.length === 0) return null;
   return (
     <section className={`verdict verdict--${kind}`} aria-label={title}>
@@ -318,13 +318,13 @@ function Verdict({ kind, title, excerpts = [] }) {
 }
 
 /** Las horas vienen con decimales (ej. 21.88): se muestran redondeadas. */
-function formatHours(hours) {
+export function formatHours(hours) {
   if (hours == null) return "—";
   if (hours < 1) return "< 1 h";
   return `${Math.round(hours)} h`;
 }
 
-function formatPrice(priceCents) {
+export function formatPrice(priceCents) {
   if (priceCents === 0) return t("Gratis");
   return new Intl.NumberFormat(locale(), { style: "currency", currency: "USD" }).format(priceCents / 100);
 }
