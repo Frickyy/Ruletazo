@@ -8,9 +8,9 @@ import "./LegalPage.css";
  * alguien con conocimiento legal de tu país, y completar el país donde se alojan los datos
  * (DATA_LOCATION) y el mail de contacto (CONTACT_EMAIL en backend/.env).
  */
-const UPDATED = "25 de noviembre de 2026";
+const UPDATED = "27 de noviembre de 2026";
 const DATA_LOCATION = "Estados Unidos (servidores de DigitalOcean en San Francisco)";
-const UPDATED_EN = "November 25, 2026";
+const UPDATED_EN = "November 27, 2026";
 const DATA_LOCATION_EN = "the United States (DigitalOcean servers in San Francisco)";
 
 function LegalPage({ kind, config }) {
@@ -72,8 +72,8 @@ function Privacy({ contact }) {
 
       <h2>Qué es público</h2>
       <p>
-        Tu perfil es privado por defecto. Si lo hacés público, cualquiera con el link ve lo que estás jugando, lo que terminaste, tus
-        favoritos y tus reseñas; tu biblioteca completa no se muestra. Lo que publicás en el foro es público.
+        Tu perfil es público por defecto, como en Steam: cualquiera con el link ve lo que estás jugando, lo que terminaste, tus
+        favoritos y tus reseñas; tu biblioteca completa no se muestra. Podés hacerlo privado cuando quieras desde tu perfil. Lo que publicás en el foro es público.
       </p>
 
       <h2>Cookies y almacenamiento</h2>
@@ -194,8 +194,8 @@ function PrivacyEn({ contact }) {
 
       <h2>What is public</h2>
       <p>
-        Your profile is private by default. If you make it public, anyone with the link can see what you&apos;re playing, what you
-        finished, your favorites and your reviews; your full library is not shown. What you post in the forum is public.
+        Your profile is public by default, like on Steam: anyone with the link can see what you&apos;re playing, what you
+        finished, your favorites and your reviews; your full library is not shown. You can make it private anytime from your profile. What you post in the forum is public.
       </p>
 
       <h2>Cookies and storage</h2>

@@ -24,15 +24,15 @@ def _library(db, steam_id, *games):
 # ---------- Privacidad ----------
 
 
-def test_profiles_are_private_by_default(db_session):
+def test_profiles_are_public_by_default(db_session):
+    assert profile_service.can_view(db_session, ANA, BETO) is True
+    assert profile_service.can_view(db_session, ANA, None) is True
+
+    profile_service.update_preferences(db_session, ANA, is_public=False)
+
     assert profile_service.can_view(db_session, ANA, ANA) is True
     assert profile_service.can_view(db_session, ANA, BETO) is False
     assert profile_service.can_view(db_session, ANA, None) is False
-
-    profile_service.update_preferences(db_session, ANA, is_public=True)
-
-    assert profile_service.can_view(db_session, ANA, BETO) is True
-    assert profile_service.can_view(db_session, ANA, None) is True
 
 
 def test_achievement_tracking_is_opt_in(db_session):
@@ -40,7 +40,7 @@ def test_achievement_tracking_is_opt_in(db_session):
     profile_service.update_preferences(db_session, ANA, track_achievements=True)
     assert profile_service.tracks_achievements(db_session, ANA) is True
     # Cambiar una preferencia no toca la otra.
-    assert profile_service.is_public(db_session, ANA) is False
+    assert profile_service.is_public(db_session, ANA) is True
 
 
 # ---------- Contenido del perfil ----------
@@ -63,7 +63,7 @@ def test_build_profile_collects_states_favorites_and_reviews(db_session):
     assert [game["name"] for game in profile["favorites"]] == ["Portal 2"]
     assert profile["reviews"][0]["score"] == 10
     assert profile["summary"]["counts"]["finished"] == 1
-    assert profile["preferences"] == {"is_public": False, "track_achievements": False}
+    assert profile["preferences"] == {"is_public": True, "track_achievements": False}
 
 
 def test_other_people_do_not_see_preferences(db_session):
@@ -89,6 +89,7 @@ async def test_games_in_common_respects_privacy(db_session, monkeypatch):
     monkeypatch.setattr(library_service, "resolve_steam_id", fake_resolve)
     monkeypatch.setattr(library_service, "get_library", fake_library)
 
+    profile_service.update_preferences(db_session, BETO, is_public=False)
     with pytest.raises(HTTPException) as exc_info:
         await profiles.games_in_common(BETO, db=db_session, viewer=ANA)
     assert exc_info.value.status_code == 404  # privado

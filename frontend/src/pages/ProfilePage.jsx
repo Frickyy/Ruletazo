@@ -11,7 +11,7 @@ import "./ProfilePage.css";
 
 /**
  * Perfil: qué está jugando, qué terminó, favoritos y reseñas del foro.
- * Privado por defecto; el dueño lo puede hacer público y compartir el link.
+ * Público por defecto (como en Steam); el dueño lo puede hacer privado.
  * En el perfil de otra persona: "¿Qué tenemos en común?" para elegir qué jugar juntos.
  */
 /** ¿Este identificador de la familia (SteamID64, vanity o link) apunta a este perfil? */
