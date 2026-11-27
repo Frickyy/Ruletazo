@@ -56,10 +56,17 @@ async def test_game_info_has_what_the_roulette_card_shows(db_session, monkeypatc
     monkeypatch.setattr(forum, "_game_name", fake_name)
     monkeypatch.setattr(game_details_service, "get_or_fetch_details", fake_details)
 
-    game = await forum.game_info(620, db=db_session)
+    game = await forum.game_info(620, db=db_session, viewer=None)
 
     assert (game.name, game.developer, game.short_description) == ("Portal 2", "Valve", "Pensá con portales.")
     assert game.review_score_desc == "Extremadamente positivas"
     assert [critic.source for critic in game.critics] == ["metacritic", "steam"]
     # Es la ficha general del juego: nada de la biblioteca de nadie.
     assert (game.playtime_forever_minutes, game.is_favorite, game.state) == (0, False, None)
+
+    # Con sesión viene tu estado en el juego, para poder cambiarlo o sacarlo desde el foro.
+    from app.services import library_service
+
+    library_service.set_state(db_session, "76561198000000001", 620, "playing")
+    mine = await forum.game_info(620, db=db_session, viewer="76561198000000001")
+    assert mine.state == "playing"

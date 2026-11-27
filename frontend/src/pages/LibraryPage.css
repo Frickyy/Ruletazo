@@ -143,6 +143,24 @@
   font-size: 0.8125rem;
 }
 
+.library-row__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1rem;
+  margin-top: 0.3rem;
+}
+
+.game-state-select {
+  min-height: 32px;
+  padding: 0 0.5rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  color: var(--text);
+  font-size: 0.8125rem;
+}
+
 .library-row__forum {
   min-height: 32px;
   padding: 0;
