@@ -50,8 +50,18 @@ def can_view(db: Session, target_steam_id: str, viewer_steam_id: str | None) -> 
     return target_steam_id == viewer_steam_id or is_public(db, target_steam_id)
 
 
+def syncs_steam_states(db: Session, steam_id: str) -> bool:
+    row = get_preferences(db, steam_id)
+    return bool(row and row.sync_steam_states)
+
+
 def update_preferences(
-    db: Session, steam_id: str, *, is_public: bool | None = None, track_achievements: bool | None = None
+    db: Session,
+    steam_id: str,
+    *,
+    is_public: bool | None = None,
+    track_achievements: bool | None = None,
+    sync_steam_states: bool | None = None,
 ) -> dict:
     row = get_preferences(db, steam_id)
     if row is None:
@@ -61,9 +71,24 @@ def update_preferences(
         row.is_public = is_public
     if track_achievements is not None:
         row.track_achievements = track_achievements
+        if not track_achievements:
+            row.sync_steam_states = False  # sin tu progreso de logros no se sabe qué terminaste
+    if sync_steam_states is not None:
+        row.sync_steam_states = sync_steam_states
+        if sync_steam_states:
+            # Para saber qué juegos tienen todos los logros hace falta tu progreso.
+            row.track_achievements = True
     row.updated_at = datetime.now(timezone.utc)
     db.commit()
-    return {"is_public": row.is_public, "track_achievements": row.track_achievements}
+    return _preferences_dict(row)
+
+
+def _preferences_dict(row: UserProfile | None) -> dict:
+    return {
+        "is_public": True if row is None else bool(row.is_public),
+        "track_achievements": bool(row and row.track_achievements),
+        "sync_steam_states": bool(row and row.sync_steam_states),
+    }
 
 
 def build_profile(db: Session, target_steam_id: str, viewer_steam_id: str | None, steam_profile: dict) -> dict:
@@ -122,10 +147,7 @@ def build_profile(db: Session, target_steam_id: str, viewer_steam_id: str | None
         ],
     }
     if is_me:
-        profile["preferences"] = {
-            "is_public": profile["is_public"],
-            "track_achievements": bool(preferences and preferences.track_achievements),
-        }
+        profile["preferences"] = _preferences_dict(preferences)
     return profile
 
 
@@ -199,6 +221,8 @@ def delete_user_data(db: Session, steam_id: str) -> dict:
         db.add(row)
     row.is_public = False
     row.track_achievements = False
+    row.sync_steam_states = False
+    row.states_synced_at = None
     row.sessions_valid_after = int(time.time())
     row.updated_at = datetime.now(timezone.utc)
     db.commit()

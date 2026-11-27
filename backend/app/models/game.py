@@ -172,6 +172,10 @@ class UserProfile(Base):
     is_public: Mapped[bool] = mapped_column(Boolean, default=True)
     # Pedir tu progreso de logros a Steam en segundo plano (para "Casi al 100%"). Lo activás vos.
     track_achievements: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Marcar solo los estados con lo que dice Steam (library_service.sync_steam_states). Lo activás vos.
+    sync_steam_states: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Última sincronización: un estado que sacaste a mano no vuelve, salvo que lo juegues de nuevo.
+    states_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # Epoch del último "borrar mis datos": las sesiones emitidas hasta ese momento quedan inválidas.
     sessions_valid_after: Mapped[int | None] = mapped_column(Integer, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)

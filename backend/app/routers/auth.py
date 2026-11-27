@@ -133,6 +133,7 @@ async def current_session(steam_id: str | None = Depends(current_steam_id), db: 
         # Preferencias del perfil (privado por defecto; seguimiento de logros desactivado).
         "is_public": profile_service.is_public(db, steam_id),
         "track_achievements": profile_service.tracks_achievements(db, steam_id),
+        "sync_steam_states": profile_service.syncs_steam_states(db, steam_id),
     }
 
 

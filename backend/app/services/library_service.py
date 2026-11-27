@@ -57,6 +57,7 @@ async def get_library(db: Session, identifier: str) -> list[Game]:
         else:
             logger.info("Usando biblioteca cacheada de %s (%d juegos)", steam_id, len(cached_entries))
 
+    sync_steam_states(db, steam_id)
     return [_to_schema(entry) for entry in cached_entries]
 
 
@@ -280,7 +281,11 @@ def _progress_pending(db: Session, steam_id: str):
     progress_map = _get_progress_map(db, steam_id)
 
     def needs_progress(entry) -> bool:
-        return track_achievements and entry.playtime_forever_minutes > 0 and entry.appid not in progress_map
+        if not track_achievements or entry.playtime_forever_minutes <= 0:
+            return False
+        progress = progress_map.get(entry.appid)
+        # Se vuelve a pedir si lo jugaste después de la última consulta: puede tener logros nuevos.
+        return progress is None or bool(entry.last_played and entry.last_played > _timestamp(progress.fetched_at))
 
     return needs_progress
 
@@ -340,6 +345,7 @@ async def enrich_library_batch(db: Session, identifier: str, limit: int) -> dict
                 )
             db.commit()
 
+    sync_steam_states(db, steam_id)
     return {
         "processed": len(to_process) + durations_found,
         # Los que se saltean por fallas recientes no cuentan: se reintentan en otra sesión.
@@ -495,6 +501,59 @@ def _to_schema(entry: CachedLibraryEntry) -> Game:
 # ---------- Estados ("Jugando", "Terminado", "Abandonado") ----------
 
 GAME_STATES = ("playing", "finished", "abandoned")
+
+
+# "Jugando" según Steam: lo que jugaste en las últimas 2 semanas.
+RECENT_DAYS = 14
+
+
+def _timestamp(value: datetime) -> float:
+    return (value if value.tzinfo else value.replace(tzinfo=timezone.utc)).timestamp()
+
+
+def sync_steam_states(db: Session, steam_id: str, now: datetime | None = None) -> dict:
+    """Si lo activaste en tu perfil: lo que jugaste en Steam en las últimas 2 semanas pasa a
+    "Jugando" y lo que tiene todos los logros, a "Terminado".
+
+    No pisa lo que marcaste vos (un juego con estado no pasa a "Jugando"; uno abandonado no pasa a
+    "Terminado") y solo mira lo nuevo desde la última vez: si sacás un estado a mano, no vuelve,
+    salvo que lo juegues de nuevo o consigas el último logro después.
+    """
+    row = profile_service.get_preferences(db, steam_id)
+    if row is None or not row.sync_steam_states:
+        return {"playing": 0, "finished": 0}
+    now = now or datetime.now(timezone.utc)
+    since = _timestamp(row.states_synced_at) if row.states_synced_at else 0.0
+    cutoff = now.timestamp() - RECENT_DAYS * 86400
+    states = get_states(db, steam_id)
+    marked = {"playing": 0, "finished": 0}
+
+    entries = {entry.appid: entry for entry in _get_cached_entries(db, steam_id)}
+    # Los programas (Soundpad, Wallpaper Engine…) no se "juegan": no pasan a "Jugando".
+    software = {details.appid for details in _get_cached_details_map(db, list(entries)).values() if details.is_software}
+
+    def mark(appid: int, state: str) -> None:
+        set_state(db, steam_id, appid, state)
+        states[appid] = state
+        marked[state] += 1
+        # La fecha es la última vez que lo jugaste, no hoy: si no, sincronizar llenaría los
+        # desafíos del mes y "terminados en el año" con juegos de hace tiempo.
+        played = entries[appid].last_played if appid in entries else None
+        if played:
+            db.get(GameState, (steam_id, appid)).updated_at = datetime.fromtimestamp(played, timezone.utc)
+
+    for progress in _get_progress_map(db, steam_id).values():
+        complete = progress.total > 0 and progress.unlocked >= progress.total
+        if complete and _timestamp(progress.fetched_at) > since and states.get(progress.appid) in (None, "playing"):
+            mark(progress.appid, "finished")
+    for entry in entries.values():
+        played = entry.last_played or 0
+        if played >= cutoff and played > since and entry.appid not in states and entry.appid not in software:
+            mark(entry.appid, "playing")
+
+    row.states_synced_at = now
+    db.commit()
+    return marked
 
 
 def get_states(db: Session, steam_id: str) -> dict[int, str]:
