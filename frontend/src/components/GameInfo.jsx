@@ -1,13 +1,14 @@
 import { Critics, Verdict, formatHours, formatPrice } from "./GameCard.jsx";
+import GameStatePicker from "./GameStatePicker.jsx";
 import { formatNumber, t } from "../i18n/index.js";
 import "./GameCard.css";
 
 /**
  * La información de la tarjeta de la ruleta, para el foro de cada juego: géneros, modos, sinopsis,
  * duración, reseñas de Steam, dificultad de logros, precio, crítica y "lo bueno / lo malo".
- * `game` es null mientras carga.
+ * `game` es null mientras carga. `onSetState` (con sesión): cambiar o sacar tu estado en el juego.
  */
-function GameInfo({ game }) {
+function GameInfo({ game, onSetState }) {
   if (!game) return <p className="hint game-info__loading">{t("Cargando la ficha del juego…")}</p>;
   const releaseYear = game.release_date ? game.release_date.slice(0, 4) : "";
   const meta = [game.developer, game.genres.map((genre) => t(genre)).join(", "), releaseYear].filter(Boolean).join(" · ");
@@ -32,6 +33,7 @@ function GameInfo({ game }) {
           </ul>
         )}
         <p className="game-card__description">{game.short_description || t("Steam no tiene una sinopsis para este juego.")}</p>
+        {onSetState && <GameStatePicker state={game.state} onChange={onSetState} />}
         {(game.review_good?.length > 0 || game.review_bad?.length > 0) && (
           <div className="game-card__verdict">
             <Verdict kind="good" title={t("Lo bueno")} excerpts={game.review_good} />

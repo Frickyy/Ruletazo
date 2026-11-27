@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { STATE_LABELS } from "../services/libraryFilters.js";
+import GameStatePicker from "./GameStatePicker.jsx";
 import { shareResult } from "../services/shareResult.js";
 import { track } from "../services/track.js";
 import { formatNumber, locale, t } from "../i18n/index.js";
@@ -108,19 +108,7 @@ function GameCard({ game, isStale = false, isDemo = false, onToggleFavorite, onS
             </button>
           </div>
           {onSetState && game.source !== "friend" && (
-            <div className="segmented game-card__state" role="group" aria-label={t("Estado del juego")}>
-              {Object.entries(STATE_LABELS).map(([state, label]) => (
-                <button
-                  key={state}
-                  type="button"
-                  aria-pressed={game.state === state}
-                  // Tocar el estado activo lo quita.
-                  onClick={() => onSetState(game, game.state === state ? null : state)}
-                >
-                  {t(label)}
-                </button>
-              ))}
-            </div>
+            <GameStatePicker state={game.state} onChange={(state) => onSetState(game, state)} />
           )}
           {onHide && (
             <button type="button" className="text-button game-card__hide" onClick={() => onHide(game)}>

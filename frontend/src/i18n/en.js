@@ -82,6 +82,8 @@ const en = {
   "Ocultar +18": "Hide 18+",
   "Ocultar programas": "Hide software",
   "Ocultar juegos basura": "Hide junk games",
+  "Estado de {name}": "{name} status",
+  "Tocá de nuevo para sacarlo": "Tap again to clear it",
   "Cargando la ficha del juego…": "Loading game info…",
   "Ficha del juego": "Game info",
   "Reseñas de Steam": "Steam reviews",

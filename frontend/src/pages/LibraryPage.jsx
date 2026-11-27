@@ -1,7 +1,8 @@
 import GuestStart from "../components/GuestStart.jsx";
 import SteamLoginButton from "../components/SteamLoginButton.jsx";
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
-import { addFavorite, fetchStateSummary, removeFavorite, unhideGame } from "../services/gameService.js";
+import { addFavorite, fetchStateSummary, removeFavorite, setGameState, unhideGame } from "../services/gameService.js";
+import GameStatePicker from "../components/GameStatePicker.jsx";
 import {
   DURATION_OPTIONS,
   MODE_OPTIONS,
@@ -117,6 +118,16 @@ function LibraryPage({
       updateGame(game.appid, { is_favorite: !game.is_favorite });
     } catch (err) {
       setActionError(err.response?.data?.detail ?? t("No se pudo actualizar favoritos."));
+    }
+  }
+
+  async function handleSetState(game, state) {
+    setActionError(null);
+    try {
+      await setGameState(game.appid, state);
+      updateGame(game.appid, { state });
+    } catch (err) {
+      setActionError(err.response?.data?.detail ?? t("No se pudo guardar el estado. Probá de nuevo."));
     }
   }
 
@@ -338,7 +349,9 @@ function LibraryPage({
                 {game.name}
                 {game.source === "friend" && <span className="tag">{t("Familia")}</span>}
                 {game.source === "both" && <span className="tag">{t("Ambas")}</span>}
-                {game.state && <span className={`tag tag--state tag--${game.state}`}>{t(STATE_LABELS[game.state])}</span>}
+                {game.state && (readOnly || game.source === "friend") && (
+                  <span className={`tag tag--state tag--${game.state}`}>{t(STATE_LABELS[game.state])}</span>
+                )}
                 {game.coop && <span className="tag">{t("Coop")}</span>}
               </p>
               <p className="library-row__genres">
@@ -346,16 +359,21 @@ function LibraryPage({
                   .filter(Boolean)
                   .join(" — ")}
               </p>
-              {onOpenForum && (
-                <button
-                  type="button"
-                  className="text-button library-row__forum"
-                  onClick={() => onOpenForum({ appid: game.appid, name: game.name })}
-                  aria-label={t("Foro de {name}", { name: game.name })}
-                >
-                  {t("Foro del juego")}
-                </button>
-              )}
+              <div className="library-row__actions">
+                {!readOnly && game.source !== "friend" && (
+                  <GameStatePicker compact state={game.state} name={game.name} onChange={(state) => handleSetState(game, state)} />
+                )}
+                {onOpenForum && (
+                  <button
+                    type="button"
+                    className="text-button library-row__forum"
+                    onClick={() => onOpenForum({ appid: game.appid, name: game.name })}
+                    aria-label={t("Foro de {name}", { name: game.name })}
+                  >
+                    {t("Foro del juego")}
+                  </button>
+                )}
+              </div>
             </div>
             <p className="library-row__meta mono">
               <span>

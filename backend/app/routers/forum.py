@@ -101,7 +101,9 @@ async def game_overview(appid: int, db: Session = Depends(get_db)) -> dict:
 
 
 @router.get("/games/{appid}/info", response_model=Game, dependencies=[Depends(steam_reads)])
-async def game_info(appid: int, db: Session = Depends(get_db)) -> Game:
+async def game_info(
+    appid: int, db: Session = Depends(get_db), viewer: str | None = Depends(current_steam_id)
+) -> Game:
     """Lo mismo que muestra la tarjeta de la ruleta: sinopsis, géneros, modos, duración, reseñas de
     Steam, crítica, precio y dificultad de logros. Va aparte de la cabecera porque, si el juego no
     está en la caché, completarlo tarda unos segundos."""
@@ -110,6 +112,9 @@ async def game_info(appid: int, db: Session = Depends(get_db)) -> Game:
     details = await game_details_service.get_or_fetch_details(db, appid, name)
     library_service.apply_cached_details(game, details)
     library_service.apply_durations(db, [game])
+    if viewer:
+        # Con sesión, tu estado en este juego (jugando, terminado…), para cambiarlo desde el foro.
+        game.state = library_service.get_states(db, viewer).get(appid)
     return game
 
 

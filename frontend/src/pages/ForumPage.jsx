@@ -23,6 +23,7 @@ import {
 } from "../services/forumService.js";
 import FormattedText, { formatHelp } from "../components/FormattedText.jsx";
 import GameInfo from "../components/GameInfo.jsx";
+import { setGameState } from "../services/gameService.js";
 import { locale, t, tk } from "../i18n/index.js";
 import SteamLoginButton from "../components/SteamLoginButton.jsx";
 import SupporterBadge from "../components/SupporterBadge.jsx";
@@ -210,7 +211,16 @@ function ForumGameView({ target, onTargetChange, viewer, onLogin }) {
     return () => {
       cancelled = true;
     };
-  }, [appid]);
+  }, [appid, viewer?.steam_id]);
+
+  async function handleSetState(state) {
+    try {
+      await setGameState(appid, state);
+      setInfo((current) => (current ? { ...current, state } : current));
+    } catch {
+      setGameError(t("No se pudo guardar el estado. Probá de nuevo."));
+    }
+  }
 
   const myReview = reviews.find((review) => review.is_mine);
   const name = game?.name ?? target.name ?? t("Juego");
@@ -249,7 +259,7 @@ function ForumGameView({ target, onTargetChange, viewer, onLogin }) {
         </div>
       </header>
 
-      {!infoFailed && <GameInfo game={info} />}
+      {!infoFailed && <GameInfo game={info} onSetState={viewer ? handleSetState : undefined} />}
 
       {gameError && <p className="error-text">{gameError}</p>}
 
