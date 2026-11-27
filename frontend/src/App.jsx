@@ -388,6 +388,7 @@ function App() {
             includeFamily={includeFamily}
             onIncludeFamilyChange={setIncludeFamily}
             onManageFamily={() => setActiveView("family")}
+            onOpenForum={openForum}
           />
         )}
 

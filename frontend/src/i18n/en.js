@@ -82,6 +82,7 @@ const en = {
   "Ocultar +18": "Hide 18+",
   "Ocultar programas": "Hide software",
   "Ocultar juegos basura": "Hide junk games",
+  "Foro de {name}": "{name} forum",
   "Crítica": "Critics",
   "crítica": "critics",
   "usuarios": "users",

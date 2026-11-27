@@ -143,6 +143,12 @@
   font-size: 0.8125rem;
 }
 
+.library-row__forum {
+  min-height: 32px;
+  padding: 0;
+  font-size: 0.8125rem;
+}
+
 /* Columnas fijas para que horas, precio y fecha queden alineados entre filas. */
 .library-row__meta {
   display: grid;
