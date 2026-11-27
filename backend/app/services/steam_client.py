@@ -96,6 +96,9 @@ class SteamClient:
                 "steamid": steam_id,
                 "include_appinfo": 1,
                 "include_played_free_games": 1,
+                # Juegos gratis que se agregan con una licencia gratis (SCP: Escape Together y
+                # parecidos): Steam los deja afuera si no se pide esto.
+                "include_free_sub": 1,
                 "format": "json",
             },
         )
