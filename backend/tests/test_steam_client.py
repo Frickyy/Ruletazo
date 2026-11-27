@@ -59,9 +59,9 @@ async def test_get_owned_games_returns_list():
     )
     async with SteamClient(api_key="fake-key") as client:
         games = await client.get_owned_games(STEAM_ID64)
-    # También los juegos gratis agregados con una licencia gratis.
+    # También los juegos que Steam sacó de la tienda o no revisó, y los gratis que jugaste.
     request = respx.calls.last.request
-    assert request.url.params["include_free_sub"] == "1" and request.url.params["include_played_free_games"] == "1"
+    assert request.url.params["skip_unvetted_apps"] == "0" and request.url.params["include_played_free_games"] == "1"
     assert games == [{"appid": 10, "name": "Counter-Strike", "playtime_forever": 100}]
 
 
