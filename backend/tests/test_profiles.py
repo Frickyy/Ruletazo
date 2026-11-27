@@ -6,7 +6,7 @@ import pytest
 from fastapi import HTTPException
 
 from app.core.config import Settings
-from app.models.game import CachedLibraryEntry
+from app.models.game import CachedGameDetails, CachedLibraryEntry
 from app.routers import profiles
 from app.services import favorites_service, forum_service, library_service, profile_service
 from app.services.forum_service import Author
@@ -63,7 +63,7 @@ def test_build_profile_collects_states_favorites_and_reviews(db_session):
     assert [game["name"] for game in profile["favorites"]] == ["Portal 2"]
     assert profile["reviews"][0]["score"] == 10
     assert profile["summary"]["counts"]["finished"] == 1
-    assert profile["preferences"] == {"is_public": True, "track_achievements": False}
+    assert profile["preferences"] == {"is_public": True, "track_achievements": False, "sync_steam_states": False}
 
 
 def test_other_people_do_not_see_preferences(db_session):
@@ -404,3 +404,57 @@ def test_cards_use_the_quick_time_once_it_is_stored(db_session, monkeypatch):
     monkeypatch.setattr(duration_service, "get_settings", lambda: Settings(igdb_client_id="cliente", igdb_client_secret="secreto"))
 
     assert set(duration_service.durations(db_session, [1, 2, 3])) == {2, 3}
+
+
+# ---------- Sincronizar estados con Steam ----------
+
+
+def test_syncing_states_with_steam_is_opt_in_and_needs_achievement_progress(db_session):
+    assert profile_service.syncs_steam_states(db_session, ANA) is False
+
+    prefs = profile_service.update_preferences(db_session, ANA, sync_steam_states=True)
+    assert prefs == {"is_public": True, "track_achievements": True, "sync_steam_states": True}
+
+    # Sin el progreso de logros no se puede saber qué terminaste: apagarlo apaga la sincronización.
+    prefs = profile_service.update_preferences(db_session, ANA, track_achievements=False)
+    assert prefs["sync_steam_states"] is False
+
+
+def test_sync_marks_recent_games_as_playing_and_complete_ones_as_finished(db_session):
+    from datetime import timedelta
+
+    from app.models.game import UserGameProgress
+
+    now = datetime.now(timezone.utc)
+    recent, old = int((now - timedelta(days=3)).timestamp()), int((now - timedelta(days=30)).timestamp())
+    for appid, name, last_played in [(10, "Hades", recent), (20, "Celeste", old), (30, "Portal 2", recent), (40, "Abandonado", recent), (50, "Soundpad", recent)]:
+        db_session.add(CachedLibraryEntry(steam_id=ANA, appid=appid, name=name, playtime_forever_minutes=60, last_played=last_played, fetched_at=now))
+    # Un programa no pasa a "Jugando" aunque se haya usado.
+    db_session.add(CachedGameDetails(appid=50, genres=[], featured_reviews=[], is_software=True, fetched_at=now))
+    db_session.add(UserGameProgress(steam_id=ANA, appid=20, unlocked=30, total=30, fetched_at=now))
+    db_session.add(UserGameProgress(steam_id=ANA, appid=30, unlocked=5, total=50, fetched_at=now))
+    db_session.commit()
+    library_service.set_state(db_session, ANA, 40, "abandoned")
+
+    # Sin activarlo no toca nada.
+    assert library_service.sync_steam_states(db_session, ANA) == {"playing": 0, "finished": 0}
+
+    profile_service.update_preferences(db_session, ANA, sync_steam_states=True)
+    assert library_service.sync_steam_states(db_session, ANA, now=now) == {"playing": 2, "finished": 1}
+    assert library_service.get_states(db_session, ANA) == {10: "playing", 20: "finished", 30: "playing", 40: "abandoned"}
+    # La fecha del estado es la última vez que lo jugó (no cuenta como terminado hoy).
+    from app.models.game import GameState
+
+    finished_at = db_session.get(GameState, (ANA, 20)).updated_at
+    assert int(finished_at.replace(tzinfo=timezone.utc).timestamp()) == old
+
+    # Si sacás un estado a mano, no vuelve en la próxima sincronización…
+    library_service.set_state(db_session, ANA, 10, None)
+    assert library_service.sync_steam_states(db_session, ANA, now=now + timedelta(minutes=5)) == {"playing": 0, "finished": 0}
+    assert 10 not in library_service.get_states(db_session, ANA)
+
+    # …salvo que lo vuelvas a jugar.
+    entry = db_session.get(CachedLibraryEntry, (ANA, 10))
+    entry.last_played = int((now + timedelta(minutes=10)).timestamp())
+    db_session.commit()
+    assert library_service.sync_steam_states(db_session, ANA, now=now + timedelta(minutes=15))["playing"] == 1

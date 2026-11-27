@@ -19,6 +19,7 @@ router = APIRouter(prefix="/api", tags=["profiles"])
 class PreferencesIn(BaseModel):
     is_public: bool | None = None
     track_achievements: bool | None = None
+    sync_steam_states: bool | None = None
 
 
 @router.get("/config")
@@ -39,9 +40,17 @@ def public_config() -> dict:
 def update_my_preferences(
     preferences: PreferencesIn, db: Session = Depends(get_db), steam_id: str = Depends(require_steam_id)
 ) -> dict:
-    return profile_service.update_preferences(
-        db, steam_id, is_public=preferences.is_public, track_achievements=preferences.track_achievements
+    result = profile_service.update_preferences(
+        db,
+        steam_id,
+        is_public=preferences.is_public,
+        track_achievements=preferences.track_achievements,
+        sync_steam_states=preferences.sync_steam_states,
     )
+    if preferences.sync_steam_states:
+        # Al activarlo se marca enseguida lo que ya se sabe; lo demás, al ir leyendo tus logros.
+        result["synced"] = library_service.sync_steam_states(db, steam_id)
+    return result
 
 
 @router.delete("/profiles/me")

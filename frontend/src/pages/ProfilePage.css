@@ -78,6 +78,17 @@
   cursor: pointer;
 }
 
+.profile-sync {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.profile-sync__result {
+  margin: 0;
+}
+
 .profile-settings__error {
   grid-column: 1 / -1;
   margin: 0;

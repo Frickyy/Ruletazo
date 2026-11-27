@@ -82,6 +82,13 @@ const en = {
   "Ocultar +18": "Hide 18+",
   "Ocultar programas": "Hide software",
   "Ocultar juegos basura": "Hide junk games",
+  "Sincronizar con Steam": "Sync with Steam",
+  "Le da permiso a Ruletazo para ver tus juegos recientes: lo que jugaste en las últimas 2 semanas pasa a “Jugando” y lo que tiene todos los logros, a “Terminado”. No cambia lo que ya marcaste, y si sacás un estado a mano no vuelve. Necesita que tus detalles de juego y tus logros sean públicos en Steam.":
+    "Lets Ruletazo see your recent games: what you played in the last 2 weeks goes to “Playing” and what has every achievement, to “Finished”. It doesn't change what you already marked, and a state you clear by hand doesn't come back. Your game details and achievements must be public on Steam.",
+  "Listo: {playing} a “Jugando” y {finished} a “Terminado”. Los logros se siguen leyendo de a poco: los terminados aparecen mientras usás la página.":
+    "Done: {playing} to “Playing” and {finished} to “Finished”. Achievements keep being read little by little: finished games show up as you use the site.",
+  "Activado. Los logros se leen de a poco: los juegos terminados van apareciendo mientras usás la página.":
+    "On. Achievements are read little by little: finished games show up as you use the site.",
   "Estado de {name}": "{name} status",
   "Tocá de nuevo para sacarlo": "Tap again to clear it",
   "Cargando la ficha del juego…": "Loading game info…",

@@ -85,6 +85,12 @@ function ProfilePage({ profileId, viewer, onLogin, onOpenForum, onAddToFamily, f
   const [saveError, setSaveError] = useState("");
   const [copied, setCopied] = useState(false);
   const [sharingYear, setSharingYear] = useState(false);
+  // Lo que marcó la sincronización con Steam al activarla ({ playing, finished }).
+  const [syncResult, setSyncResult] = useState(null);
+
+  function reloadProfile() {
+    fetchProfile(targetId).then(setProfile).catch(() => {});
+  }
 
   useEffect(() => {
     if (!targetId) return;
@@ -129,8 +135,11 @@ function ProfilePage({ profileId, viewer, onLogin, onOpenForum, onAddToFamily, f
     setSaving(true);
     setSaveError("");
     try {
-      const preferences = await updateMyPreferences(patch);
+      const { synced, ...preferences } = await updateMyPreferences(patch);
+      setSyncResult(synced ?? null);
       setProfile((current) => ({ ...current, is_public: preferences.is_public, preferences }));
+      // Lo que la sincronización acaba de marcar se ve en el perfil enseguida.
+      if (synced && synced.playing + synced.finished > 0) reloadProfile();
       onPreferencesChange?.(preferences);
     } catch (err) {
       setSaveError(err.response?.data?.detail ?? t("No se pudo guardar el cambio. Probá de nuevo."));
@@ -257,7 +266,16 @@ function ProfilePage({ profileId, viewer, onLogin, onOpenForum, onAddToFamily, f
         title={t("Jugando ahora")}
         games={profile.playing}
         empty={profile.is_me ? t("Marcá un juego como “Jugando” desde la ficha de la ruleta.") : t("No está jugando nada por ahora.")}
-      />
+      >
+        {profile.is_me && (
+          <SteamSync
+            enabled={profile.preferences.sync_steam_states}
+            saving={saving}
+            onChange={(enabled) => savePreference({ sync_steam_states: enabled })}
+            result={syncResult}
+          />
+        )}
+      </GameShelf>
       <GameShelf
         title={t("Terminados")}
         games={profile.finished}
@@ -351,10 +369,38 @@ function DeleteData({ onDeleted }) {
   );
 }
 
-function GameShelf({ title, games, empty }) {
+/**
+ * Permiso para sincronizar los estados con Steam: lo jugado en las últimas 2 semanas pasa a
+ * "Jugando" y lo que tiene todos los logros a "Terminado". `result`: lo que marcó al activarlo.
+ */
+function SteamSync({ enabled, saving, onChange, result }) {
+  return (
+    <div className="profile-sync">
+      <label className="profile-settings__item">
+        <input type="checkbox" checked={enabled} disabled={saving} onChange={(event) => onChange(event.target.checked)} />
+        <span>
+          <strong>{t("Sincronizar con Steam")}</strong>
+          <small>
+            {t("Le da permiso a Ruletazo para ver tus juegos recientes: lo que jugaste en las últimas 2 semanas pasa a “Jugando” y lo que tiene todos los logros, a “Terminado”. No cambia lo que ya marcaste, y si sacás un estado a mano no vuelve. Necesita que tus detalles de juego y tus logros sean públicos en Steam.")}
+          </small>
+        </span>
+      </label>
+      {enabled && result && (
+        <p className="hint profile-sync__result" role="status">
+          {result.playing + result.finished > 0
+            ? t("Listo: {playing} a “Jugando” y {finished} a “Terminado”. Los logros se siguen leyendo de a poco: los terminados aparecen mientras usás la página.", result)
+            : t("Activado. Los logros se leen de a poco: los juegos terminados van apareciendo mientras usás la página.")}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function GameShelf({ title, games, empty, children }) {
   return (
     <section className="profile-section" aria-label={title}>
       <h2>{title}</h2>
+      {children}
       {games.length === 0 ? (
         <p className="hint">{empty}</p>
       ) : (
