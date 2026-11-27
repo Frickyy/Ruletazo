@@ -42,6 +42,8 @@ function LibraryPage({
   includeFamily,
   onIncludeFamilyChange,
   onManageFamily,
+  // Abre el foro de un juego (el mismo de "Foro del juego" en la tarjeta de la ruleta).
+  onOpenForum,
   guest = null,
   onGuest,
   onLogin,
@@ -344,6 +346,16 @@ function LibraryPage({
                   .filter(Boolean)
                   .join(" — ")}
               </p>
+              {onOpenForum && (
+                <button
+                  type="button"
+                  className="text-button library-row__forum"
+                  onClick={() => onOpenForum({ appid: game.appid, name: game.name })}
+                  aria-label={t("Foro de {name}", { name: game.name })}
+                >
+                  {t("Foro del juego")}
+                </button>
+              )}
             </div>
             <p className="library-row__meta mono">
               <span>
