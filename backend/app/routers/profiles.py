@@ -37,7 +37,7 @@ def public_config() -> dict:
 
 
 @router.put("/profiles/me")
-def update_my_preferences(
+async def update_my_preferences(
     preferences: PreferencesIn, db: Session = Depends(get_db), steam_id: str = Depends(require_steam_id)
 ) -> dict:
     result = profile_service.update_preferences(
@@ -49,7 +49,7 @@ def update_my_preferences(
     )
     if preferences.sync_steam_states:
         # Al activarlo se marca enseguida lo que ya se sabe; lo demás, al ir leyendo tus logros.
-        result["synced"] = library_service.sync_steam_states(db, steam_id)
+        result["synced"] = await library_service.sync_steam_states(db, steam_id)
     return result
 
 

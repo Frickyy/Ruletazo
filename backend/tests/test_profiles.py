@@ -420,7 +420,7 @@ def test_syncing_states_with_steam_is_opt_in_and_needs_achievement_progress(db_s
     assert prefs["sync_steam_states"] is False
 
 
-def test_sync_marks_recent_games_as_playing_and_complete_ones_as_finished(db_session):
+async def test_sync_marks_recent_games_as_playing_and_complete_ones_as_finished(db_session):
     from datetime import timedelta
 
     from app.models.game import UserGameProgress
@@ -436,12 +436,23 @@ def test_sync_marks_recent_games_as_playing_and_complete_ones_as_finished(db_ses
     db_session.commit()
     library_service.set_state(db_session, ANA, 40, "abandoned")
 
+    # Lo que Steam dice que jugaste en las últimas 2 semanas. El 77 es de la biblioteca familiar:
+    # no está en la tuya, pero cuenta igual.
+    def recent(hades_minutes=120):
+        return [
+            {"appid": 10, "playtime_2weeks": 30, "playtime_forever": hades_minutes},
+            {"appid": 30, "playtime_2weeks": 10, "playtime_forever": 500},
+            {"appid": 40, "playtime_2weeks": 5, "playtime_forever": 90},
+            {"appid": 50, "playtime_2weeks": 60, "playtime_forever": 900},
+            {"appid": 77, "playtime_2weeks": 15, "playtime_forever": 15},
+        ]
+
     # Sin activarlo no toca nada.
-    assert library_service.sync_steam_states(db_session, ANA) == {"playing": 0, "finished": 0}
+    assert await library_service.sync_steam_states(db_session, ANA, recent=recent()) == {"playing": 0, "finished": 0}
 
     profile_service.update_preferences(db_session, ANA, sync_steam_states=True)
-    assert library_service.sync_steam_states(db_session, ANA, now=now) == {"playing": 2, "finished": 1}
-    assert library_service.get_states(db_session, ANA) == {10: "playing", 20: "finished", 30: "playing", 40: "abandoned"}
+    assert await library_service.sync_steam_states(db_session, ANA, now=now, recent=recent()) == {"playing": 3, "finished": 1}
+    assert library_service.get_states(db_session, ANA) == {10: "playing", 20: "finished", 30: "playing", 40: "abandoned", 77: "playing"}
     # La fecha del estado es la última vez que lo jugó (no cuenta como terminado hoy).
     from app.models.game import GameState
 
@@ -450,11 +461,8 @@ def test_sync_marks_recent_games_as_playing_and_complete_ones_as_finished(db_ses
 
     # Si sacás un estado a mano, no vuelve en la próxima sincronización…
     library_service.set_state(db_session, ANA, 10, None)
-    assert library_service.sync_steam_states(db_session, ANA, now=now + timedelta(minutes=5)) == {"playing": 0, "finished": 0}
+    assert await library_service.sync_steam_states(db_session, ANA, now=now + timedelta(minutes=5), recent=recent()) == {"playing": 0, "finished": 0}
     assert 10 not in library_service.get_states(db_session, ANA)
 
     # …salvo que lo vuelvas a jugar.
-    entry = db_session.get(CachedLibraryEntry, (ANA, 10))
-    entry.last_played = int((now + timedelta(minutes=10)).timestamp())
-    db_session.commit()
-    assert library_service.sync_steam_states(db_session, ANA, now=now + timedelta(minutes=15))["playing"] == 1
+    assert (await library_service.sync_steam_states(db_session, ANA, now=now + timedelta(minutes=15), recent=recent(150)))["playing"] == 1
