@@ -36,8 +36,9 @@ def get_preferences(db: Session, steam_id: str) -> UserProfile | None:
 
 
 def is_public(db: Session, steam_id: str) -> bool:
+    """Público salvo que el usuario lo haya hecho privado (o haya borrado sus datos)."""
     row = get_preferences(db, steam_id)
-    return bool(row and row.is_public)
+    return True if row is None else bool(row.is_public)
 
 
 def tracks_achievements(db: Session, steam_id: str) -> bool:
@@ -54,7 +55,7 @@ def update_preferences(
 ) -> dict:
     row = get_preferences(db, steam_id)
     if row is None:
-        row = UserProfile(steam_id=steam_id, is_public=False, track_achievements=False)
+        row = UserProfile(steam_id=steam_id, is_public=True, track_achievements=False)
         db.add(row)
     if is_public is not None:
         row.is_public = is_public
@@ -99,7 +100,7 @@ def build_profile(db: Session, target_steam_id: str, viewer_steam_id: str | None
         "avatar": steam_profile.get("avatar", ""),
         "vanity": steam_profile.get("vanity", ""),
         "is_me": is_me,
-        "is_public": bool(preferences and preferences.is_public),
+        "is_public": True if preferences is None else bool(preferences.is_public),
         "is_supporter": target_steam_id in get_settings().supporter_steam_id_set,
         "library_size": len(names),
         "summary": library_service.state_summary(db, target_steam_id),

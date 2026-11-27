@@ -163,13 +163,13 @@ class CompletionSample(Base):
 
 
 class UserProfile(Base):
-    """Preferencias del perfil de un usuario. Sin fila = valores por defecto (perfil privado)."""
+    """Preferencias del perfil de un usuario. Sin fila = valores por defecto (perfil público)."""
 
     __tablename__ = "user_profiles"
 
     steam_id: Mapped[str] = mapped_column(String(32), primary_key=True)
-    # Privado por defecto: nadie ve tu perfil hasta que lo hacés público.
-    is_public: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Público por defecto (como en Steam): se puede hacer privado desde el perfil.
+    is_public: Mapped[bool] = mapped_column(Boolean, default=True)
     # Pedir tu progreso de logros a Steam en segundo plano (para "Casi al 100%"). Lo activás vos.
     track_achievements: Mapped[bool] = mapped_column(Boolean, default=False)
     # Epoch del último "borrar mis datos": las sesiones emitidas hasta ese momento quedan inválidas.
