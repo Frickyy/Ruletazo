@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from app.models.game import CachedGameDetails, CachedLibraryEntry, GameState, UserGameProgress
+from app.models.game import CachedGameDetails, CachedLibraryEntry, GameState, SteamSyncSeen, UserGameProgress
 from app.schemas.game import CriticScore, Game
 from app.services import (
     favorites_service,
@@ -57,7 +57,7 @@ async def get_library(db: Session, identifier: str) -> list[Game]:
         else:
             logger.info("Usando biblioteca cacheada de %s (%d juegos)", steam_id, len(cached_entries))
 
-    sync_steam_states(db, steam_id)
+    await sync_steam_states(db, steam_id)
     return [_to_schema(entry) for entry in cached_entries]
 
 
@@ -345,7 +345,7 @@ async def enrich_library_batch(db: Session, identifier: str, limit: int) -> dict
                 )
             db.commit()
 
-    sync_steam_states(db, steam_id)
+    await sync_steam_states(db, steam_id)
     return {
         "processed": len(to_process) + durations_found,
         # Los que se saltean por fallas recientes no cuentan: se reintentan en otra sesión.
@@ -503,17 +503,39 @@ def _to_schema(entry: CachedLibraryEntry) -> Game:
 GAME_STATES = ("playing", "finished", "abandoned")
 
 
-# "Jugando" según Steam: lo que jugaste en las últimas 2 semanas.
-RECENT_DAYS = 14
+# Lo que jugaste en las últimas 2 semanas, según Steam, se guarda un rato por usuario: la
+# sincronización corre en cada carga de la biblioteca y no hace falta preguntarle cada vez.
+RECENT_CACHE_SECONDS = 10 * 60
+_recent_cache: dict[str, tuple[float, list[dict]]] = {}
+
+
+async def _recently_played(steam_id: str) -> list[dict] | None:
+    """Los juegos que jugaste en las últimas 2 semanas (incluidos los de la familia). None si
+    Steam no respondió o tus detalles de juego son privados."""
+    cached = _recent_cache.get(steam_id)
+    if cached and time.monotonic() - cached[0] < RECENT_CACHE_SECONDS:
+        return cached[1]
+    try:
+        async with SteamClient() as client:
+            games = await client.get_recently_played(steam_id)
+    except SteamAPIError:
+        return None
+    _recent_cache[steam_id] = (time.monotonic(), games)
+    return games
 
 
 def _timestamp(value: datetime) -> float:
     return (value if value.tzinfo else value.replace(tzinfo=timezone.utc)).timestamp()
 
 
-def sync_steam_states(db: Session, steam_id: str, now: datetime | None = None) -> dict:
+async def sync_steam_states(
+    db: Session, steam_id: str, now: datetime | None = None, recent: list[dict] | None = None
+) -> dict:
     """Si lo activaste en tu perfil: lo que jugaste en Steam en las últimas 2 semanas pasa a
     "Jugando" y lo que tiene todos los logros, a "Terminado".
+
+    "Jugando" sale de los jugados recientemente de Steam, que incluye los juegos de tu biblioteca
+    familiar (GetOwnedGames no da tus horas en esos). `recent` es para los tests.
 
     No pisa lo que marcaste vos (un juego con estado no pasa a "Jugando"; uno abandonado no pasa a
     "Terminado") y solo mira lo nuevo desde la última vez: si sacás un estado a mano, no vuelve,
@@ -524,13 +546,19 @@ def sync_steam_states(db: Session, steam_id: str, now: datetime | None = None) -
         return {"playing": 0, "finished": 0}
     now = now or datetime.now(timezone.utc)
     since = _timestamp(row.states_synced_at) if row.states_synced_at else 0.0
-    cutoff = now.timestamp() - RECENT_DAYS * 86400
     states = get_states(db, steam_id)
     marked = {"playing": 0, "finished": 0}
 
     entries = {entry.appid: entry for entry in _get_cached_entries(db, steam_id)}
+    if recent is None:
+        recent = await _recently_played(steam_id)
+    recent = [game for game in recent or [] if (game.get("playtime_2weeks") or 0) > 0 and isinstance(game.get("appid"), int)]
     # Los programas (Soundpad, Wallpaper Engine…) no se "juegan": no pasan a "Jugando".
-    software = {details.appid for details in _get_cached_details_map(db, list(entries)).values() if details.is_software}
+    software = {
+        details.appid
+        for details in _get_cached_details_map(db, [game["appid"] for game in recent]).values()
+        if details.is_software
+    }
 
     def mark(appid: int, state: str) -> None:
         set_state(db, steam_id, appid, state)
@@ -546,10 +574,18 @@ def sync_steam_states(db: Session, steam_id: str, now: datetime | None = None) -
         complete = progress.total > 0 and progress.unlocked >= progress.total
         if complete and _timestamp(progress.fetched_at) > since and states.get(progress.appid) in (None, "playing"):
             mark(progress.appid, "finished")
-    for entry in entries.values():
-        played = entry.last_played or 0
-        if played >= cutoff and played > since and entry.appid not in states and entry.appid not in software:
-            mark(entry.appid, "playing")
+    seen = {row.appid: row for row in db.execute(select(SteamSyncSeen).where(SteamSyncSeen.steam_id == steam_id)).scalars()}
+    for game in recent:
+        appid, minutes = game["appid"], int(game.get("playtime_forever") or 0)
+        previous = seen.get(appid)
+        # Nuevo para la sincronización, o lo jugaste desde la última vez.
+        played_again = previous is None or minutes > previous.playtime_forever
+        if played_again and appid not in states and appid not in software:
+            mark(appid, "playing")
+        if previous is None:
+            db.add(SteamSyncSeen(steam_id=steam_id, appid=appid, playtime_forever=minutes))
+        else:
+            previous.playtime_forever = minutes
 
     row.states_synced_at = now
     db.commit()

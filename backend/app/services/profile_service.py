@@ -22,6 +22,7 @@ from app.models.game import (
     Feedback,
     GameState,
     HiddenGame,
+    SteamSyncSeen,
     UserGameProgress,
     UserProfile,
 )
@@ -168,6 +169,7 @@ def delete_user_data(db: Session, steam_id: str) -> dict:
         ("hidden", HiddenGame),
         ("states", GameState),
         ("achievement_progress", UserGameProgress),
+        ("steam_sync", SteamSyncSeen),
         ("library", CachedLibraryEntry),
         ("completion_samples", CompletionSample),
         ("feedback", Feedback),

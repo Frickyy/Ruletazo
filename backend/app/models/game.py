@@ -138,6 +138,17 @@ class GameState(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 
+class SteamSyncSeen(Base):
+    """Minutos jugados de un juego reciente la última vez que se sincronizó con Steam (ver
+    library_service.sync_steam_states): vuelve a "Jugando" solo si esos minutos aumentan."""
+
+    __tablename__ = "steam_sync_seen"
+
+    steam_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    appid: Mapped[int] = mapped_column(Integer, primary_key=True)
+    playtime_forever: Mapped[int] = mapped_column(Integer, default=0)
+
+
 class UserGameProgress(Base):
     """Logros desbloqueados por el usuario en un juego (para el filtro "Casi al 100%")."""
 

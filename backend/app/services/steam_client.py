@@ -104,6 +104,15 @@ class SteamClient:
             raise PrivateProfileError("El perfil o la biblioteca de este usuario es privada.")
         return data.get("games", [])
 
+    async def get_recently_played(self, steam_id: str) -> list[dict]:
+        """Juegos jugados en las últimas 2 semanas (appid, name, playtime_2weeks, playtime_forever).
+        A diferencia de GetOwnedGames, incluye los de la biblioteca familiar que jugaste."""
+        response = await self._get(
+            "/IPlayerService/GetRecentlyPlayedGames/v1/",
+            params={"key": self._api_key, "steamid": steam_id, "count": 0, "format": "json"},
+        )
+        return response.json().get("response", {}).get("games", []) or []
+
     async def get_profile(self, steam_id: str) -> dict:
         """Devuelve los datos públicos básicos del perfil, incluido el avatar."""
         response = await self._get(
