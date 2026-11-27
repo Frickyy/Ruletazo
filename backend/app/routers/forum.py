@@ -14,7 +14,8 @@ from sqlalchemy.orm import Session
 from app.core.rate_limit import steam_reads
 from app.core.security import current_steam_id, is_moderator, require_steam_id
 from app.db.session import get_db
-from app.services import forum_service
+from app.schemas.game import Game
+from app.services import forum_service, game_details_service, library_service
 from app.services.forum_service import Author, ForumError
 from app.services.steam_client import SteamAPIError, SteamClient
 from app.services.store_client import SteamStoreClient, steam_header_image
@@ -97,6 +98,19 @@ async def game_overview(appid: int, db: Session = Depends(get_db)) -> dict:
         **forum_service.review_stats(db, appid),
         "thread_count": forum_service.thread_count(db, appid),
     }
+
+
+@router.get("/games/{appid}/info", response_model=Game, dependencies=[Depends(steam_reads)])
+async def game_info(appid: int, db: Session = Depends(get_db)) -> Game:
+    """Lo mismo que muestra la tarjeta de la ruleta: sinopsis, géneros, modos, duración, reseñas de
+    Steam, crítica, precio y dificultad de logros. Va aparte de la cabecera porque, si el juego no
+    está en la caché, completarlo tarda unos segundos."""
+    name = await _game_name(db, appid)
+    game = Game(appid=appid, name=name, header_image=steam_header_image(appid))
+    details = await game_details_service.get_or_fetch_details(db, appid, name)
+    library_service.apply_cached_details(game, details)
+    library_service.apply_durations(db, [game])
+    return game
 
 
 @router.get("/games/{appid}/reviews")

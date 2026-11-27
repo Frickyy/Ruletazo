@@ -9,6 +9,7 @@ import {
   editForumPost,
   editForumThread,
   fetchForumGame,
+  fetchForumGameInfo,
   fetchForumReports,
   fetchForumReviews,
   fetchForumThread,
@@ -21,6 +22,7 @@ import {
   searchForumGames,
 } from "../services/forumService.js";
 import FormattedText, { formatHelp } from "../components/FormattedText.jsx";
+import GameInfo from "../components/GameInfo.jsx";
 import { locale, t, tk } from "../i18n/index.js";
 import SteamLoginButton from "../components/SteamLoginButton.jsx";
 import SupporterBadge from "../components/SupporterBadge.jsx";
@@ -173,6 +175,9 @@ function ForumGameView({ target, onTargetChange, viewer, onLogin }) {
   const setTab = (nextTab) => onTargetChange({ appid, name: game?.name ?? target.name, tab: nextTab });
   const [reviews, setReviews] = useState([]);
   const [threads, setThreads] = useState([]);
+  // La ficha del juego (lo mismo que la tarjeta de la ruleta). Va aparte: puede tardar unos segundos.
+  const [info, setInfo] = useState(null);
+  const [infoFailed, setInfoFailed] = useState(false);
 
   async function reload() {
     try {
@@ -194,6 +199,18 @@ function ForumGameView({ target, onTargetChange, viewer, onLogin }) {
     setGame(null);
     reload();
   }, [appid, viewer?.steam_id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setInfo(null);
+    setInfoFailed(false);
+    fetchForumGameInfo(appid)
+      .then((data) => !cancelled && setInfo(data))
+      .catch(() => !cancelled && setInfoFailed(true));
+    return () => {
+      cancelled = true;
+    };
+  }, [appid]);
 
   const myReview = reviews.find((review) => review.is_mine);
   const name = game?.name ?? target.name ?? t("Juego");
@@ -231,6 +248,8 @@ function ForumGameView({ target, onTargetChange, viewer, onLogin }) {
           <AffiliateStores name={name} />
         </div>
       </header>
+
+      {!infoFailed && <GameInfo game={info} />}
 
       {gameError && <p className="error-text">{gameError}</p>}
 

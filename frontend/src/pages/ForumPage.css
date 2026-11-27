@@ -203,6 +203,33 @@
   padding: 0;
 }
 
+/* Ficha del juego: lo mismo que la tarjeta de la ruleta. */
+.game-info {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 1.5rem 2.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.game-info__main,
+.game-info__side {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.game-info__main .game-card__description {
+  margin: 0;
+}
+
+@media (max-width: 760px) {
+  .game-info {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .forum-tabs {
   align-self: flex-start;
 }

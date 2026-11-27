@@ -16,6 +16,12 @@ export async function fetchForumGame(appid) {
   return data;
 }
 
+/** Lo mismo que la tarjeta de la ruleta (sinopsis, duración, reseñas, crítica…). */
+export async function fetchForumGameInfo(appid) {
+  const { data } = await api.get(`/forum/games/${appid}/info`);
+  return data;
+}
+
 export async function fetchForumReviews(appid) {
   const { data } = await api.get(`/forum/games/${appid}/reviews`);
   return data;
