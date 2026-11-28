@@ -1,7 +1,8 @@
 import { formatHours } from "./GameCard.jsx";
 import { t } from "../i18n/index.js";
 
-/** Lo que va en "Duración": la historia con algunos extras y, si IGDB lo tiene, el completista (100 %). */
+/** Lo que va en "Duración": la historia con algunos extras y, si IGDB los tiene, yendo directo a la
+ * historia y el completista (100 %). */
 function DurationValue({ game, emptyTitle }) {
   return (
     <>
@@ -28,6 +29,11 @@ function DurationValue({ game, emptyTitle }) {
           >
             {t("según IGDB")}
           </a>
+        </span>
+      )}
+      {game.duration_quick_hours != null && (
+        <span className="game-card__full" title={t("Yendo directo a la historia, sin extras, según IGDB")}>
+          {t("Directo a la historia")}: <span className="mono">{formatHours(game.duration_quick_hours)}</span>
         </span>
       )}
       {game.duration_full_hours != null && (

@@ -398,6 +398,7 @@ def apply_durations(db: Session, games: list[Game]) -> None:
         game.duration_source = duration["source"] if duration else None
         game.duration_samples = duration["samples"] if duration else 0
         game.duration_url = duration.get("url", "") if duration else ""
+        game.duration_quick_hours = duration.get("quick_hours") if duration else None
         game.duration_full_hours = duration.get("full_hours") if duration else None
 
 

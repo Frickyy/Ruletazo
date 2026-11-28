@@ -89,6 +89,8 @@ def durations(db: Session, appids: list[int]) -> dict[int, dict]:
                 hours, samples=samples, categories=categories, genres=genres, quick_hours=quick, check_quick=has_quick
             ):
                 result[appid] = {"hours": hours, "source": "igdb", "samples": samples, "url": url}
+                if quick:
+                    result[appid]["quick_hours"] = quick  # directo a la historia
                 if full:
                     result[appid]["full_hours"] = full  # completista: al 100 %
     for appid, (hours, count) in community_durations(db, [appid for appid in appids if appid not in result]).items():

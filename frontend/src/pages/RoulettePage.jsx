@@ -474,7 +474,7 @@ function RoulettePage({
               <select className="select" value={duration} onChange={(event) => setDuration(event.target.value)} aria-label={t("Duración")} disabled={isSpinning}>
                 {DURATION_OPTIONS.map((option) => (
                   <option key={option.id} value={option.id}>
-                    {option.label}
+                    {t(option.label)}
                   </option>
                 ))}
               </select>
