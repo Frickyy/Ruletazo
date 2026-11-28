@@ -68,6 +68,8 @@ class CachedGameDetails(Base):
     # El tiempo yendo directo a la historia, si va en orden con el normal (ver igdb_client.extra_hours).
     # Sirve para descartar duraciones que son horas de online (igdb_client.makes_sense).
     igdb_quick_hours: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # Al 100 % (todos los logros: "completista"), si va en orden con el normal y no pasa de 300 h.
+    igdb_full_hours: Mapped[float | None] = mapped_column(Float, nullable=True)
     igdb_samples: Mapped[int] = mapped_column(Integer, default=0)
     igdb_url: Mapped[str] = mapped_column(String(255), default="")
     # Puntaje de 0 a 100 de la crítica (aggregated_rating) y de los usuarios (rating) en IGDB, con

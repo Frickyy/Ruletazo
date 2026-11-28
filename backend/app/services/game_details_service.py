@@ -30,7 +30,8 @@ REVIEWS_VERSION = 2
 # Subir este número fuerza a volver a buscar en IGDB (por ejemplo, si cambia qué dato cuenta como creíble).
 # 2: también el tiempo rápido (igdb_quick_hours), para descartar en la ficha horas de online.
 # 3: también los puntajes de la crítica y de los usuarios.
-IGDB_VERSION = 3
+# 4: también el tiempo completista (igdb_full_hours), para la tarjeta.
+IGDB_VERSION = 4
 # Desde esta versión la caché tiene el tiempo rápido (lo usa duration_service).
 IGDB_QUICK_HOURS_VERSION = 2
 # Subir este número fuerza a volver a pedir el Metacritic a la ficha de Steam.
@@ -71,6 +72,7 @@ def apply_igdb(cached: CachedGameDetails, found: dict) -> None:
     """Guarda lo que devolvió igdb_client.get_times para este juego (horas None = sin dato creíble)."""
     cached.igdb_hours = found["hours"]
     cached.igdb_quick_hours = found.get("quick_hours")
+    cached.igdb_full_hours = found.get("full_hours")
     cached.igdb_samples = found["samples"]
     cached.igdb_url = found["url"]
     cached.igdb_critic_score = found.get("critic_score")

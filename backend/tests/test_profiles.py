@@ -342,7 +342,7 @@ def test_igdb_comes_before_the_community(db_session, monkeypatch):
 
     db_session.add(
         CachedGameDetails(
-            appid=10, igdb_hours=10.4, igdb_samples=36,
+            appid=10, igdb_hours=10.4, igdb_full_hours=27.1, igdb_samples=36,
             igdb_url="https://www.igdb.com/games/portal-2", fetched_at=datetime.now(timezone.utc),
         )
     )
@@ -355,7 +355,9 @@ def test_igdb_comes_before_the_community(db_session, monkeypatch):
     with_igdb = Settings(igdb_client_id="cliente", igdb_client_secret="secreto")
     monkeypatch.setattr(duration_service, "get_settings", lambda: with_igdb)
     found = duration_service.durations(db_session, [10, 20])
-    assert found[10] == {"hours": 10.4, "source": "igdb", "samples": 36, "url": "https://www.igdb.com/games/portal-2"}
+    assert found[10] == {
+        "hours": 10.4, "source": "igdb", "samples": 36, "url": "https://www.igdb.com/games/portal-2", "full_hours": 27.1,
+    }
     assert found[20]["source"] == "community"
 
     # Sin claves no se muestra lo que haya quedado guardado de IGDB.

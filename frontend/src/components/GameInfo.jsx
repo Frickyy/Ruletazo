@@ -1,5 +1,6 @@
-import { Critics, Verdict, formatHours, formatPrice } from "./GameCard.jsx";
+import { Critics, Verdict, formatPrice } from "./GameCard.jsx";
 import GameStatePicker from "./GameStatePicker.jsx";
+import DurationValue from "./DurationValue.jsx";
 import { formatNumber, t } from "../i18n/index.js";
 import "./GameCard.css";
 
@@ -48,22 +49,7 @@ function GameInfo({ game, onSetState }) {
           <div>
             <dt>{t("Duración")}</dt>
             <dd>
-              {game.duration_hours == null ? (
-                <span className="muted">{t("Sin datos todavía")}</span>
-              ) : (
-                <span className="mono">{formatHours(game.duration_hours)}</span>
-              )}
-              {game.duration_source === "community" && (
-                <span className="muted game-card__source"> · {t("según {n} jugadores", { n: game.duration_samples })}</span>
-              )}
-              {game.duration_source === "igdb" && (
-                <span className="muted game-card__source">
-                  {" "}·{" "}
-                  <a href={game.duration_url || "https://www.igdb.com/"} target="_blank" rel="noopener noreferrer">
-                    {t("según IGDB")}
-                  </a>
-                </span>
-              )}
+              <DurationValue game={game} />
             </dd>
           </div>
           <div>
