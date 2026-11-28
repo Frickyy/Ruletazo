@@ -61,6 +61,10 @@ describe("matchesFilters", () => {
     expect(matchesFilters(game({ duration_hours: 10 }), { duration: "medium" })).toBe(true);
     expect(matchesFilters(game({ duration_hours: 45 }), { duration: "long" })).toBe(true);
     expect(matchesFilters(game({ duration_hours: null }), { duration: "short" })).toBe(false);
+    // En una noche/tarde: hasta 5 h, incluidas.
+    expect(matchesFilters(game({ duration_hours: 5 }), { duration: "evening" })).toBe(true);
+    expect(matchesFilters(game({ duration_hours: 5.4 }), { duration: "evening" })).toBe(false);
+    expect(matchesFilters(game({ duration_hours: null }), { duration: "evening" })).toBe(false);
     expect(matchesFilters(game({ duration_hours: null }), { duration: "any" })).toBe(true);
   });
 

@@ -19,6 +19,8 @@ export const PLAYTIME_OPTIONS = [
 // Según la duración de cada juego (IGDB o la comunidad). Los juegos sin dato quedan fuera al filtrar por duración.
 export const DURATION_OPTIONS = [
   { id: "any", label: tk("Cualquier duración") },
+  // Para terminarlo en una sentada: 5 h como máximo (incluidas).
+  { id: "evening", label: tk("En una noche/tarde (hasta 5 h)"), max: 5, inclusive: true },
   { id: "short", label: tk("Cortos (menos de 10 h)"), max: 10 },
   { id: "medium", label: tk("Medianos (10 a 30 h)"), min: 10, max: 30 },
   { id: "long", label: tk("Largos (más de 30 h)"), min: 30 },
@@ -124,7 +126,7 @@ export function matchesFilters(game, filters = {}, now = Date.now()) {
     const hours = game.duration_hours;
     if (hours == null) return false;
     if (range.min != null && hours < range.min) return false;
-    if (range.max != null && hours >= range.max) return false;
+    if (range.max != null && (range.inclusive ? hours > range.max : hours >= range.max)) return false;
   }
   return true;
 }

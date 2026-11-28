@@ -83,6 +83,9 @@ const en = {
   "Ocultar programas": "Hide software",
   "Ocultar juegos basura": "Hide junk games",
   "Completista": "Completionist",
+  "Directo a la historia": "Main story",
+  "Yendo directo a la historia, sin extras, según IGDB": "Rushing the main story, no extras, according to IGDB",
+  "En una noche/tarde (hasta 5 h)": "In one evening (up to 5 h)",
   "Para sacar todos los logros (el 100 %), según IGDB": "To get every achievement (100%), according to IGDB",
   "Sincronizar con Steam": "Sync with Steam",
   "Le da permiso a Ruletazo para ver tus juegos recientes: lo que jugaste en las últimas 2 semanas pasa a “Jugando” y lo que tiene todos los logros, a “Terminado”. No cambia lo que ya marcaste, y si sacás un estado a mano no vuelve. Necesita que tus detalles de juego y tus logros sean públicos en Steam.":
