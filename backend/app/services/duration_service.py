@@ -69,11 +69,12 @@ def durations(db: Session, appids: list[int]) -> dict[int, dict]:
     settings = get_settings()
     result: dict[int, dict] = {}
     if settings.igdb_configured and appids:
-        for appid, hours, quick, samples, url, categories, genres, version in db.execute(
+        for appid, hours, quick, full, samples, url, categories, genres, version in db.execute(
             select(
                 CachedGameDetails.appid,
                 CachedGameDetails.igdb_hours,
                 CachedGameDetails.igdb_quick_hours,
+                CachedGameDetails.igdb_full_hours,
                 CachedGameDetails.igdb_samples,
                 CachedGameDetails.igdb_url,
                 CachedGameDetails.player_categories,
@@ -88,6 +89,8 @@ def durations(db: Session, appids: list[int]) -> dict[int, dict]:
                 hours, samples=samples, categories=categories, genres=genres, quick_hours=quick, check_quick=has_quick
             ):
                 result[appid] = {"hours": hours, "source": "igdb", "samples": samples, "url": url}
+                if full:
+                    result[appid]["full_hours"] = full  # completista: al 100 %
     for appid, (hours, count) in community_durations(db, [appid for appid in appids if appid not in result]).items():
         result[appid] = {"hours": hours, "source": "community", "samples": count}
     return result

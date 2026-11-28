@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import GameStatePicker from "./GameStatePicker.jsx";
+import DurationValue from "./DurationValue.jsx";
 import { shareResult } from "../services/shareResult.js";
 import { track } from "../services/track.js";
 import { formatNumber, locale, t } from "../i18n/index.js";
@@ -123,31 +124,10 @@ function GameCard({ game, isStale = false, isDemo = false, onToggleFavorite, onS
           <div>
             <dt>{t("Duración")}</dt>
             <dd>
-              {game.duration_hours == null ? (
-                <span className="muted" title={t("Se completa cuando lo terminan 3 personas en Ruletazo: marcalo como Terminado cuando lo termines.")}>
-                  {t("Sin datos todavía")}
-                </span>
-              ) : (
-                <span className="mono">{formatHours(game.duration_hours)}</span>
-              )}
-              {game.duration_source === "community" && (
-                <span className="muted game-card__source" title={t("Mediana de las horas en Steam de quienes lo marcaron como terminado en Ruletazo")}>
-                  {" "}· {t("según {n} jugadores", { n: game.duration_samples })}
-                </span>
-              )}
-              {game.duration_source === "igdb" && (
-                <span className="muted game-card__source">
-                  {" "}·{" "}
-                  <a
-                    href={game.duration_url || "https://www.igdb.com/"}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title={t("Promedio de lo que cargaron {n} personas en IGDB: la historia y algunos extras", { n: game.duration_samples })}
-                  >
-                    {t("según IGDB")}
-                  </a>
-                </span>
-              )}
+              <DurationValue
+                game={game}
+                emptyTitle={t("Se completa cuando lo terminan 3 personas en Ruletazo: marcalo como Terminado cuando lo termines.")}
+              />
             </dd>
           </div>
           <div>

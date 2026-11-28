@@ -68,6 +68,8 @@ class Game(BaseModel):
     # Personas detrás del dato (en IGDB o en Ruletazo) y, con IGDB, el link a la ficha del juego allá.
     duration_samples: int = 0
     duration_url: str = ""
+    # Completista según IGDB: horas para sacar todos los logros (el 100 %, el "platino").
+    duration_full_hours: float | None = None
     achievement_difficulty: str = "Sin datos"
     # Reseñas del foro de Ruletazo (solo en la ficha: /games/details).
     community_review_count: int = 0

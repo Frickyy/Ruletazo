@@ -230,6 +230,14 @@
   font-size: 0.75rem;
 }
 
+/* Completista (100 %): debajo de la duración principal. */
+.game-card__full {
+  display: block;
+  margin-top: 0.15rem;
+  color: var(--text-soft);
+  font-size: 0.8125rem;
+}
+
 /* ---------- Crítica ---------- */
 
 .critics__title {

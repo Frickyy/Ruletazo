@@ -82,6 +82,8 @@ const en = {
   "Ocultar +18": "Hide 18+",
   "Ocultar programas": "Hide software",
   "Ocultar juegos basura": "Hide junk games",
+  "Completista": "Completionist",
+  "Para sacar todos los logros (el 100 %), según IGDB": "To get every achievement (100%), according to IGDB",
   "Sincronizar con Steam": "Sync with Steam",
   "Le da permiso a Ruletazo para ver tus juegos recientes: lo que jugaste en las últimas 2 semanas pasa a “Jugando” y lo que tiene todos los logros, a “Terminado”. No cambia lo que ya marcaste, y si sacás un estado a mano no vuelve. Necesita que tus detalles de juego y tus logros sean públicos en Steam.":
     "Lets Ruletazo see your recent games: what you played in the last 2 weeks goes to “Playing” and what has every achievement, to “Finished”. It doesn't change what you already marked, and a state you clear by hand doesn't come back. Your game details and achievements must be public on Steam.",
